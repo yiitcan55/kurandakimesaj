@@ -1,11 +1,11 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
 ## App Store Connect + Codemagic yayın hazırlığı (2026-07-21)
-- [ ] STORE_SUBMISSION, gerçek özellikler ve App Store gereksinimlerini çapraz denetle
-- [ ] Privacy/Support URL, ikon, screenshot, UGC moderasyon, Apple Sign-In ve backend blockerlarını doğrula
-- [ ] Güncel ASO metadatasını karakter limitleriyle hazırla
-- [ ] Minimum Codemagic iOS workflow yapılandırmasını oluştur ve secret/signing girdilerini belgele
-- [ ] `dart analyze` + `flutter test` ve YAML/statik yayın kontrollerini çalıştır
+- [x] STORE_SUBMISSION, gerçek özellikler ve App Store gereksinimlerini çapraz denetle
+- [x] Privacy/Support URL, ikon, screenshot, UGC moderasyon, Apple Sign-In ve backend blockerlarını doğrula
+- [x] Güncel ASO metadatasını karakter limitleriyle hazırla
+- [x] Minimum Codemagic iOS workflow yapılandırmasını oluştur ve secret/signing girdilerini belgele
+- [x] `dart analyze` + `flutter test` ve YAML/statik yayın kontrollerini çalıştır
 - [ ] App Store Connect'te eksiksiz alanları doldur; kaydetme öncesi eylem onayı al
 - [ ] Tüm zorunlu kapılar açıksa Codemagic deployunu başlat; değilse kesin blocker listesini bırak
 - [ ] Review: yapılanlar, doğrulama kanıtı ve kalan manuel adımları kaydet
