@@ -1,0 +1,71 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Supabase CLI yerel durum (proje ref'i, pooler url vb. — repoya girmemeli)
+supabase/.temp/
+supabase/.branches/
+
+# --dart-define-from-file ile enjekte edilen yerel anahtarlar (repoya GİRMEZ).
+# Şablon için env.example.json'a bak; gerçek değerleri env.json'a yaz.
+env.json
+.gstack/
+.claude/
+.codex/
+.obsidian/
+.superpowers/
+/android/build/
+/12.0.0-beta.1
+
+# Local credentials and signing material.
+.env
+.env.*
+*.p8
+*.p12
+*.jks
+*.keystore
+
+# Accidental local home-directory mirrors must never enter the app repository.
+~/

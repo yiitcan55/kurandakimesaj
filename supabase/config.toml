@@ -1,0 +1,54 @@
+# Supabase yerel/uzak proje yapılandırması.
+# `supabase link --project-ref <REF>` sonrası `supabase db push` ve
+# `supabase functions deploy <ad>` ile dağıtılır.
+project_id = "kurandakimesaj"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "io.kurandakimesaj://login-callback"
+additional_redirect_urls = ["io.kurandakimesaj://login-callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false   # üretimde true yapın (e-posta doğrulama)
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+# Edge Functions — verify_jwt: çağrı için geçerli kullanıcı JWT gerekir mi?
+[functions.render-trigger]
+verify_jwt = true
+[functions.render-status]
+verify_jwt = true
+[functions.donation-verify]
+verify_jwt = true
+[functions.daily-content]
+verify_jwt = false   # pg_cron service_role ile çağırır
+[functions.revenuecat-webhook]
+verify_jwt = false   # RevenueCat imzalı webhook; içeride secret doğrulanır
+[functions.ayah-finder]
+verify_jwt = true    # anon key/JWT yeterli; misafir de çağırabilir (anon key geçerli JWT)
+[functions.ayah-finder-audio]
+verify_jwt = true    # oturum ŞART: yüklenen videonun sahibi JWT'den doğrulanır
+[functions.delete-account]
+verify_jwt = true    # yalnız oturum açmış kullanıcı; içeride service_role ile siler
+[functions.legal-pages]
+verify_jwt = false   # App Store Privacy/Support URL'leri herkese açık olmalı

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Günün ayeti widget'ı — meal (Türkçe) + kaynak gösterir. Arapça metin
+     Amiri Quran fontu native RemoteViews'a paketlenmediğinden burada
+     gösterilmez (domain kuralı #2: yanlış fontla mushaf hattı render edilmez). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:letterSpacing="0.08"
+        android:text="GÜNÜN AYETİ"
+        android:textColor="#D9B26A"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tv_ayah_meal"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="4"
+        android:text=""
+        android:textColor="#F3E9D2"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_ayah_ref"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text=""
+        android:textColor="#D9B26A"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>

@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "kurandakimesaj (debug)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "kurandakimesaj (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "kurandakimesaj (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "args": ["--dart-define-from-file=env.json"]
+    }
+  ]
+}

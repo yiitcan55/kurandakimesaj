@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kur'an'da ki Mesaj — Marka Kimliği Panosu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=DM+Sans:wght@400;500;700&family=Amiri:wght@400;700&family=Amiri+Quran&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* — Çekirdek palet (Flutter tasarım token'larıyla birebir) — */
+    --ink:        #08201A;   /* dış kanvas — kömür-zümrüt */
+    --eme-900:    #0D2A20;
+    --eme-800:    #0F2C22;
+    --eme-700:    #123528;
+    --eme-600:    #1B4334;
+    --eme-500:    #1E4D38;   /* birincil zümrüt */
+    --gold-500:   #D4B25B;   /* birincil altın */
+    --gold-300:   #E8CB6F;   /* açık altın / ışık */
+    --cream:      #F3EADB;   /* sıcak krem metin */
+    --sage:       #A8BBAE;   /* susturulmuş adaçayı */
+    --line:       rgba(212,178,91,.18);
+    /* köşe yarıçapları */
+    --r-s:12px; --r-m:18px; --r-l:28px;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  @page{ size:1680px 1320px; margin:0; }
+  @media print{
+    body{padding:40px; background:#050907 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  }
+  html,body{background:#050907;}
+  body{
+    font-family:'DM Sans',sans-serif;
+    display:flex; justify-content:center; align-items:flex-start;
+    padding:40px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ——————————————————— PANO ——————————————————— */
+  .board{
+    width:1600px; height:1200px;
+    background:
+      radial-gradient(120% 90% at 18% 0%, #0E2218 0%, var(--ink) 55%, #070D0A 100%);
+    padding:54px;
+    position:relative;
+    box-shadow:0 40px 120px rgba(0,0,0,.6);
+    overflow:hidden;
+  }
+  .board::before{ /* ince altın çerçeve detayı */
+    content:""; position:absolute; inset:22px;
+    border:1px solid rgba(212,178,91,.12);
+    border-radius:6px; pointer-events:none;
+  }
+  /* üst bilgi şeridi */
+  .board-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    color:var(--sage); letter-spacing:.32em; font-size:11px; font-weight:500;
+    text-transform:uppercase; margin-bottom:26px; position:relative; z-index:2;
+  }
+  .board-head .gold{color:var(--gold-500);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    gap:22px;
+    height:1010px;
+    position:relative; z-index:2;
+  }
+
+  /* panel temel */
+  .panel{
+    border-radius:var(--r-m);
+    border:1px solid var(--line);
+    padding:26px 28px;
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(160deg,#0C1E16 0%,#0A1712 100%);
+  }
+  .panel .tag{
+    position:absolute; top:18px; left:24px;
+    font-size:9.5px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--sage); font-weight:600;
+  }
+  .panel .num{
+    position:absolute; top:16px; right:22px;
+    font-family:'Cormorant Garamond',serif; font-style:italic;
+    font-size:18px; color:rgba(212,178,91,.5);
+  }
+
+  /* ——— 1 · LOGO KAPAĞI ——— */
+  .p-cover{
+    grid-column:1 / span 2; grid-row:1 / span 2;
+    background:
+      radial-gradient(80% 70% at 50% 30%, #11392A 0%, #0A1F17 60%, #081410 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-color:rgba(212,178,91,.22);
+  }
+  .cover-mark{width:230px; height:230px; margin-bottom:6px;}
+  .cover-word{
+    font-family:'Cormorant Garamond',serif; font-weight:600;
+    color:var(--cream); font-size:54px; letter-spacing:.02em; line-height:1;
+    text-align:center;
+  }
+  .cover-word .em{color:var(--gold-300);}
+  .cover-sub{
+    margin-top:18px; color:var(--sage);
+    font-size:12.5px; letter-spacing:.42em; text-transform:uppercase; font-weight:500;
+  }
+  .cover-rule{
+    width:64px; height:1px; background:var(--gold-500); opacity:.6;
+    margin:22px 0 0;
+  }
+
+  /* ——— 2 · LOGO KONSTRÜKSİYONU ——— */
+  .p-build{grid-column:3; grid-row:1;}
+  .build-stage{
+    margin-top:30px; height:calc(100% - 30px);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .build-stage svg{width:170px; height:170px;}
+
+  /* ——— 3 · MARKA ÖZÜ (slogan) ——— */
+  .p-essence{
+    grid-column:3; grid-row:2;
+    background:linear-gradient(155deg,#1B4334 0%,#0E3A2A 100%);
+    border-color:rgba(231,205,138,.3);
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .essence-line{
+    font-family:'Cormorant Garamond',serif; color:var(--cream);
+    font-size:38px; line-height:1.12; font-weight:500;
+  }
+  .essence-line b{color:var(--gold-300); font-weight:600;}
+  .essence-cap{
+    margin-top:18px; color:rgba(244,235,215,.7);
+    font-size:11.5px; letter-spacing:.2em; line-height:1.6;
+  }
+
+  /* ——— 4 · DİJİTAL UYGULAMA (telefon) ——— */
+  .p-app{grid-column:1; grid-row:3; display:flex; align-items:flex-end; justify-content:center; padding-bottom:0;}
+  .phone{
+    width:150px; height:300px; margin-bottom:-58px;
+    border-radius:30px 30px 0 0;
+    background:linear-gradient(180deg,#0A211A,#08160F);
+    border:6px solid #06100C; border-bottom:none;
+    box-shadow:0 0 0 1px rgba(212,178,91,.18), 0 -10px 50px rgba(27,122,86,.25);
+    padding:16px 14px; position:relative; overflow:hidden;
+  }
+  .phone .status{display:flex; justify-content:space-between; color:var(--sage); font-size:8px; margin-bottom:14px; opacity:.8;}
+  .phone .app-icn{width:34px;height:34px;margin:0 auto 12px;}
+  .phone .ayet-card{
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--line); border-radius:14px;
+    padding:12px 12px 14px; text-align:center;
+  }
+  .phone .ar{font-family:'Amiri Quran',serif; color:var(--cream); font-size:18px; direction:rtl; line-height:1.7;}
+  .phone .ml{color:var(--sage); font-size:8px; line-height:1.5; margin-top:8px;}
+  .phone .chip-row{display:flex; gap:6px; justify-content:center; margin-top:12px;}
+  .phone .chip{font-size:7px; color:#08140F; background:var(--gold-300); border-radius:20px; padding:3px 8px; font-weight:700;}
+  .phone .chip.ghost{background:transparent; color:var(--gold-300); border:1px solid rgba(231,205,138,.4);}
+
+  /* ——— 5 · RENK SİSTEMİ ——— */
+  .p-color{grid-column:2; grid-row:3;}
+  .sw-grid{margin-top:34px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .sw{border-radius:10px; height:62px; position:relative; border:1px solid rgba(255,255,255,.06); overflow:hidden;}
+  .sw span{position:absolute; bottom:6px; left:8px; font-size:8px; letter-spacing:.05em; font-weight:600;}
+  .sw small{position:absolute; top:6px; left:8px; font-size:7px; opacity:.7; letter-spacing:.04em;}
+
+  /* ——— 6 · TİPOGRAFİ ——— */
+  .p-type{grid-column:3; grid-row:3;}
+  .type-row{margin-top:8px;}
+  .type-row + .type-row{border-top:1px solid var(--line); padding-top:11px; margin-top:11px;}
+  .type-glyph{display:flex; align-items:baseline; justify-content:space-between;}
+  .type-name{font-size:8.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--sage);}
+  .g-cormorant{font-family:'Cormorant Garamond',serif; font-size:40px; color:var(--cream); line-height:1; font-weight:600;}
+  .g-dm{font-family:'DM Sans',sans-serif; font-size:28px; color:var(--cream); line-height:1; font-weight:500;}
+  .g-amiri{font-family:'Amiri Quran',serif; font-size:30px; color:var(--gold-300); direction:rtl; line-height:1;}
+  .p-type{display:flex; flex-direction:column; justify-content:center;}
+
+  /* — yardımcı: full-width alt şerit panelleri (image + system) zaten gridde —*/
+
+  /* küçük altın yıldız parıltısı */
+  .gleam{position:absolute; border-radius:50%; background:radial-gradient(circle,var(--gold-300),transparent 70%); pointer-events:none;}
+</style>
+</head>
+<body>
+  <div class="board">
+    <div class="board-head">
+      <span>Marka Kimliği Sistemi <span class="gold">/ Brand System</span></span>
+      <span>Manevi İçerik Stüdyosu</span>
+      <span class="gold">v1.0 — 2026</span>
+    </div>
+
+    <div class="grid">
+
+      <!-- 1 · LOGO KAPAĞI -->
+      <section class="panel p-cover">
+        <div class="num">01</div>
+        <svg class="cover-mark" viewBox="0 0 200 200" aria-label="Kur'an'da ki Mesaj logosu">
+          <defs>
+            <linearGradient id="emeMark" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#1E4D38"/><stop offset="1" stop-color="#08201A"/>
+            </linearGradient>
+            <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="#D4B25B" stop-opacity="0"/>
+              <stop offset=".55" stop-color="#E8CB6F" stop-opacity=".5"/>
+              <stop offset="1" stop-color="#F8F0DC" stop-opacity=".95"/>
+            </linearGradient>
+            <linearGradient id="pageL" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#F3EADB"/><stop offset="1" stop-color="#D9CBA9"/>
+            </linearGradient>
+            <linearGradient id="pageR" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#EADCBB"/><stop offset="1" stop-color="#C9B488"/>
+            </linearGradient>
+            <mask id="crescent">
+              <rect width="200" height="200" fill="#000"/>
+              <circle cx="98" cy="92" r="72" fill="#fff"/>
+              <circle cx="130" cy="80" r="62" fill="#000"/>
+            </mask>
+            <filter id="soft"><feGaussianBlur stdDeviation="3.2"/></filter>
+          </defs>
+          <!-- nur huzmesi (arka) -->
+          <path d="M100 150 L80 34 Q100 22 120 34 Z" fill="url(#beam)" filter="url(#soft)"/>
+          <circle cx="100" cy="30" r="5.5" fill="#F8F0DC"/>
+          <circle cx="100" cy="30" r="13" fill="#E8CB6F" opacity=".25" filter="url(#soft)"/>
+          <!-- hilal -->
+          <rect width="200" height="200" fill="url(#emeMark)" mask="url(#crescent)"/>
+          <!-- açık mushaf (ön) -->
+          <g>
+            <path d="M100 150 C82 141 64 143 53 150 L58 169 C71 162 87 161 100 166 Z" fill="url(#pageL)"/>
+            <path d="M100 150 C118 141 136 143 147 150 L142 169 C129 162 113 161 100 166 Z" fill="url(#pageR)"/>
+            <path d="M100 150 L100 166" stroke="#B79A5E" stroke-width="1.4"/>
+            <!-- sayfa satırları (altın) -->
+            <path d="M71 153 q9 -2 18 0 M68 158 q12 -2 23 0" stroke="#B79A5E" stroke-width="1" fill="none" opacity=".8"/>
+            <path d="M111 153 q9 -2 18 0 M109 158 q12 -2 23 0" stroke="#9F854E" stroke-width="1" fill="none" opacity=".8"/>
+          </g>
+        </svg>
+        <div class="cover-word">Kur'an'da&nbsp;ki <span class="em">Mesaj</span></div>
+        <div class="cover-rule"></div>
+        <div class="cover-sub">Anla · Düşün · Paylaş</div>
+      </section>
+
+      <!-- 2 · LOGO KONSTRÜKSİYONU -->
+      <section class="panel p-build">
+        <span class="tag">Konstrüksiyon</span><div class="num">02</div>
+        <div class="build-stage">
+          <svg viewBox="0 0 200 200">
+            <defs>
+              <linearGradient id="emeMark2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#1E4D38"/><stop offset="1" stop-color="#08201A"/>
+              </linearGradient>
+              <mask id="crescent2">
+                <rect width="200" height="200" fill="#000"/>
+                <circle cx="98" cy="92" r="72" fill="#fff"/>
+                <circle cx="130" cy="80" r="62" fill="#000"/>
+              </mask>
+            </defs>
+            <!-- kılavuz grid -->
+            <g stroke="rgba(212,178,91,.22)" stroke-width=".7" fill="none">
+              <circle cx="98" cy="92" r="72"/>
+              <circle cx="130" cy="80" r="62" stroke-dasharray="3 3"/>
+              <line x1="100" y1="14" x2="100" y2="186"/>
+              <line x1="20" y1="92" x2="180" y2="92"/>
+              <rect x="26" y="20" width="148" height="148" rx="4"/>
+            </g>
+            <!-- nur ekseni -->
+            <line x1="100" y1="150" x2="100" y2="30" stroke="#E8CB6F" stroke-width="1.2" stroke-dasharray="2 4" opacity=".8"/>
+            <!-- hilal (yarı opak) -->
+            <rect width="200" height="200" fill="url(#emeMark2)" mask="url(#crescent2)" opacity=".9"/>
+            <!-- ölçü noktaları -->
+            <circle cx="98" cy="92" r="2.4" fill="#E8CB6F"/>
+            <circle cx="130" cy="80" r="2.4" fill="#E8CB6F"/>
+            <circle cx="100" cy="30" r="2.4" fill="#F8F0DC"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- 3 · MARKA ÖZÜ -->
+      <section class="panel p-essence">
+        <span class="tag" style="color:rgba(244,235,215,.6)">Marka Özü</span><div class="num" style="color:rgba(244,235,215,.45)">03</div>
+        <div class="essence-line">Ayetten<br/>kalbe,<br/>kalpten <b>paylaşıma.</b></div>
+        <div class="essence-cap">Anla → Düşün → Paylaş.<br/>Manevi içeriği topluluğa taşıyan stüdyo.</div>
+      </section>
+
+      <!-- 4 · DİJİTAL UYGULAMA -->
+      <section class="panel p-app">
+        <span class="tag">Dijital</span><div class="num">04</div>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>الله نور</span></div>
+          <svg class="app-icn" viewBox="0 0 200 200">
+            <defs>
+              <linearGradient id="emeMark3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1E4D38"/><stop offset="1" stop-color="#08201A"/></linearGradient>
+              <mask id="crescent3"><rect width="200" height="200" fill="#000"/><circle cx="98" cy="92" r="72" fill="#fff"/><circle cx="130" cy="80" r="62" fill="#000"/></mask>
+            </defs>
+            <line x1="100" y1="150" x2="100" y2="34" stroke="#E8CB6F" stroke-width="6" opacity=".5"/>
+            <circle cx="100" cy="32" r="7" fill="#F8F0DC"/>
+            <rect width="200" height="200" fill="url(#emeMark3)" mask="url(#crescent3)"/>
+            <path d="M100 152 C84 144 66 146 56 152 L60 168 C72 162 88 161 100 166 Z" fill="#F3EADB"/>
+            <path d="M100 152 C116 144 134 146 144 152 L140 168 C128 162 112 161 100 166 Z" fill="#D9CBA9"/>
+          </svg>
+          <div class="ayet-card">
+            <div class="ar">قُلْ هُوَ اللَّهُ أَحَدٌ</div>
+            <div class="ml">«De ki: O, Allah birdir.» — İhlâs 1</div>
+          </div>
+          <div class="chip-row">
+            <span class="chip">Video Yap</span>
+            <span class="chip ghost">Meal</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 · RENK SİSTEMİ -->
+      <section class="panel p-color">
+        <span class="tag">Renk Sistemi</span><div class="num">05</div>
+        <div class="sw-grid">
+          <div class="sw" style="background:#08201A"><small style="color:#A8BBAE">Kanvas</small><span style="color:#A8BBAE">#08201A</span></div>
+          <div class="sw" style="background:#1B4334"><small style="color:#cfe3d6">Zümrüt 600</small><span style="color:#F3EADB">#1B4334</span></div>
+          <div class="sw" style="background:#1E4D38"><small style="color:#cfe3d6">Zümrüt 500</small><span style="color:#F3EADB">#1E4D38</span></div>
+          <div class="sw" style="background:#D4B25B"><small style="color:#3a2c0e">Altın 500</small><span style="color:#2a2008">#D4B25B</span></div>
+          <div class="sw" style="background:#E8CB6F"><small style="color:#3a2c0e">Altın 300</small><span style="color:#3a2c0e">#E8CB6F</span></div>
+          <div class="sw" style="background:#F3EADB"><small style="color:#7a6c4c">Krem</small><span style="color:#5c5238">#F3EADB</span></div>
+        </div>
+      </section>
+
+      <!-- 6 · TİPOGRAFİ -->
+      <section class="panel p-type">
+        <span class="tag">Tipografi</span><div class="num">06</div>
+        <div class="type-row">
+          <div class="type-glyph"><span class="g-cormorant">Aa</span><span class="type-name">Cormorant<br/>Başlık</span></div>
+        </div>
+        <div class="type-row">
+          <div class="type-glyph"><span class="g-dm">Aa Gg</span><span class="type-name">DM Sans<br/>Arayüz</span></div>
+        </div>
+        <div class="type-row">
+          <div class="type-glyph"><span class="g-amiri">بِسْم</span><span class="type-name">Amiri Quran<br/>Hat / RTL</span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</body>
+</html>
