@@ -24,16 +24,23 @@ Bu belge, kod tabanının mevcut davranışıyla eşleşen App Store Connect ala
   - Gizlilik: <https://yiitcan55.github.io/kurandakimesaj-legal/privacy.html>
   - Destek: <https://yiitcan55.github.io/kurandakimesaj-legal/support.html>
 - [x] `codemagic.yaml` ile iOS App Store derleme iş akışı hazırlandı.
+- [x] Codemagic uygulaması özel GitHub deposuna bağlandı ve yapılandırma kaynağı `codemagic.yaml` olarak seçildi.
+- [x] App Store Connect adı, alt başlığı, açıklaması, anahtar kelimeleri, kategorileri, sürüm numarası, telif ve inceleme notları kaydedildi.
+- [x] App Privacy beyanı yayımlandı; gizlilik ve kullanıcı tercihleri URL'leri kaydedildi.
+- [x] Yaş derecelendirme formu kaydedildi; nihai derece **13+**.
+- [x] Codemagic'deki mevcut `codemagic_appstore` Apple entegrasyonu ve `deyiver-distribution` dağıtım sertifikası iş akışına bağlandı.
 - [x] `flutter analyze`: 0 sorun.
 - [x] `flutter test`: 33/33 geçti.
 
 ### Gönderimden önce zorunlu kalanlar
 
 - [ ] iPhone 6.9 inç için 1–10 gerçek uygulama ekran görüntüsü yüklenmeli. Mevcut `screenshots/` dosyaları Android ölçüsünde; App Store seti değildir.
-- [ ] App Review için çalışan bir demo hesap ve parola hazırlanmalı.
-- [ ] App Review iletişim adı, telefonu ve e-postası doğrulanmalı.
+- [ ] App Review için çalışan bir demo hesap hazırlanmalı. Kayıtlı hesap 21 Temmuz 2026 doğrulamasında Supabase Auth tarafından HTTP 400 ile reddedildi.
+- [x] App Review iletişim adı, telefonu ve e-postası App Store Connect'e kaydedildi.
 - [ ] Diyanet meal/metin içeriği, İslam Ansiklopedisi içeriği ve EveryAyah sesleri için dağıtım/lisans kanıtları hazır tutulmalı.
-- [ ] Codemagic'te App Store Connect API anahtarı ve imzalama değişkenleri girilmeli.
+- [ ] App Store Connect'te Content Rights beyanı, lisans/izin kanıtı görülmeden işaretlenmemeli.
+- [ ] Codemagic'te `kdm_runtime` grubuna `SUPABASE_URL` ve `SUPABASE_ANON_KEY` uygulama değişkenleri eklenmeli.
+- [ ] `com.kurandakimesaj.app` için App Store provisioning profile oluşturulmalı; şu anda Codemagic'de yalnız başka bundle ID'lere ait profiller var. İş akışı ilk build sırasında `--create` ile oluşturacak şekilde ayarlı.
 - [ ] İlk IPA oluşturulup TestFlight'a yüklenmeli ve gerçek iPhone'da smoke test yapılmalı.
 
 İlk sürüm için `What's New` alanı boş bırakılır. App Store incelemesine gönderim, TestFlight smoke testi tamamlanmadan yapılmamalıdır.
@@ -177,33 +184,31 @@ Rüya yorumu ve zekât hesaplama özellikleri yalnız bilgilendirme amaçlıdır
 İş akışı: `ios-app-store`  
 Dosya: `codemagic.yaml`
 
-Codemagic'te şu environment group'lar oluşturulmalıdır:
+Codemagic hesabındaki mevcut kaynaklar kullanılır:
 
-### `appstore_credentials`
+- Apple Developer Portal entegrasyonu: `codemagic_appstore`
+- Apple Distribution sertifikası: `deyiver-distribution`
+- App Store Connect kimlik doğrulaması: `auth: integration`
 
-- `APP_STORE_CONNECT_PRIVATE_KEY` — `.p8` anahtarının içeriği, Secure
-- `APP_STORE_CONNECT_KEY_IDENTIFIER` — Key ID, Secure
-- `APP_STORE_CONNECT_ISSUER_ID` — Issuer ID, Secure
-- `CERTIFICATE_PRIVATE_KEY` — imzalama sertifikası özel anahtarı, Secure
-
-API anahtarında en az **App Manager** yetkisi bulunmalıdır.
+Bu nedenle ayrı `appstore_credentials` environment grubuna veya yeni bir `.p8` yüklemesine gerek yoktur. İş akışı gerekli API değişkenlerini entegrasyondan alır ve eksik provisioning profile'ı ilk build sırasında `app-store-connect fetch-signing-files --create` ile oluşturur.
 
 ### `kdm_runtime`
 
 - `SUPABASE_URL` — canlı proje URL'si
 - `SUPABASE_ANON_KEY` — canlı anon/publishable key, Secure
 
-İş akışı sırasıyla paketleri alır, analiz ve testleri çalıştırır, App Store imzalama dosyalarını hazırlar, IPA üretir ve App Store Connect'e yükler. İlk güvenli koşuda `submit_to_testflight: false` ve `submit_to_app_store: false` bırakılmıştır; bu yalnızca imzalı binary yükler, otomatik inceleme başlatmaz.
+İş akışı sırasıyla paketleri alır, analiz ve testleri çalıştırır, App Store imzalama dosyalarını hazırlar, IPA üretir ve App Store Connect'e yükler. İlk güvenli koşuda `submit_to_testflight: false` ve `submit_to_app_store: false` bırakılmıştır; bu yalnızca imzalı binary yükler, otomatik inceleme başlatmaz. `kdm_runtime` henüz Codemagic'e eklenmediği için build başlatılmamalıdır.
 
 ## 8. Son kontrol listesi
 
-- [ ] Canlı gizlilik ve destek URL'leri App Store Connect'e kaydedildi.
-- [ ] ASO metadata alanları kaydedildi.
-- [ ] App Privacy formu tamamlandı ve yayımlandı.
-- [ ] Yaş derecelendirme formu tamamlandı.
+- [x] Canlı gizlilik ve destek URL'leri App Store Connect'e kaydedildi.
+- [x] ASO metadata alanları kaydedildi.
+- [x] App Privacy formu tamamlandı ve yayımlandı.
+- [x] Yaş derecelendirme formu tamamlandı.
 - [ ] Demo hesap ve App Review notu girildi.
 - [ ] iPhone 6.9 inç ekran görüntüleri yüklendi.
-- [ ] Codemagic environment group'ları oluşturuldu.
+- [x] Codemagic Apple entegrasyonu ve dağıtım sertifikası YAML iş akışına bağlandı.
+- [ ] Codemagic `kdm_runtime` environment grubu oluşturuldu.
 - [ ] IPA başarıyla üretildi ve App Store Connect'e yüklendi.
 - [ ] TestFlight gerçek cihaz smoke testi tamamlandı.
 - [ ] Lisans/izin kanıtları hazır.

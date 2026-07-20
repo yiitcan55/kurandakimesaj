@@ -6,9 +6,16 @@
 - [x] Güncel ASO metadatasını karakter limitleriyle hazırla
 - [x] Minimum Codemagic iOS workflow yapılandırmasını oluştur ve secret/signing girdilerini belgele
 - [x] `dart analyze` + `flutter test` ve YAML/statik yayın kontrollerini çalıştır
-- [ ] App Store Connect'te eksiksiz alanları doldur; kaydetme öncesi eylem onayı al
-- [ ] Tüm zorunlu kapılar açıksa Codemagic deployunu başlat; değilse kesin blocker listesini bırak
-- [ ] Review: yapılanlar, doğrulama kanıtı ve kalan manuel adımları kaydet
+- [x] App Store Connect'te doğrulanabilen metadata, App Privacy ve yaş derecelendirmesi alanlarını onay sonrası kaydet
+- [x] Zorunlu kapıları denetle; kapalı oldukları için Codemagic deployunu başlatma ve kesin blocker listesini kaydet
+- [x] Review: yapılanlar, doğrulama kanıtı ve kalan manuel adımları kaydet
+
+### Review (2026-07-21)
+
+- App Store Connect metadata, kategori, URL'ler, telif, review notu ve 13+ yaş derecelendirmesi kaydedildi; App Privacy yayımlandı.
+- Codemagic uygulaması GitHub deposuna bağlandı. `codemagic.yaml`, mevcut `codemagic_appstore` entegrasyonu ve `deyiver-distribution` sertifikasını kullanacak şekilde güncellendi.
+- Demo hesap Supabase Auth doğrulamasında HTTP 400 döndürdü.
+- Deploy başlatılmadı: iPhone App Store ekran görüntüleri, içerik lisans kanıtı/Content Rights beyanı, çalışan demo hesap ve Codemagic `kdm_runtime` değişkenleri eksik. `com.kurandakimesaj.app` provisioning profile'ı ilk onaylı build sırasında oluşturulacak.
 
 Plan: `~/.claude/plans/flutter-apply-architecture-best-practic-jaunty-dewdrop.md`
 Mimari: Katmanlı (UI/Domain/Data) + Riverpod-as-ViewModel · Backend: Supabase · DB: drift
