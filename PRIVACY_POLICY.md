@@ -9,7 +9,7 @@
 
 Bu Gizlilik Politikası, **Kur'an'da ki Mesaj** ("Uygulama", "biz") mobil uygulamasını kullandığınızda kişisel verilerinizin nasıl toplandığını, kullanıldığını, saklandığını ve korunduğunu açıklar. Uygulamayı kullanarak bu politikada açıklanan uygulamaları kabul etmiş olursunuz.
 
-Uygulama sahibi / veri sorumlusu: **Kur'an'da ki Mesaj bağımsız geliştiricisi**
+Uygulama sahibi / veri sorumlusu: **Eren Asan**
 İletişim: **yiit55400@gmail.com**
 
 Bu politika, 6698 sayılı **Kişisel Verilerin Korunması Kanunu (KVKK)** ve Apple App Store gerekliliklerine uygun olarak hazırlanmıştır.
@@ -137,7 +137,7 @@ Bu Gizlilik Politikasını zaman zaman güncelleyebiliriz. Önemli değişiklikl
 Gizlilikle ilgili sorularınız veya talepleriniz için:
 
 - **E-posta:** yiit55400@gmail.com
-- **Uygulama sahibi:** Kur'an'da ki Mesaj bağımsız geliştiricisi
+- **Uygulama sahibi:** Eren Asan
 - **Ülke:** Türkiye
 
 ---

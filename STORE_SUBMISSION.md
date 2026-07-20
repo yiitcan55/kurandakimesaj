@@ -104,9 +104,9 @@ Uygulama ücretsiz ve reklamsızdır.
 
 - Birincil kategori: **Reference**
 - İkincil kategori: **Lifestyle**
-- Telif: `2026 [App Store Connect'teki yasal hak sahibi adı]`
+- Telif: `2026 Eren Asan`
 
-Apple telif işaretini arayüzde eklediği için alana ayrıca `©` yazılmaz. Yasal hak sahibi adı App Store Connect hesabından aynen alınmalı; tahmin edilmemelidir.
+Apple telif işaretini arayüzde eklediği için alana ayrıca `©` yazılmaz. `Eren Asan` adı App Store Connect'teki hesap sahibi alanından doğrulanmıştır.
 
 ## 3. App Store Connect URL alanları
 
