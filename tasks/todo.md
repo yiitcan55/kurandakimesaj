@@ -15,7 +15,7 @@
 - App Store Connect metadata, kategori, URL'ler, telif, review notu ve 13+ yaş derecelendirmesi kaydedildi; App Privacy yayımlandı.
 - Codemagic uygulaması GitHub deposuna bağlandı. `codemagic.yaml`, mevcut `codemagic_appstore` entegrasyonu ve `deyiver-distribution` sertifikasını kullanacak şekilde güncellendi.
 - Demo hesap Supabase Auth doğrulamasında HTTP 400 döndürdü.
-- Deploy başlatılmadı: iPhone App Store ekran görüntüleri, içerik lisans kanıtı/Content Rights beyanı, çalışan demo hesap ve Codemagic `kdm_runtime` değişkenleri eksik. `com.kurandakimesaj.app` provisioning profile'ı ilk onaylı build sırasında oluşturulacak.
+- Deploy başlatılmadı: iPhone App Store ekran görüntüleri, içerik lisans kanıtı/Content Rights beyanı, çalışan demo hesap, `com.kurandakimesaj.app` provisioning profile'ı ve Codemagic `kdm_runtime` değişkenleri eksik.
 
 Plan: `~/.claude/plans/flutter-apply-architecture-best-practic-jaunty-dewdrop.md`
 Mimari: Katmanlı (UI/Domain/Data) + Riverpod-as-ViewModel · Backend: Supabase · DB: drift

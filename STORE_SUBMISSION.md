@@ -40,7 +40,7 @@ Bu belge, kod tabanının mevcut davranışıyla eşleşen App Store Connect ala
 - [ ] Diyanet meal/metin içeriği, İslam Ansiklopedisi içeriği ve EveryAyah sesleri için dağıtım/lisans kanıtları hazır tutulmalı.
 - [ ] App Store Connect'te Content Rights beyanı, lisans/izin kanıtı görülmeden işaretlenmemeli.
 - [ ] Codemagic'te `kdm_runtime` grubuna `SUPABASE_URL` ve `SUPABASE_ANON_KEY` uygulama değişkenleri eklenmeli.
-- [ ] `com.kurandakimesaj.app` için App Store provisioning profile oluşturulmalı; şu anda Codemagic'de yalnız başka bundle ID'lere ait profiller var. İş akışı ilk build sırasında `--create` ile oluşturacak şekilde ayarlı.
+- [ ] `com.kurandakimesaj.app` için App Store provisioning profile oluşturulup Codemagic Code signing identities bölümüne alınmalı; şu anda yalnız başka bundle ID'lere ait profiller var.
 - [ ] İlk IPA oluşturulup TestFlight'a yüklenmeli ve gerçek iPhone'da smoke test yapılmalı.
 
 İlk sürüm için `What's New` alanı boş bırakılır. App Store incelemesine gönderim, TestFlight smoke testi tamamlanmadan yapılmamalıdır.
@@ -190,7 +190,7 @@ Codemagic hesabındaki mevcut kaynaklar kullanılır:
 - Apple Distribution sertifikası: `deyiver-distribution`
 - App Store Connect kimlik doğrulaması: `auth: integration`
 
-Bu nedenle ayrı `appstore_credentials` environment grubuna veya yeni bir `.p8` yüklemesine gerek yoktur. İş akışı gerekli API değişkenlerini entegrasyondan alır ve eksik provisioning profile'ı ilk build sırasında `app-store-connect fetch-signing-files --create` ile oluşturur.
+Bu nedenle ayrı `appstore_credentials` environment grubuna veya yeni bir `.p8` yüklemesine gerek yoktur. İş akışı gerekli API değişkenlerini entegrasyondan alır. `ios_signing` yapılandırması `app_store` dağıtım türü ve `com.kurandakimesaj.app` bundle ID'siyle eşleşen sertifika/profili Codemagic Code signing identities alanından alır.
 
 ### `kdm_runtime`
 

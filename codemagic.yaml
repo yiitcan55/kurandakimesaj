@@ -9,8 +9,8 @@ workflows:
       groups:
         - kdm_runtime
       ios_signing:
-        certificates:
-          - deyiver-distribution
+        distribution_type: app_store
+        bundle_identifier: com.kurandakimesaj.app
       vars:
         BUNDLE_ID: com.kurandakimesaj.app
         APP_STORE_APPLE_ID: "6782974088"
@@ -25,11 +25,7 @@ workflows:
       - name: Test
         script: flutter test
       - name: Set up iOS signing
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          xcode-project use-profiles
+        script: xcode-project use-profiles
       - name: Build signed IPA
         script: |
           flutter build ipa --release \
