@@ -56,6 +56,7 @@ env.json
 .codex/
 .obsidian/
 .superpowers/
+.worktrees/
 /android/build/
 /12.0.0-beta.1
 
