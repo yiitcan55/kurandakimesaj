@@ -125,16 +125,20 @@ Kaydı ASC → App Review Information → Notes alanına ekleyin.
 
 | # | İş | Nerede | Durum |
 |---|---|---|---|
-| 1 | ~~Apple provider~~ **YAPILDI** — etkin, Client IDs = `com.kurandakimesaj.app` | Supabase Dashboard → Auth → Providers | ✅ |
-| 2 | App ID'ye **Sign in with Apple** capability + provisioning profile yenile | Apple Developer Portal → Codemagic "Fetch profiles" | ⬜ |
-| 3 | **`supabase db push`** — üç migration sırayla | Terminal (`npx supabase@latest`) | ⬜ |
-| 4 | Demo/kendi hesabına `is_admin = true` | Supabase SQL Editor | ⬜ |
-| 4a | **Mevcut içeriği kuyruktan gözden geçir** — migration hiçbir eski kaydı otomatik onaylamıyor | Uygulama → Ayarlar → İçerik moderasyonu | ⬜ |
-| 5 | `terms.html`'i GitHub Pages'e yayınla + URL'yi doğrula | `kurandakimesaj-legal` reposu | ⬜ |
-| 6 | Uygulamayı build et ve yükle (build 3) | Codemagic | ⬜ |
-| 7 | Ekran kaydı (bölüm 3) → App Review Notes | Fiziksel cihaz + ASC | ⬜ |
-| 8 | ASC'de reddedilen gönderime yanıt yaz (bölüm 1) | App Store Connect | ⬜ |
-| 9 | `GOOGLE_WEB_CLIENT_ID` + `GOOGLE_IOS_CLIENT_ID` env grubunda tanımlı mı | Codemagic → `kdm_runtime` | ⬜ |
+| 1 | Apple provider — etkin, Client IDs = `com.kurandakimesaj.app` | Supabase Dashboard → Auth → Providers | ✅ |
+| 2 | App ID'ye **Sign in with Apple** capability + provisioning profile yenile | Apple Developer Portal → Codemagic "Fetch profiles" | ✅ |
+| 3 | **`supabase db push`** — üç migration sırayla | Terminal (`npx supabase@latest`) | ✅ |
+| 4 | Demo/kendi hesabına `is_admin = true` | Supabase SQL Editor | ✅ |
+| 4a | **Mevcut içeriği kuyruktan gözden geçir** — migration hiçbir eski kaydı otomatik onaylamıyor | Uygulama → Ayarlar → İçerik moderasyonu | ✅ (kuyruk boş: `feed_posts` 0 satır) |
+| 5 | `terms.html`'i GitHub Pages'e yayınla + URL'yi doğrula | `kurandakimesaj-legal` reposu | ✅ |
+| 6 | Uygulamayı build et ve yükle (build 3) | Codemagic | ✅ başlatıldı (`release/1.0.1`) |
+| 7 | Ekran kaydı (bölüm 3) → App Review Notes | Fiziksel cihaz + ASC | ⬜ **sizde** |
+| 8 | ASC'de reddedilen gönderime yanıt yaz (bölüm 1) | App Store Connect | ⬜ **sizde** |
+| 9 | `GOOGLE_WEB_CLIENT_ID` env grubunda tanımlı mı | Codemagic → `kdm_runtime` | ✅ |
+
+**Adım 2 nasıl yapıldı (doğrulandı):** App ID `C497C57RH2` → Sign In with Apple işaretlendi → `Save` → "Modify App Capabilities" onay kutusu → Confirm. Bu profili `Invalid` yaptı; profil `KDRAQ8GKZ3` → Edit → Save ile yeniden üretildi (`Status: Active`, Enabled Capabilities: In-App Purchase, Sign In with Apple). Codemagic'te **saklanan** kopya Remove + Fetch ile tazelendi — Apple'da yenilemek tek başına yetmiyor, çünkü `ios_signing` her build'de Apple'dan çekmiyor.
+
+> **`GOOGLE_IOS_CLIENT_ID` bilerek tanımsız.** Google Cloud Console'a bot koruması nedeniyle girilemedi. iOS'ta `GoogleSignIn.initialize` web client ID'ye ek olarak iOS client ID ister; tanımsızken buton görünüp her dokunuşta hata verirdi. `AuthScreen` artık iOS'ta Google butonunu bu değişken yoksa hiç göstermiyor — Apple + e-posta girişi kalıyor, Guideline 4.8 Apple ile zaten karşılanıyor. Android'de Google değişmedi. iOS'ta Google istenirse: Google Cloud → Credentials → iOS tipi OAuth client (`com.kurandakimesaj.app`) → değeri Codemagic `kdm_runtime` grubuna ekle + ters client ID URL şemasını `ios/Runner/Info.plist`'e yaz.
 
 > **Apple provider hakkında (plan düzeltmesi):** Plan "Services ID + Team ID + Key ID + `.p8` gir" diyordu. Bu **web/OAuth** akışının gereksinimi. Bizim uygulamamız yalnız **yerel (native)** iOS girişi yapıyor (`getAppleIDCredential` → `signInWithIdToken`), dolayısıyla Supabase'in yalnız **Client IDs** alanına bundle ID'nin yazılması yeterli. `.p8` üretmeye gerek yok. Web'de Sign in with Apple sunulursa o zaman gerekir.
 
