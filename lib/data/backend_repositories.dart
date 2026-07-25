@@ -34,10 +34,30 @@ final supabaseGatewayProvider = Provider<SupabaseGateway>(
   (ref) => SupabaseGateway(ref.watch(supabaseClientProvider)),
 );
 
+/// Auth olay akışı — bu akış SADECE bir TETİKLEYİCİDİR, değer kaynağı değildir.
+/// `onAuthStateChange` token yenileme ağ hatalarını da olay olarak yayar; bool'u
+/// `AsyncValue`'dan türetseydik ilk frame'de `AsyncLoading` (yanlış `false`) ve
+/// yenileme hatasında `AsyncError` kullanıcıyı bir anlık "çıkış yapmış"
+/// gösterirdi. Supabase yoksa boş akış → provider error state'e düşmez.
+///
+/// `BehaviorSubject` tabanlı olduğu için geç abone olan son olayı (startup'ta
+/// `initialSession`) replay eder; kaçırılan olay penceresi yoktur.
+final authChangesProvider = StreamProvider<AuthState>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client?.auth.onAuthStateChange ?? const Stream<AuthState>.empty();
+});
+
 /// Oturum açık mı? (backend'e bağlı özellikler bunu kontrol eder)
-final isSignedInProvider = Provider<bool>(
-  (ref) => ref.watch(supabaseGatewayProvider).isSignedIn,
-);
+///
+/// Değer HER ZAMAN canlı `currentUser`'dan okunur; [authChangesProvider]
+/// yalnızca yeniden hesaplamayı tetiklemek için izlenir. Bu izleme olmadan
+/// `Provider<bool>` ilk okumadaki sonucu (çıkışta `false`) süreç boyunca
+/// cache'lerdi — `IndexedStack` içindeki sekmeler yeniden kurulmadığı için
+/// giriş yapıldığı halde ekranların "Misafir" kalmasının kök nedeni buydu.
+final isSignedInProvider = Provider<bool>((ref) {
+  ref.watch(authChangesProvider);
+  return ref.watch(supabaseGatewayProvider).isSignedIn;
+});
 
 // ── Modeller ────────────────────────────────────────────────────────────────
 
@@ -52,11 +72,12 @@ class FeedPost {
     required this.topic,
     required this.likeCount,
     required this.likedByMe,
-    this.kind = 'ayah',
+    this.kind = 'still',
     this.videoUrl,
     this.thumbnailUrl,
     this.templateId,
     this.commentCount = 0,
+    this.status = 'approved',
   });
 
   final String id;
@@ -69,7 +90,9 @@ class FeedPost {
   final int likeCount;
   final bool likedByMe;
 
-  /// 'ayah' (ayet kartı / Gönderiler) | 'video' (Reels). Kolon init göçünde var.
+  /// Medya türü: 'video' (kullanıcının mp4'ü) | 'still' (stüdyo üretimi PNG).
+  /// Reels tek akış olduğu için bu artık sekme değil, yalnız oynatma biçimidir.
+  /// (Göç: 20260725130000_reels_kind.sql — eski 'ayah' kayıtları 'still' oldu.)
   final String kind;
 
   /// Oynatılabilir video URL'i. Render hattı backend'de hazır olunca dolar;
@@ -85,8 +108,15 @@ class FeedPost {
   /// Yorum sayısı — `comment_count` kolonu göç uygulanmadan SELECT'te yoksa 0.
   final int commentCount;
 
-  /// Reels sekmesi mi? (kind == 'video')
+  /// Moderasyon durumu: 'pending' | 'approved' | 'rejected'.
+  /// Kolon moderasyon göçüyle gelir; SELECT'te yoksa 'approved' (eski davranış).
+  final String status;
+
+  /// Oynatılabilir mp4 mü? Değilse 'still' — stüdyo görseli olarak render edilir.
   bool get isVideo => kind == 'video';
+
+  /// Yönetici onayı bekliyor mu? (yalnız yazarına görünür — RLS böyle kısıtlar)
+  bool get isPending => status == 'pending';
 
   factory FeedPost.fromMap(Map<String, dynamic> m, {required String? myId}) {
     final profile = m['profiles'];
@@ -104,12 +134,13 @@ class FeedPost {
       likeCount: m['like_count'] as int? ?? 0,
       likedByMe:
           myId != null && likes.any((l) => (l as Map)['user_id'] == myId),
-      kind: m['kind'] as String? ?? 'ayah',
+      kind: m['kind'] as String? ?? 'still',
       // Defansif: bu kolonlar göç uygulanmadan SELECT'te bulunmayabilir → null.
       videoUrl: m['video_url'] as String?,
       thumbnailUrl: m['thumbnail_url'] as String? ?? m['media_url'] as String?,
       templateId: m['template_id'] as String?,
       commentCount: m['comment_count'] as int? ?? 0,
+      status: m['status'] as String? ?? 'approved',
     );
   }
 }
@@ -295,9 +326,14 @@ class ProfileRepository {
 abstract interface class ISocialRepository {
   bool get available;
 
-  /// Akışı çeker. [kind] verilirse ('ayah' | 'video') yalnız o tür döner;
-  /// null ise tümü (geriye dönük uyum).
-  Future<List<FeedPost>> fetchFeed({String? kind});
+  /// Tek akış: Reels. 'video' de 'still' de aynı listede döner — `kind` artık
+  /// sekme değil oynatma biçimi olduğu için tür filtresi YOK.
+  ///
+  /// Durum filtresi de YOK: RLS zaten başkalarının 'pending' içeriğini kapatır;
+  /// kullanıcının KENDİ bekleyen gönderisi bilerek akışta kalır ("inceleniyor"
+  /// rozetiyle) — aksi hâlde paylaştığı içerik kaybolmuş sanılırdı.
+  /// Ayrımı ekran [FeedPost.isPending] üzerinden yapar.
+  Future<List<FeedPost>> fetchReels();
   Future<void> createPost({
     required String reference,
     required String arabic,
@@ -318,11 +354,41 @@ abstract interface class ISocialRepository {
   /// Yorum ekle. Tablo yoksa/oturum yoksa sessizce no-op (graceful).
   Future<void> addComment(String postId, String body);
 
+  /// Kullanıcının KENDİ gönderisini siler (RLS: `feed_delete_own`).
+  /// Hata YUTMAZ — başkasının içeriğinde RLS reddi çağırana yayılır.
+  Future<void> deletePost(String postId);
+
+  /// Yorum siler. Yetki kararı sunucudadır: kendi yorumu için
+  /// `comments_delete_own`, yöneticinin BAŞKASININ yorumu için
+  /// `comments_delete_admin` (App Store Guideline 1.2 — şikâyet edilen yoruma
+  /// aksiyon alınabilmeli). Hata YUTMAZ: yetkisiz/bulunamayan silme çağırana
+  /// gösterilebilir bir [StateError] olarak yayılır.
+  Future<void> deleteComment(String commentId);
+
   Future<Set<String>> fetchBlockedUserIds();
   Future<void> reportPost(String postId);
   Future<void> reportComment(String commentId);
   Future<void> blockUser(String userId);
   Future<void> unblockUser(String userId);
+
+  // ── Moderasyon (yönetici) ─────────────────────────────────────────────────
+  // Bu dörtlü hata YUTMAZ: RLS/trigger reddi veya ağ hatası çağırana yayılır ki
+  // ekran anlamlı bir mesaj gösterebilsin (bkz. `_report` kalıbı).
+
+  /// Onay bekleyen gönderiler — en eski önce (kuyruk mantığı).
+  /// Yalnız yönetici satır görür; yetkisiz çağrıda liste boş döner.
+  Future<List<FeedPost>> fetchPendingPosts();
+
+  /// Gönderinin moderasyon durumunu değiştirir ('approved' | 'rejected' |
+  /// 'pending'). Yönetici olmayan çağrıda sunucu tetikleyicisi reddeder.
+  Future<void> setPostStatus(String postId, String status);
+
+  /// Şikâyet kuyruğu — raporlanan gönderi/yorum ve şikâyetçi adıyla birlikte.
+  Future<List<Map<String, dynamic>>> fetchReports();
+
+  /// Kullanıcının engellediği kişiler — görüntülenebilir ad/avatarla birlikte.
+  /// (`fetchBlockedUserIds` yalnız filtreleme için id döner.)
+  Future<List<Map<String, dynamic>>> fetchBlockedUsers();
 }
 
 /// Sunucudan gelen akışın son güvenlik kapısı. RLS görünürlüğünden bağımsız
@@ -342,19 +408,18 @@ class SocialRepository implements ISocialRepository {
   bool get available => _client != null && _client.auth.currentUser != null;
 
   @override
-  Future<List<FeedPost>> fetchFeed({String? kind}) async {
+  Future<List<FeedPost>> fetchReels() async {
     final c = _client;
     if (c == null) return const [];
     final myId = c.auth.currentUser?.id;
-    final base = c
+    final rows = await c
         .from('feed_posts')
         .select(
           '*, profiles!feed_posts_author_id_fkey(display_name), likes(user_id)',
         )
-        .eq('is_hidden', false);
-    // kind verilirse süz; her hâlde sıralı + limitli.
-    final filtered = kind == null ? base : base.eq('kind', kind);
-    final rows = await filtered.order('created_at', ascending: false).limit(50);
+        .eq('is_hidden', false)
+        .order('created_at', ascending: false)
+        .limit(50);
     final posts = (rows as List)
         .map((r) => FeedPost.fromMap(r as Map<String, dynamic>, myId: myId))
         .toList();
@@ -368,11 +433,17 @@ class SocialRepository implements ISocialRepository {
     required String meal,
     String topic = '',
     String caption = '',
-    String kind = 'ayah',
+    String kind = 'still',
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
   }) async {
+    // Sunucudaki feed_posts_kind_check'in istemci karşılığı. Sessizce
+    // düzeltmiyoruz: geçersiz değer çağıranın hatasıdır, 23514'ü beklemeden
+    // burada patlasın.
+    if (kind != 'video' && kind != 'still') {
+      throw ArgumentError.value(kind, 'kind', "'video' veya 'still' olmalı");
+    }
     final c = _client;
     final uid = c?.auth.currentUser?.id;
     if (c == null || uid == null) return;
@@ -463,6 +534,44 @@ class SocialRepository implements ISocialRepository {
   }
 
   @override
+  Future<void> deletePost(String postId) async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Silmek için giriş yapmanız gerekiyor.');
+    }
+    // `author_id` eşleşmesi RLS'in istemci karşılığı: yanlış id ile çağrıldığında
+    // sessizce 0 satır silmek yerine sunucu politikası devrede kalsın diye
+    // filtreyi biz de koyuyoruz (savunma derinliği).
+    await c.from('feed_posts').delete().match({'id': postId, 'author_id': uid});
+  }
+
+  @override
+  Future<void> deleteComment(String commentId) async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Silmek için giriş yapmanız gerekiyor.');
+    }
+    // `user_id` filtresi BİLEREK yok: yetkiyi RLS verir (`comments_delete_own`
+    // VEYA `comments_delete_admin`). İstemci filtresi yöneticinin şikâyet
+    // edilen yorumu kaldırmasını engellerdi.
+    // `select()` ile silinen satırı geri istiyoruz: RLS reddi hata değil "0
+    // satır"dır — dönüş boşsa sessiz başarı yerine dürüst hata fırlatırız.
+    final deleted = await c
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .select('id');
+    if (deleted.isEmpty) {
+      throw StateError(
+        'Yorum silinemedi: yalnızca kendi yorumunuzu, yönetici olarak da '
+        'başkasının yorumunu silebilirsiniz.',
+      );
+    }
+  }
+
+  @override
   Future<Set<String>> fetchBlockedUserIds() async {
     final c = _client;
     final uid = c?.auth.currentUser?.id;
@@ -519,11 +628,101 @@ class SocialRepository implements ISocialRepository {
   Future<void> unblockUser(String userId) async {
     final c = _client;
     final uid = c?.auth.currentUser?.id;
-    if (c == null || uid == null) return;
+    if (c == null || uid == null) {
+      // Artık kullanıcı eylemi (engellenenler listesindeki "Engeli kaldır") →
+      // sessiz no-op yerine dürüst hata; ekran mesaj gösterebilsin.
+      throw StateError('Engeli kaldırmak için giriş yapmanız gerekiyor.');
+    }
     await c.from('user_blocks').delete().match({
       'blocker_id': uid,
       'blocked_id': userId,
     });
+  }
+
+  // ── Moderasyon ─────────────────────────────────────────────────────────────
+
+  @override
+  Future<List<FeedPost>> fetchPendingPosts() async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Moderasyon kuyruğu için giriş yapmanız gerekiyor.');
+    }
+    final rows = await c
+        .from('feed_posts')
+        .select(
+          '*, profiles!feed_posts_author_id_fkey(display_name), likes(user_id)',
+        )
+        .eq('status', 'pending')
+        // Kuyruk: en uzun bekleyen önce.
+        .order('created_at', ascending: true)
+        .limit(50);
+    return (rows as List)
+        .map((r) => FeedPost.fromMap(r as Map<String, dynamic>, myId: uid))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> setPostStatus(String postId, String status) async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Bu işlem için giriş yapmanız gerekiyor.');
+    }
+    if (status != 'approved' && status != 'rejected' && status != 'pending') {
+      throw ArgumentError('Geçersiz içerik durumu: $status');
+    }
+    try {
+      await c.from('feed_posts').update({'status': status}).eq('id', postId);
+    } on PostgrestException catch (e) {
+      // feed_posts_moderation_guard tetikleyicisi 42501 (→ HTTP 403) atar.
+      // Yutmuyoruz; yalnız kullanıcıya gösterilebilir Türkçeye çeviriyoruz.
+      if (e.code == '42501') {
+        throw StateError('İçerik durumunu yalnızca yönetici değiştirebilir.');
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchReports() async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Şikâyet kuyruğu için giriş yapmanız gerekiyor.');
+    }
+    final rows = await c
+        .from('reports')
+        .select(
+          '*, profiles!reports_reporter_id_fkey(display_name), '
+          'feed_posts(id, kind, reference, meal, caption, thumbnail_url, '
+          'status, author_id), '
+          // Yorum yazarı da gömülü gelir: yönetici kimin yazdığını görmeden
+          // silme kararı veremez.
+          'comments(id, body, user_id, '
+          'profiles!comments_user_id_fkey(display_name))',
+        )
+        .order('created_at', ascending: false)
+        .limit(100);
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchBlockedUsers() async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Engellenenler listesi için giriş yapmanız gerekiyor.');
+    }
+    final rows = await c
+        .from('user_blocks')
+        .select(
+          'blocked_id, created_at, '
+          'profiles!user_blocks_blocked_id_fkey(display_name, avatar_url)',
+        )
+        .eq('blocker_id', uid)
+        .order('created_at', ascending: false);
+    return (rows as List).cast<Map<String, dynamic>>();
   }
 }
 
@@ -606,76 +805,6 @@ class KhatmRepository {
   }
 }
 
-// ── Render (Edge Function) ───────────────────────────────────────────────────
-
-/// Sunucu tarafı render işinin durum sözleşmesi. İstemci yalnızca bu durumları
-/// bilir; backend `render-status` Edge Function'ı bunları döndürür.
-enum RenderStatus { queued, processing, ready, failed }
-
-/// Render sözleşmesi — test edilebilirlik seam'i (fake enjekte edilebilir).
-abstract interface class IRenderRepository {
-  Future<String?> trigger({
-    required String template,
-    required String reciter,
-    String? reference,
-    String? arabic,
-    String? meal,
-  });
-  Future<RenderStatus?> status(String jobId);
-}
-
-class RenderRepository implements IRenderRepository {
-  RenderRepository(this._client);
-  final SupabaseClient? _client;
-
-  /// render-trigger Edge Function'ı çağırır; jobId döner (yoksa null).
-  @override
-  Future<String?> trigger({
-    required String template,
-    required String reciter,
-    String? reference,
-    String? arabic,
-    String? meal,
-  }) async {
-    final c = _client;
-    if (c == null || c.auth.currentUser == null) return null;
-    final res = await c.functions.invoke(
-      'render-trigger',
-      body: {
-        'template': template,
-        'reciter': reciter,
-        'reference': reference,
-        'arabic': arabic,
-        'meal': meal,
-      },
-    );
-    final data = res.data;
-    if (data is Map && data['jobId'] != null) return data['jobId'].toString();
-    return null;
-  }
-
-  /// Bir render işinin güncel durumu. `render-status` Edge Function'ını dener;
-  /// backend yoksa/erişilemezse `null` döner — dürüst "henüz bilinmiyor".
-  // TODO(backend): render-status Edge Function + renders tablosu deploy edilince status() canlanır
-  @override
-  Future<RenderStatus?> status(String jobId) async {
-    final c = _client;
-    if (c == null || c.auth.currentUser == null) return null;
-    try {
-      final res = await c.functions.invoke(
-        'render-status',
-        body: {'jobId': jobId},
-      );
-      final data = res.data;
-      final raw = data is Map ? data['status']?.toString() : null;
-      if (raw == null) return null;
-      return RenderStatus.values.where((s) => s.name == raw).firstOrNull;
-    } catch (_) {
-      return null; // backend yok/erişilemez → durum bilinmiyor
-    }
-  }
-}
-
 // ── Ayet Bulucu (Edge Function) ──────────────────────────────────────────────
 
 /// Görsel/bağlantı/videodan ayet tanıma sözleşmesi — test seam'i (fake enjekte edilir).
@@ -695,6 +824,12 @@ abstract interface class IAyahFinderRepository {
 /// mobil veriyle boşuna yükleme yapılmasını engeller. `ayah-audio` bucket'ında
 /// da aynı sınır zorlanır (savunma derinliği).
 const int kAyahVideoMaxBytes = 20 * 1024 * 1024;
+
+/// Görsel hattı kapsamı. `supabase/functions/ayah-finder/link_resolver.ts`
+/// içindeki `_MAX_IMAGE_BYTES` ile AYNI olmalı (10 MB) — farklı olurlarsa biri
+/// diğerini boşa çıkarır: küçük olan sınır zaten devreye girer, büyük olan
+/// yalnızca kullanıcıyı boşuna bekletir.
+const int kAyahImageMaxBytes = 10 * 1024 * 1024;
 
 class AyahFinderRepository implements IAyahFinderRepository {
   AyahFinderRepository(this._client);
@@ -748,6 +883,16 @@ class AyahFinderRepository implements IAyahFinderRepository {
     Uint8List bytes, {
     String mime = 'image/jpeg',
   }) {
+    // Boyut ön kontrolü — base64'e ÇEVİRMEDEN önce: kodlama baytları ~1.33x
+    // şişirir, sonra bakmak belleği zaten harcamış olur.
+    if (bytes.lengthInBytes > kAyahImageMaxBytes) {
+      return Future.value(
+        const AyahFinderResult(
+          status: AyahFinderStatus.error,
+          errorCode: 'file_too_large',
+        ),
+      );
+    }
     return _invoke('ayah-finder', {
       'imageBase64': 'data:$mime;base64,${base64Encode(bytes)}',
     });
@@ -861,9 +1006,6 @@ final messagesRepositoryProvider = Provider<MessagesRepository>(
 final khatmRepositoryProvider = Provider<KhatmRepository>(
   (ref) => KhatmRepository(ref.watch(supabaseClientProvider)),
 );
-final renderRepositoryProvider = Provider<IRenderRepository>(
-  (ref) => RenderRepository(ref.watch(supabaseClientProvider)),
-);
 final syncRepositoryProvider = Provider<SyncRepository>(
   (ref) => SyncRepository(ref.watch(supabaseClientProvider)),
 );
@@ -871,29 +1013,47 @@ final ayahFinderRepositoryProvider = Provider<IAyahFinderRepository>(
   (ref) => AyahFinderRepository(ref.watch(supabaseClientProvider)),
 );
 
-/// Bulut "Gönderiler" akışı (kind='ayah'). Oturum açıksa Supabase, değilse boş
-/// → istemci yerel küratörlük içeriğine düşer.
+/// Bulut Reels akışı — topluluğun TEK akışı ('video' + 'still' birlikte).
+/// Oturum açıksa Supabase, değilse boş → istemci yerel küratörlük içeriğine düşer.
 ///
-/// autoDispose DEĞİL: pill toggle ile Gönderiler↔Reels arasında geçince sekme
-/// dinleyicisi kalmıyor; autoDispose olsa provider yok edilip geri dönüşte
-/// sıfırdan fetch + spinner olurdu. Önbellek korunur; `ref.invalidate(...)`
-/// (pull-to-refresh + beğeni sonrası) hâlâ yeniden fetch tetikler.
-final cloudPostsProvider = FutureProvider<List<FeedPost>>((ref) async {
-  final repo = ref.watch(socialRepositoryProvider);
-  if (!repo.available) return const [];
-  return repo.fetchFeed(kind: 'ayah');
-});
-
-/// Bulut "Reels" akışı (kind='video'). Dikey video gönderileri.
-/// autoDispose DEĞİL — bkz. [cloudPostsProvider] açıklaması.
+/// autoDispose DEĞİL: sekme değişiminde dinleyici kalmıyor; autoDispose olsa
+/// provider yok edilip geri dönüşte sıfırdan fetch + spinner olurdu. Önbellek
+/// korunur; `ref.invalidate(...)` (pull-to-refresh + beğeni sonrası) hâlâ
+/// yeniden fetch tetikler.
+/// [isSignedInProvider] izlenir: `repo.available` canlı `currentUser`'a bakar
+/// ama bu provider autoDispose değil — izleme olmadan çıkışta üretilen boş liste
+/// (veya girişte üretilen akış) sonsuza dek cache'de kalırdı.
 final cloudReelsProvider = FutureProvider<List<FeedPost>>((ref) async {
+  ref.watch(isSignedInProvider);
   final repo = ref.watch(socialRepositoryProvider);
   if (!repo.available) return const [];
-  return repo.fetchFeed(kind: 'video');
+  return repo.fetchReels();
 });
 
-/// Geriye dönük uyum: eski `cloudFeedProvider` artık "Gönderiler"e yönlenir.
-@Deprecated(
-  'cloudPostsProvider (Gönderiler) veya cloudReelsProvider (Reels) kullan',
-)
-final cloudFeedProvider = cloudPostsProvider;
+/// Onay bekleyen gönderiler (yönetici moderasyon kuyruğu).
+/// [isSignedInProvider] izlenir — bkz. [cloudReelsProvider] açıklaması.
+final pendingPostsProvider = FutureProvider<List<FeedPost>>((ref) async {
+  ref.watch(isSignedInProvider);
+  final repo = ref.watch(socialRepositoryProvider);
+  if (!repo.available) return const [];
+  return repo.fetchPendingPosts();
+});
+
+/// Şikâyet kuyruğu (yönetici). Satırlar ham map — raporlanan gönderi/yorum
+/// `feed_posts` / `comments` anahtarlarında gömülü gelir.
+final reportsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  ref.watch(isSignedInProvider);
+  final repo = ref.watch(socialRepositoryProvider);
+  if (!repo.available) return const [];
+  return repo.fetchReports();
+});
+
+/// Kullanıcının engellediği kişiler (Ayarlar → Engellenen Kullanıcılar).
+final blockedUsersProvider = FutureProvider<List<Map<String, dynamic>>>((
+  ref,
+) async {
+  ref.watch(isSignedInProvider);
+  final repo = ref.watch(socialRepositoryProvider);
+  if (!repo.available) return const [];
+  return repo.fetchBlockedUsers();
+});

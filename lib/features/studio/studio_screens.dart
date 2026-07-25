@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -9,15 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/backend_repositories.dart';
-import '../../data/repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
 
-/// Video şablonu — arka plan teması (ayet → reels/TikTok render'ı için).
+/// Ayet kartı şablonu — arka plan teması. Gerçek video render'ı kapsam dışı;
+/// şablon hem stüdyo önizlemesinde hem de Reels'teki 'still' kartta kullanılır.
 class VideoTemplate {
   const VideoTemplate(this.id, this.name, this.colors, this.vibe);
   final String id;
@@ -41,114 +39,6 @@ const List<VideoTemplate> kTemplates = [
   VideoTemplate('teal', 'Okyanus', [Color(0xFF0A2E32), Color(0xFF05171A)], 'Ferah'),
 ];
 
-const List<String> kReciters = ['Mishary Alafasy', 'Abdulbasit', 'Sudais', 'Hüzzam (TR)'];
-
-/// Bir render işinin durum sözleşmesi — backend ile eşleşmeli.
-// RenderStatus enum'u backend_repositories.dart'ta tanımlıdır.
-
-/// Tek bir video üretim işi — Videolarım yüzeyini besler.
-class RenderJob {
-  const RenderJob({
-    required this.id,
-    required this.template,
-    required this.reciter,
-    required this.reference,
-    required this.arabic,
-    required this.meal,
-    required this.queued,
-    required this.status,
-  });
-
-  /// prefs'ten okunan kayıt → şablon id ile kTemplates'e çözülür.
-  factory RenderJob.fromJson(Map<String, dynamic> j) {
-    final queued = j['queued'] as bool? ?? false;
-    return RenderJob(
-      id: j['id'] as String? ?? '',
-      template: kTemplates.firstWhere(
-        (t) => t.id == j['template'],
-        orElse: () => kTemplates.first,
-      ),
-      reciter: j['reciter'] as String? ?? kReciters.first,
-      reference: j['reference'] as String? ?? '',
-      arabic: j['arabic'] as String? ?? '',
-      meal: j['meal'] as String? ?? '',
-      queued: queued,
-      status: RenderStatus.values
-              .where((s) => s.name == j['status'])
-              .firstOrNull ??
-          (queued ? RenderStatus.queued : RenderStatus.processing),
-    );
-  }
-
-  final String id;
-  final VideoTemplate template;
-  final String reciter;
-  final String reference;
-  final String arabic;
-  final String meal;
-  final bool queued;
-  final RenderStatus status;
-
-  RenderJob copyWith({RenderStatus? status}) => RenderJob(
-        id: id,
-        template: template,
-        reciter: reciter,
-        reference: reference,
-        arabic: arabic,
-        meal: meal,
-        queued: queued,
-        status: status ?? this.status,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'template': template.id,
-        'reciter': reciter,
-        'reference': reference,
-        'arabic': arabic,
-        'meal': meal,
-        'queued': queued,
-        'status': status.name,
-      };
-}
-
-/// Render işleri notifier'ı (SharedPreferences'a kalıcı yazar).
-class RenderJobsNotifier extends Notifier<List<RenderJob>> {
-  static const _k = 'render_jobs';
-
-  @override
-  List<RenderJob> build() {
-    final raw = ref.watch(prefsProvider).getString(_k);
-    if (raw == null || raw.isEmpty) return const [];
-    try {
-      final list = jsonDecode(raw) as List<dynamic>;
-      return list
-          .map((e) => RenderJob.fromJson(e as Map<String, dynamic>))
-          .toList(growable: false);
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  Future<void> add(RenderJob job) async {
-    state = [job, ...state];
-    await _persist();
-  }
-
-  Future<void> remove(String id) async {
-    state = state.where((j) => j.id != id).toList(growable: false);
-    await _persist();
-  }
-
-  Future<void> _persist() async {
-    final raw = jsonEncode(state.map((j) => j.toJson()).toList());
-    await ref.read(prefsProvider).setString(_k, raw);
-  }
-}
-
-final renderJobsProvider =
-    NotifierProvider<RenderJobsNotifier, List<RenderJob>>(RenderJobsNotifier.new);
-
 // ── Canva benzeri görsel editör ─────────────────────────────────────────────
 
 /// Metin konumu
@@ -163,7 +53,8 @@ class StudioScreen extends ConsumerStatefulWidget {
   /// Ayet Bulucu "Videoya Aktar" ile gelindiğinde önyüklenen ayet metni (Arapça+meal).
   final String? initialText;
 
-  /// Önyüklenen ayetin referansı (ör. "Yasin, 58") — paylaşım altyazısı için.
+  /// Önyüklenen ayetin referansı (ör. "Yasin, 58") — paylaşım altyazısı ve
+  /// yayınlanan kartın ayet künyesi (`feed_posts.reference`) olarak kullanılır.
   final String? initialReference;
 
   @override
@@ -187,11 +78,24 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
   // Boyut modu: true = Story (9:16), false = Kare (1:1)
   bool _storyMode = true;
 
-  // Dışa aktarım
+  // Dışa aktarım / yayınlama
   bool _exporting = false;
+  bool _publishing = false;
+
+  /// Telif/hak sahipliği beyanı (Guideline 5.2.3 + 1.2). Stüdyo arka planı
+  /// kullanıcının galerisinden gelebildiği için bu ekran da CreatePostSheet
+  /// ile AYNI kapıya tabi: iki yayın yolundan biri onaysız kalırsa kural
+  /// fiilen uygulanmıyor demektir.
+  bool _rightsAccepted = false;
 
   // Metin controller
   final _textController = TextEditingController();
+
+  /// Ayet künyesi — "Videoya Aktar" ile gelindiyse dolu, aksi hâlde boş.
+  String get _reference => widget.initialReference?.trim() ?? '';
+
+  /// Paylaşım altyazısı: künye varsa onu kullan, yoksa genel metin.
+  String get _shareText => _reference.isEmpty ? "Kur'an'dan bir mesaj" : _reference;
 
   @override
   void initState() {
@@ -242,73 +146,64 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
       final file = File('${dir.path}/ayet_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(bytes);
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], text: "Kur'an'dan bir mesaj"),
+        ShareParams(files: [XFile(file.path)], text: _shareText),
       );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dışa aktarma hatası: $e')),
-        );
-      }
+      if (mounted) _snack('Dışa aktarma hatası: $e');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
   }
 
-  // ── Supabase'e yükle ──────────────────────────────────────────────────────
+  // ── Reels'e yayınla ('still' reel) ────────────────────────────────────────
 
-  Future<void> _uploadToSupabase() async {
-    final client = ref.read(supabaseClientProvider);
-    if (client == null || client.auth.currentUser == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Giriş yapmanız gerekiyor')),
-        );
-      }
+  /// Stüdyo çıktısını onay kuyruğuna gönderir (`kind: 'still'`).
+  ///
+  /// ponytail: PNG'nin kendisi YÜKLENMİYOR — yayınlanan kart, şablon + metinden
+  /// Reels tarafında yeniden kurulur. Depolamaya yükleyip URL dönen bir
+  /// repository metodu yok (ör. `ISocialRepository.uploadPostMedia`) ve ekran
+  /// mimari kural gereği doğrudan `client.storage` çağıramaz. O metot
+  /// eklendiğinde `_previewKey` baytları yüklenip buraya `mediaUrl:` geçilecek;
+  /// `FeedPost.thumbnailUrl` zaten `media_url`'e düşüyor.
+  Future<void> _publish() async {
+    final text = _overlayText.trim();
+    if (text.isEmpty) {
+      _snack('Yayınlamak için önce bir metin yazın.');
       return;
     }
-    setState(() => _exporting = true);
+    if (!ref.read(isSignedInProvider)) {
+      _snack('Yayınlamak için giriş yapmanız gerekiyor.');
+      return;
+    }
+    // Savunma amaçlı: buton zaten kilitli, ama kapı burada da dursun —
+    // ileride biri butonun koşulunu değiştirirse kural sessizce kalkmasın.
+    if (!_rightsAccepted) {
+      _snack('Yayınlamak için telif onayını işaretlemen gerekiyor.');
+      return;
+    }
+    setState(() => _publishing = true);
     try {
-      final boundary =
-          _previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final bytes = byteData.buffer.asUint8List();
-
-      final userId = client.auth.currentUser!.id;
-      final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.png';
-
-      await client.storage.from('post-media').uploadBinary(
-            path,
-            bytes,
-            fileOptions: const FileOptions(contentType: 'image/png'),
+      await ref.read(socialRepositoryProvider).createPost(
+            reference: _reference,
+            arabic: '',
+            meal: text,
+            caption: text,
+            kind: 'still',
+            templateId: kTemplates[_selectedTemplate].id,
           );
-      final url = client.storage.from('post-media').getPublicUrl(path);
-
-      await client.from('feed_posts').insert({
-        'user_id': userId,
-        'kind': 'image',
-        'thumbnail_url': url,
-        'caption': _overlayText,
-      });
-
+      ref.invalidate(cloudReelsProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Paylaşıldı!')),
-        );
+        _snack("İçeriğin incelemeye alındı. Onaylandığında Reels'te yayınlanacak.");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
-      }
+      if (mounted) _snack('Yayınlama hatası: $e');
     } finally {
-      if (mounted) setState(() => _exporting = false);
+      if (mounted) setState(() => _publishing = false);
     }
   }
+
+  void _snack(String message) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(message)));
 
   // ── Önizleme widget'ı ─────────────────────────────────────────────────────
 
@@ -428,16 +323,7 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppHeader(
-              title: 'Görsel Editör',
-              trailing: IconButton(
-                tooltip: 'Videolarım',
-                icon: const Icon(Icons.video_library_rounded, color: AppColors.gold),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const MyVideosScreen()),
-                ),
-              ),
-            ),
+            const AppHeader(title: 'Görsel Editör'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
@@ -617,36 +503,74 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
                   const SizedBox(height: 24),
 
                   // ── 7. Alt eylem butonları ───────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _exporting ? null : _export,
-                          icon: _exporting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.download_rounded, size: 18),
-                          label: const Text('PNG Kaydet'),
+                  // Telif beyanı — CreatePostSheet'teki kapının aynısı.
+                  // CheckboxListTile bilerek seçildi: dokunma hedefi, metne
+                  // dokunup değiştirme ve işaretli/işaretsiz durumunun ekran
+                  // okuyucuya bildirilmesi native olarak geliyor.
+                  CheckboxListTile(
+                    key: const Key('studio_rights_checkbox'),
+                    value: _rightsAccepted,
+                    onChanged: _publishing
+                        ? null
+                        : (v) => setState(() => _rightsAccepted = v ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(
+                      'Bu içeriğin bana ait olduğunu veya paylaşma hakkım '
+                      'olduğunu onaylıyorum.',
+                      style: AppTypography.body(size: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  FilledButton.icon(
+                    onPressed: _publishing || _exporting || !_rightsAccepted
+                        ? null
+                        : _publish,
+                    icon: _publishing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.publish_rounded, size: 18),
+                    label: const Text("Reels'e Yayınla"),
+                  ),
+                  const SizedBox(height: 8),
+                  if (!_rightsAccepted)
+                    Padding(
+                      key: const Key('studio_rights_hint'),
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'Yayınlamak için önce telif onayını işaretle.',
+                        style: AppTypography.body(
+                          size: 12,
+                          color: AppColors.cream2,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _exporting ? null : _uploadToSupabase,
-                          icon: const Icon(Icons.cloud_upload_rounded, size: 18),
-                          label: const Text("Akışa Yükle"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.gold,
-                            side: const BorderSide(color: AppColors.gold),
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                            shape: const RoundedRectangleBorder(borderRadius: AppRadii.smAll),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                  Text(
+                    'Yayınlanan kartta şablon ve metin kullanılır; galeri arka planı '
+                    'ile metin biçimi yalnızca PNG çıktısına işlenir.',
+                    style: AppTypography.body(size: 12, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _exporting || _publishing ? null : _export,
+                    icon: _exporting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('PNG Kaydet'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.goldInk,
+                      side: BorderSide(color: AppColors.line),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: const RoundedRectangleBorder(borderRadius: AppRadii.smAll),
+                    ),
                   ),
                 ],
               ),
@@ -744,203 +668,3 @@ class _PositionButton extends StatelessWidget {
   }
 }
 
-// ── Ortak yardımcılar ────────────────────────────────────────────────────────
-
-/// Bir render işini topluluk akışına paylaşır.
-Future<void> shareJobToFeed(BuildContext context, WidgetRef ref, RenderJob job) async {
-  final messenger = ScaffoldMessenger.of(context);
-  if (!ref.read(supabaseGatewayProvider).isSignedIn) {
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Paylaşmak için giriş yap.')),
-    );
-    return;
-  }
-  await ref.read(socialRepositoryProvider).createPost(
-        reference: job.reference,
-        arabic: job.arabic,
-        meal: job.meal,
-        topic: job.template.vibe,
-        kind: 'video',
-        templateId: job.template.id,
-        videoUrl: null,
-      );
-  messenger.showSnackBar(
-    const SnackBar(content: Text('Akışa paylaşıldı.')),
-  );
-}
-
-String _statusLabel(RenderJob job) {
-  if (!job.queued) return 'Bağlanınca işlenecek';
-  return switch (job.status) {
-    RenderStatus.ready => 'Hazır',
-    RenderStatus.failed => 'Başarısız',
-    RenderStatus.queued || RenderStatus.processing => 'İşleniyor (sunucuda)',
-  };
-}
-
-IconData _statusIcon(RenderJob job) {
-  if (!job.queued) return Icons.hourglass_empty_rounded;
-  return switch (job.status) {
-    RenderStatus.ready => Icons.check_circle_rounded,
-    RenderStatus.failed => Icons.error_outline_rounded,
-    RenderStatus.queued || RenderStatus.processing => Icons.cloud_sync_rounded,
-  };
-}
-
-/// Stüdyo önizlemesinin küçük (thumbnail) hâli — şablon gradyanı + ayet.
-class _RenderPreview extends StatelessWidget {
-  const _RenderPreview({required this.job});
-  final RenderJob job;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: job.template.colors,
-        ),
-        borderRadius: AppRadii.smAll,
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-      ),
-      padding: const EdgeInsets.all(10),
-      child: Center(
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Text(job.arabic, textAlign: TextAlign.center, style: arabicStyle(size: 16)),
-        ),
-      ),
-    );
-  }
-}
-
-/// Üretilen videoların indiği yüzey.
-class MyVideosScreen extends ConsumerWidget {
-  const MyVideosScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final jobs = ref.watch(renderJobsProvider);
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const AppHeader(title: 'Videolarım'),
-            Expanded(
-              child: jobs.isEmpty
-                  ? EmptyState(
-                      icon: Icons.video_library_outlined,
-                      message: 'Henüz video üretmedin.\nBir ayet seç, ilk videonu oluştur.',
-                      action: FilledButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const StudioScreen()),
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Video oluştur'),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      itemCount: jobs.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) {
-                        final job = jobs[i];
-                        return Dismissible(
-                          key: ValueKey(job.id),
-                          direction: DismissDirection.endToStart,
-                          onDismissed: (_) async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            await ref.read(renderJobsProvider.notifier).remove(job.id);
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Video taslağı silindi')),
-                            );
-                          },
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 24),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.18),
-                              borderRadius: AppRadii.mdAll,
-                            ),
-                            child: const Icon(Icons.delete_outline_rounded,
-                                color: AppColors.accent),
-                          ),
-                          child: AppCard(
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 48,
-                                  child: AspectRatio(
-                                      aspectRatio: 9 / 16, child: _RenderPreview(job: job)),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(job.template.name,
-                                          style: AppTypography.body(
-                                              size: 15,
-                                              weight: FontWeight.w600,
-                                              color: AppColors.cream)),
-                                      const SizedBox(height: 2),
-                                      Text(job.reference,
-                                          style: AppTypography.body(
-                                              size: 12.5, color: AppColors.muted)),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            _statusIcon(job),
-                                            size: 13,
-                                            color: AppColors.gold,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            _statusLabel(job),
-                                            style: AppTypography.body(
-                                                size: 12, color: AppColors.gold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Akışa paylaş',
-                                  icon: const Icon(Icons.dynamic_feed_rounded,
-                                      color: AppColors.gold, size: 20),
-                                  onPressed: () => shareJobToFeed(context, ref, job),
-                                ),
-                                IconButton(
-                                  tooltip: job.status == RenderStatus.ready
-                                      ? 'Dışa aktar'
-                                      : 'Video hazır olunca dışa aktarılır',
-                                  icon: Icon(
-                                    Icons.ios_share_rounded,
-                                    color: job.status == RenderStatus.ready
-                                        ? AppColors.gold
-                                        : AppColors.muted,
-                                    size: 20,
-                                  ),
-                                  onPressed: job.status == RenderStatus.ready
-                                      ? () => ref
-                                          .read(shareServiceProvider)
-                                          .shareText('${job.meal}\n(${job.reference})')
-                                      : null,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

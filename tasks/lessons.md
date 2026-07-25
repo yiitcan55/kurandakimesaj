@@ -59,3 +59,52 @@ Bu projede tekrar eden hataları/öğrenmeleri kaydet. Oturum başında oku.
 - **GateGuard ayrıca oturumun İLK `Bash` komutunu da bloklar** (fact-forcing gate) → iki olguyu (kullanıcı isteği + komut ne doğruluyor) sun, sonra aynı komutu tekrar çalıştır.
 - IDE diagnostics (PostToolUse) bazen bayat (silinen dosyanın eski hatalarını gösterir) → kesin doğrulama için `flutter analyze` çalıştır.
 - **gstack skill'leri (/plan-*-review, /office-hours vb.) burada kısmen geçerli:** proje **git deposu DEĞİL** ve gstack design binary YOK (`DESIGN_NOT_AVAILABLE`). gstack bash preamble'ının çoğu (review-log, telemetry, brain-sync, mockup üretimi) sessizce başarısız/atlanır → asıl işe (analiz + kod) odaklan, ölü seremoniyi atla. AskUserQuestion `dontAsk` modunda reddedilir → kullanıcı `/config` ile `default` moda almalı.
+
+---
+
+## 2026-07-25 — Sürüm 1.0.1 dersleri
+
+### 1. RLS'te "politika ekledim" ≠ "kapı kapandı"
+Permissive politikalar **OR'lanır**. `feed_update_admin`'i sıkı yazmak hiçbir şey değiştirmedi çünkü
+`init.sql`'den kalma `feed_update_own` hâlâ yürürlükteydi ve yazarın kendi satırında tek başına yetiyordu.
+**Kural:** yeni bir kısıt eklerken aynı tablo+komut için var olan TÜM politikaları listele; kapı, en gevşek
+politika kadar güçlüdür. Sütun bazlı ayrım gerekiyorsa RLS yetmez — trigger gerekir (kolon grant'i rol
+bazlıdır, satır bazlı değil; admin de `authenticated` rolündedir).
+
+### 2. Moderasyon INSERT anını değil, ÖMÜR BOYUNU korumalı
+`status`'u INSERT'te kilitlemek yetmedi: yazar onay aldıktan sonra `media_url`'i değiştirip satırı
+`approved` bırakabiliyordu. **Kural:** onay durumu olan her tabloda "içerik değişirse yeniden onaya düş"
+kuralı olmalı. Yoksa kuyruk yalnız ilk saniyeyi korur.
+
+### 3. İstemciden gelen URL'yi asla doğrulamadan saklama
+`media_url` serbest metindi. Saldırgan kendi sunucusunu gösterir, moderatör masum görseli onaylar, sonra
+dosya değişir — hiçbir DB yazımı gerekmeden. Ayrıca akışı kaydıran herkesin IP'si saldırgana loglanır.
+**Kural:** depolama URL'leri host + yol + sahiplik olarak doğrulanmalı (veya yalnız yol saklanıp URL
+istemcide kurulmalı).
+
+### 4. Sırrı query string'e koyma
+`?key=${apiKey}` masum görünür, ama `fetch` hataları mesajın içinde TAM URL'yi taşır — ve o mesaj
+`String(e)` ile istemciye dönüyordu. **Kural:** kimlik bilgisi başlıkta; ham istisna asla istemciye.
+
+### 5. "Mevcut veriyi koru" refleksi bir uyumluluk yalanına dönüşebilir
+Migration'a "eski kayıtlar onaylı sayılsın" yazmak akışı boş bırakmamak için makul görünüyordu. Ama
+uygulama tam da moderasyon eksikliğinden reddedilmişti: o kayıtlar hiç incelenmemişti. **Kural:** bir
+uyumluluk mekanizması eklerken, geçmiş veriye uyguladığın istisnanın dışarıya verdiğin beyanı çürütüp
+çürütmediğini sor.
+
+### 6. `pumpAndSettle` gerçek `dart:io` future'larını beklemez
+Ürün koduna `await File.length()` ekleyince widget testi kırıldı; `runAsync`'e geçmek google_fonts'un ağ
+erişimini açtığı için başka bir yerden patladı. Doğru çözüm ürünü basitleştirmekti: `lengthSync()` — tek
+`stat()` çağrısı, await yok, test jimnastiği yok. **Kural:** test bir API'yi zorlaştırıyorsa önce "bu
+gerçekten async olmalı mı?" diye sor.
+
+### 7. Aynı kural iki yoldan uygulanıyorsa ikisini de test et
+Telif onayı `CreatePostSheet`'te vardı, `StudioScreen`'de yoktu — iki paralel yayın yolundan biri kuralı
+hiç uygulamıyordu. **Kural:** bir politika birden fazla giriş noktasına sahipse, testi "her giriş noktası
+aynı kurala tabi" biçiminde yaz (bkz. `test/rights_gate_test.dart`).
+
+### 8. Adversaryal denetim, statik analizin göremediğini görüyor
+Bu sürümde bulunan 11 gerçek kusurun **hiçbiri** `flutter analyze` veya testlerle görünmüyordu; çoğu
+"kodu okuyup kırmayı dene" ile çıktı, biri (SSRF redirect bypass) yerel iki sunucuyla ampirik olarak
+kanıtlandı. **Kural:** güvenlik/uyumluluk yüzeyine dokunan işte, uygulayan ajanın raporuna güvenme —
+bağımsız bir mercek koy ve ondan **kırmasını** iste, "kontrol etmesini" değil.

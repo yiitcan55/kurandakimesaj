@@ -2,42 +2,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kurandakimesaj/data/backend_repositories.dart';
 
-/// Test seam kanıtı: provider-override ile sahte bir IRenderRepository (ve
-/// ISocialRepository) enjekte edilip metotların çağrılabildiğini doğrular.
-/// Bu, arayüz seam'inin gerçekten backend olmadan test edilebilirliği
-/// sağladığını gösterir.
-
-class _FakeRenderRepository implements IRenderRepository {
-  String? lastTriggeredTemplate;
-  RenderStatus statusToReturn = RenderStatus.ready;
-
-  @override
-  Future<String?> trigger({
-    required String template,
-    required String reciter,
-    String? reference,
-    String? arabic,
-    String? meal,
-  }) async {
-    lastTriggeredTemplate = template;
-    return 'fake-job-1';
-  }
-
-  @override
-  Future<RenderStatus?> status(String jobId) async => statusToReturn;
-}
+/// Test seam kanıtı: provider-override ile sahte bir ISocialRepository
+/// enjekte edilip metotların çağrılabildiğini doğrular. Bu, arayüz seam'inin
+/// gerçekten backend olmadan test edilebilirliği sağladığını gösterir.
 
 class _FakeSocialRepository implements ISocialRepository {
   final List<String> createdPosts = [];
   final List<String> reportedPosts = [];
   final List<String> reportedComments = [];
   final Set<String> blockedUsers = {};
+  final Map<String, String> postStatuses = {};
 
   @override
   bool get available => true;
 
   @override
-  Future<List<FeedPost>> fetchFeed({String? kind}) async => const [];
+  Future<List<FeedPost>> fetchReels() async => const [];
 
   @override
   Future<void> createPost({
@@ -46,7 +26,7 @@ class _FakeSocialRepository implements ISocialRepository {
     required String meal,
     String topic = '',
     String caption = '',
-    String kind = 'ayah',
+    String kind = 'still',
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
@@ -81,30 +61,30 @@ class _FakeSocialRepository implements ISocialRepository {
 
   @override
   Future<void> unblockUser(String userId) async => blockedUsers.remove(userId);
+
+  @override
+  Future<void> deletePost(String postId) async {}
+
+  @override
+  Future<void> deleteComment(String commentId) async {}
+
+  @override
+  Future<List<FeedPost>> fetchPendingPosts() async => const [];
+
+  @override
+  Future<void> setPostStatus(String postId, String status) async =>
+      postStatuses[postId] = status;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchReports() async => const [];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchBlockedUsers() async => [
+    for (final id in blockedUsers) {'blocked_id': id},
+  ];
 }
 
 void main() {
-  test(
-    'IRenderRepository seam: fake provider-override ile enjekte edilebilir',
-    () async {
-      final fake = _FakeRenderRepository();
-      final container = ProviderContainer(
-        overrides: [renderRepositoryProvider.overrideWithValue(fake)],
-      );
-      addTearDown(container.dispose);
-
-      final repo = container.read(renderRepositoryProvider);
-      final jobId = await repo.trigger(
-        template: 'Zümrüt Huzur',
-        reciter: 'Alafasy',
-      );
-
-      expect(jobId, 'fake-job-1');
-      expect(fake.lastTriggeredTemplate, 'Zümrüt Huzur');
-      expect(await repo.status(jobId!), RenderStatus.ready);
-    },
-  );
-
   test(
     'ISocialRepository seam: createPost fake üzerinden çağrılabilir',
     () async {
@@ -178,7 +158,48 @@ void main() {
       'media_url': 'https://example.com/image.jpg',
     }, myId: null);
 
-    expect(post.kind, 'ayah');
+    expect(post.kind, 'still');
     expect(post.thumbnailUrl, 'https://example.com/image.jpg');
+  });
+
+  test('FeedPost.status: kolon yoksa approved, pending ise isPending', () {
+    // Göç uygulanmamış/SELECT'te kolon yok → eski davranış korunur.
+    final legacy = FeedPost.fromMap({'id': 'a', 'meal': ''}, myId: null);
+    expect(legacy.status, 'approved');
+    expect(legacy.isPending, isFalse);
+
+    final queued = FeedPost.fromMap({
+      'id': 'b',
+      'meal': '',
+      'status': 'pending',
+    }, myId: null);
+    expect(queued.isPending, isTrue);
+  });
+
+  // Gerçek `SocialRepository` (fake DEĞİL): sunucudaki `feed_posts_kind_check`
+  // kısıtının istemci tarafı karşılığı — 23514 beklemeden burada patlamalı.
+  group('SocialRepository.createPost sözleşmesi: kind yalnız video|still', () {
+    test('kind: "ayah" gibi geçersiz bir değer ArgumentError fırlatır', () async {
+      final repo = SocialRepository(null);
+
+      await expectLater(
+        repo.createPost(reference: '', arabic: '', meal: '', kind: 'ayah'),
+        throwsArgumentError,
+      );
+    });
+
+    test('geçerli kind ("video"/"still") ArgumentError fırlatmaz', () async {
+      final repo = SocialRepository(null);
+
+      // İstemci null → sonraki satırda sessizce döner, hata fırlatmaz.
+      await expectLater(
+        repo.createPost(reference: '', arabic: '', meal: '', kind: 'video'),
+        completes,
+      );
+      await expectLater(
+        repo.createPost(reference: '', arabic: '', meal: '', kind: 'still'),
+        completes,
+      );
+    });
   });
 }

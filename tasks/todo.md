@@ -1,5 +1,11 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## ECC skill görünürlüğü (2026-07-22)
+- [x] Codex plugin kaydı, cache manifesti ve gerçek cache içeriğini karşılaştır
+- [ ] ECC'nin resmi `sync-ecc-to-codex.sh` akışını çalıştır
+- [ ] Aktif Codex skill dizininde ECC skill'lerini doğrula
+- [ ] Review: kök neden, düzeltme ve yeniden başlatma gereksinimini kaydet
+
 ## App Store Connect + Codemagic yayın hazırlığı (2026-07-21)
 - [x] STORE_SUBMISSION, gerçek özellikler ve App Store gereksinimlerini çapraz denetle
 - [x] Privacy/Support URL, ikon, screenshot, UGC moderasyon, Apple Sign-In ve backend blockerlarını doğrula
@@ -166,3 +172,59 @@ Kalan P2/P3 tasarım borçları temizlendi. Doğrulama: `dart analyze lib` temiz
 - [ ] pg_cron daily-content + RevenueCat webhook secret (opsiyonel)
 - [ ] render-trigger/status Edge + `renders` tablosu deploy → render kuyruğu + retry UI'sini canlandırır
 - [ ] Gerçek video oynatma: render hattı `video_url` doldurunca canlanır (o ana dek dürüst "Video hazırlanıyor")
+
+---
+
+## Sürüm 1.0.1 (build 3) — Apple Guideline 1.2 yanıtı · 2026-07-25
+
+Kaynak plan: `update1.0.1update.md`. Temel dal `b210eb3`.
+
+**Kapı sonuçları:** `flutter analyze` 0 sorun · `flutter test` **90/90** (başlangıç 33) · `deno test` 27/27
+(link_resolver 9, matcher 8, segments 10).
+
+### Yapılanlar
+- **Faz 0** — ~450 satır ölü render kodu silindi, `/templates` crash fix.
+- **Faz 1** — Auth reaktivite kök nedeni, `AuthException`→Türkçe eşleme, form validator,
+  `emailRedirectTo` derin link, Sign in with Apple, Google guard, sürüm `1.0.1+3`.
+- **Faz 2** — `terms.html`, kayıt öncesi EULA kapısı, moderasyon kuyruğu migration'ı,
+  `/moderation` ve `/blocked-users` ekranları.
+- **Faz 3** — Gönderi sistemi kaldırıldı, `kind: 'video'|'still'`, Reels yeniden tasarımı,
+  `CreatePostSheet` + telif kapısı, stüdyo katman kuralı.
+- **Faz 4** — `link_resolver.ts` SSRF sertleştirmesi, URL alanı, "Reels'te Paylaş" köprüsü,
+  `_ErrorView` tam Türkçe eşleme, boyut kapıları.
+- **Faz 5** — Bütünsel denetim + bulunan kusurların kapatılması, `docs/APP_REVIEW_RESPONSE.md`.
+
+### Denetimlerin yakaladığı, ilk uygulamada KAÇMIŞ kusurlar
+Hiçbiri `flutter analyze` veya testlerle görünmüyordu:
+
+1. `index.ts` içinde korumasız ikinci `fetch` — yerel iki sunucuyla **ampirik olarak** metadata sızdırıldı.
+2. Moderasyon kapısı iki yoldan atlatılabiliyordu: `insert ... status:'approved'` ve `feed_update_own`
+   politikasının `feed_update_admin` ile OR'lanması.
+3. Yöneticiye `UPDATE` verilmiş ama `SELECT` verilmemişti → kuyruk her zaman boş görünecekti.
+4. **Onay sonrası içerik değiştirilebiliyordu** (bait-and-switch) — guard yalnız `status`/`is_hidden`'ı koruyordu.
+5. `media_url` serbest metindi; saldırgan kendi sunucusunu gösterip onay sonrası dosyayı değiştirebilirdi.
+6. Yorumlar moderasyonun tamamen dışındaydı; `_ReportsTab` yorum şikâyetinde kaldırma butonu sunmuyordu.
+7. Gemini API anahtarı query string'deydi → her `fetch` hata metnine gömülüp istemciye dönüyordu.
+8. Stüdyo'nun ikinci yayın yolu telif onayını hiç uygulamıyordu (Guideline 5.2.3).
+9. Video controller yarışı — gecikmiş `_initVideo` devamı canlı controller'ın tek referansını siliyordu.
+10. `Content-Length` erken elemesi gerçek Instagram/TikTok sayfalarını `too_large` ile öldürüyordu.
+11. Reels video yükleme yolunda boyut sınırı yoktu (`readAsBytes` → OOM).
+
+### Planın düzeltilen hataları
+- `RenderStatus` başka dosyada tanımlıydı; `MyVideosScreen`'in görünür bir çağıranı vardı — körlemesine
+  silinseydi derleme kırılırdı.
+- `kind` kısıtı değişirken **varsayılanın** da değişmesi gerekiyordu; plan bunu atlamıştı
+  (`default 'ayah'` + yeni kısıt = `kind` göndermeyen her insert patlar).
+- "Mevcut kayıtlar onaylı sayılsın" risk azaltması **yanlıştı**: uygulama UGC gerekçesiyle reddedildi,
+  canlı içerik hiç moderasyondan geçmemişti. Toplu onaylama kaldırıldı.
+
+### Kalan işler (kod dışı, kullanıcıda)
+`docs/APP_REVIEW_RESPONSE.md` bölüm 4'teki 10 manuel adım. Sıra kritik:
+migration push + build birlikte gitmeli, `is_admin` verilmeli, bekleyen kuyruk gözden geçirilmeli.
+
+### Bilinçli bırakılanlar
+- DNS rebinding TOCTOU (kör SSRF + `image/*` kapısıyla kısılı) — tam kapatma elle HTTP istemcisi gerektirir.
+- `render-trigger`/`render-status` Edge Function'ları artık çağrılmıyor (Dart tarafı Faz 0'da silindi);
+  kaynak duruyor çünkü fonksiyonlar hâlâ deploy edilmiş durumda — ayrı bir temizlik işi.
+- Diğer 4 Edge Function'da `String(e)` ile iç ayrıntı ifşası; gönderim öncesi ödeme/hesap-silme kodunu
+  incelemesiz değiştirmek daha riskli görüldü.

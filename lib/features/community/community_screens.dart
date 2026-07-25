@@ -1,10 +1,11 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
@@ -14,9 +15,10 @@ import '../../data/repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
+import '../quran/quran_screens.dart';
 import '../studio/studio_screens.dart';
 
-enum _ModerationAction { report, block }
+enum _ModerationAction { report, block, delete }
 
 Future<bool> _confirmModeration(
   BuildContext context, {
@@ -93,7 +95,6 @@ Future<bool> _blockAuthor(
   if (!confirmed || !context.mounted) return false;
   try {
     await ref.read(socialRepositoryProvider).blockUser(authorId);
-    ref.invalidate(cloudPostsProvider);
     ref.invalidate(cloudReelsProvider);
     if (!context.mounted) return true;
     ScaffoldMessenger.of(
@@ -111,11 +112,20 @@ Future<bool> _blockAuthor(
   }
 }
 
+/// İçerik seçenekleri menüsü. Başkasının içeriğinde Bildir/Engelle, kendi
+/// içeriğinde Sil görünür — üçü de bağımsız opsiyoneldir; hiçbiri
+/// verilmezse çağıran menüyü hiç çizmez.
 class _ModerationMenuButton extends StatelessWidget {
-  const _ModerationMenuButton({required this.onReport, required this.onBlock});
+  const _ModerationMenuButton({
+    super.key,
+    this.onReport,
+    this.onBlock,
+    this.onDelete,
+  });
 
-  final VoidCallback onReport;
-  final VoidCallback onBlock;
+  final VoidCallback? onReport;
+  final VoidCallback? onBlock;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -125,28 +135,41 @@ class _ModerationMenuButton extends StatelessWidget {
       onSelected: (action) {
         switch (action) {
           case _ModerationAction.report:
-            onReport();
+            onReport?.call();
           case _ModerationAction.block:
-            onBlock();
+            onBlock?.call();
+          case _ModerationAction.delete:
+            onDelete?.call();
         }
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(
-          value: _ModerationAction.report,
-          child: ListTile(
-            leading: Icon(Icons.flag_outlined),
-            title: Text('Bildir'),
-            contentPadding: EdgeInsets.zero,
+      itemBuilder: (_) => [
+        if (onReport != null)
+          const PopupMenuItem(
+            value: _ModerationAction.report,
+            child: ListTile(
+              leading: Icon(Icons.flag_outlined),
+              title: Text('Bildir'),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
-        PopupMenuItem(
-          value: _ModerationAction.block,
-          child: ListTile(
-            leading: Icon(Icons.person_off_outlined),
-            title: Text('Kullanıcıyı engelle'),
-            contentPadding: EdgeInsets.zero,
+        if (onBlock != null)
+          const PopupMenuItem(
+            value: _ModerationAction.block,
+            child: ListTile(
+              leading: Icon(Icons.person_off_outlined),
+              title: Text('Kullanıcıyı engelle'),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
+        if (onDelete != null)
+          const PopupMenuItem(
+            value: _ModerationAction.delete,
+            child: ListTile(
+              leading: Icon(Icons.delete_outline_rounded),
+              title: Text('Sil'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
       ],
     );
   }
@@ -175,228 +198,22 @@ final feedProvider = FutureProvider<List<TopicalAyah>>((ref) async {
   return all;
 });
 
-/// Akış kartı görünüm modeli — seed (küratörlük) ve bulut gönderileri ortak
-/// tek bir karta maplenir. Böylece render mantığı kopyalanmaz.
-class _FeedItem {
-  const _FeedItem({
-    required this.title,
-    required this.isCuration,
-    required this.topic,
-    required this.arabic,
-    required this.meal,
-    required this.reference,
-    required this.liked,
-    required this.onLike,
-    required this.onShare,
-    this.authorInitial,
-    this.likeCount,
-    this.thumbnailUrl,
-    this.onComment,
-    this.commentCount,
-    this.onReport,
-    this.onBlock,
-  });
-
-  final String title;
-  final bool isCuration;
-  final String topic;
-  final String arabic;
-  final String meal;
-  final String reference;
-  final bool liked;
-  final VoidCallback onLike;
-  final VoidCallback onShare;
-  final String? authorInitial; // bulut: yazar baş harfi (küratörlükte null)
-  final int?
-  likeCount; // bulut: gerçek sayı; küratörlükte null (sahte sayı yok)
-  final String? thumbnailUrl; // görsel paylaşım önizlemesi
-  final VoidCallback? onComment; // bulut: yorum sheet'i; küratörlükte null
-  final int? commentCount; // bulut: yorum sayısı
-  final VoidCallback? onReport;
-  final VoidCallback? onBlock;
-}
-
-/// Tek tip akış kartı — hem seed hem bulut için. Dürüstlük kararları korunur:
-/// küratörlükte auto_awesome ikonu + sayısız beğeni, bulutta gerçek yazar/sayı.
-class _FeedItemCard extends StatelessWidget {
-  const _FeedItemCard({required this.item});
-  final _FeedItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.goldFaint,
-                child: item.isCuration
-                    ? const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.gold,
-                        size: 18,
-                      )
-                    : Text(
-                        item.authorInitial ?? '?',
-                        style: AppTypography.body(
-                          size: 15,
-                          weight: FontWeight.w700,
-                          color: AppColors.gold,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: AppTypography.body(
-                        size: 14,
-                        weight: FontWeight.w600,
-                        color: AppColors.cream,
-                      ),
-                    ),
-                    if (item.topic.isNotEmpty)
-                      Text(
-                        item.topic,
-                        style: AppTypography.body(
-                          size: 12,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (item.onReport != null && item.onBlock != null)
-                _ModerationMenuButton(
-                  onReport: item.onReport!,
-                  onBlock: item.onBlock!,
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Medya önizlemesi: görsel varsa üstte göster.
-          if (item.thumbnailUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                item.thumbnailUrl!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, err, stack) => const SizedBox.shrink(),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (item.arabic.isNotEmpty) ...[
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child: Text(
-                item.arabic,
-                textAlign: TextAlign.right,
-                style: arabicStyle(size: 24),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          Text(
-            item.meal,
-            style: AppTypography.body(size: 15, color: AppColors.cream),
-          ),
-          if (item.reference.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              item.reference,
-              style: AppTypography.body(size: 12.5, color: AppColors.muted),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: item.liked ? 'Beğenmekten vazgeç' : 'Beğen',
-                icon: Icon(
-                  item.liked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: item.liked ? AppColors.accent : AppColors.muted,
-                  size: 22,
-                ),
-                onPressed: item.onLike,
-              ),
-              // Bulut: gerçek sayı; küratörlük: sayı GÖSTERME (dürüstlük).
-              if (item.likeCount != null)
-                Text(
-                  '${item.likeCount}',
-                  style: AppTypography.body(size: 13, color: AppColors.muted),
-                ),
-              // Yorum: yalnız bulut gönderilerinde (küratörlükte yorumlanamaz).
-              if (item.onComment != null) ...[
-                const SizedBox(width: 6),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Yorumlar',
-                  icon: Icon(
-                    Icons.mode_comment_outlined,
-                    color: AppColors.muted,
-                    size: 20,
-                  ),
-                  onPressed: item.onComment,
-                ),
-                if (item.commentCount != null && item.commentCount! > 0)
-                  Text(
-                    '${item.commentCount}',
-                    style: AppTypography.body(size: 13, color: AppColors.muted),
-                  ),
-              ],
-              const Spacer(),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: 'Paylaş',
-                icon: const Icon(
-                  Icons.share_rounded,
-                  color: AppColors.gold,
-                  size: 20,
-                ),
-                onPressed: item.onShare,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class FeedScreen extends ConsumerStatefulWidget {
+/// Akış ekranı — tek yüzey: tam ekran dikey Reels. Ayrı "Gönderiler" sekmesi
+/// yoktur; 'video' (mp4) ve 'still' (stüdyo görseli) aynı akışta akar
+/// (bkz. [FeedPost.kind]). Ekranın kendi mutable durumu yoktur.
+class FeedScreen extends ConsumerWidget {
   const FeedScreen({super.key});
-  @override
-  ConsumerState<FeedScreen> createState() => _FeedScreenState();
-}
-
-/// Akış sekmeleri: ayet kartları (Gönderiler) ve dikey video (Reels).
-enum _FeedTab { posts, reels }
-
-class _FeedScreenState extends ConsumerState<FeedScreen> {
-  // Kararlı kimlikle (ayet referansı) anahtarla — feedProvider invalidate olursa
-  // beğeniler index kayması ile yanlış ayetlere atlamaz (dini doğruluk).
-  final _liked = <String>{};
-  _FeedTab _tab = _FeedTab.posts;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final supabaseReady = ref.watch(supabaseGatewayProvider).isAvailable;
     final isSignedIn = ref.watch(isSignedInProvider);
     return Scaffold(
+      // Reels tam ekran akar; zemin videonun letterbox rengiyle aynı olsun.
+      backgroundColor: AppColors.onGold,
       floatingActionButton: isSignedIn
           ? FloatingActionButton(
+              key: const Key('feed_create_fab'),
               onPressed: () => showModalBottomSheet<void>(
                 context: context,
                 isScrollControlled: true,
@@ -408,243 +225,32 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.onGold,
-              tooltip: 'Gönderi Oluştur',
+              tooltip: 'Reel paylaş',
               child: const Icon(Icons.add_rounded),
             )
           : null,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                children: [
-                  Text('Akış', style: AppTypography.display(size: 30)),
-                  const Spacer(),
-                  if (!supabaseReady)
-                    Tooltip(
-                      message:
-                          'Canlı topluluk akışı için Supabase bağlantısı gerekli',
-                      child: Icon(
-                        Icons.cloud_off_rounded,
-                        color: AppColors.muted,
-                        size: 20,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            // Sekme seçici: glassmorphism + kayan altın gösterge (animasyonlu).
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: GlassSegmentedToggle(
-                segments: const ['Gönderiler', 'Reels'],
-                index: _tab.index,
-                onChanged: (i) => setState(() => _tab = _FeedTab.values[i]),
-              ),
-            ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: AppDurations.normal,
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                child: KeyedSubtree(
-                  key: ValueKey(_tab),
-                  child: _tab == _FeedTab.posts
-                      ? _buildPosts()
-                      : const _ReelsView(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Gönderiler sekmesi — oturum açıksa bulut (kind='ayah'), değilse küratörlük.
-  Widget _buildPosts() {
-    if (ref.watch(isSignedInProvider)) return const _CloudFeedList();
-    final async = ref.watch(feedProvider);
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          EmptyState(icon: Icons.error_outline_rounded, message: '$e'),
-      data: (items) {
-        if (items.isEmpty) {
-          return const EmptyState(
-            icon: Icons.dynamic_feed_rounded,
-            message: 'Akışta henüz paylaşım yok.',
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            final a = items[i];
-            final liked = _liked.contains(a.reference);
-            // Dürüstlük: oturum açık değilken bunlar topluluk gönderisi değil,
-            // marka küratörlüğüdür — uydurma kişi/sayı atfetme.
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _FeedItemCard(
-                item: _FeedItem(
-                  title: 'Günün Seçkileri',
-                  isCuration: true,
-                  topic: a.topic,
-                  arabic: a.arabic,
-                  meal: a.meal,
-                  reference: a.reference,
-                  liked: liked,
-                  likeCount: null,
-                  onLike: () => setState(() {
-                    liked
-                        ? _liked.remove(a.reference)
-                        : _liked.add(a.reference);
-                  }),
-                  onShare: () => ref
-                      .read(shareServiceProvider)
-                      .shareText('${a.meal}\n(${a.reference})'),
-                ),
-              ),
-            ).animate().fadeIn(duration: AppDurations.fast);
-          },
-        );
-      },
-    );
-  }
-}
-
-/// Supabase'ten gelen gerçek topluluk akışı (oturum açık kullanıcılar).
-class _CloudFeedList extends ConsumerStatefulWidget {
-  const _CloudFeedList();
-
-  @override
-  ConsumerState<_CloudFeedList> createState() => _CloudFeedListState();
-}
-
-class _CloudFeedListState extends ConsumerState<_CloudFeedList> {
-  // İşlenen beğeni istekleri (post id) — çift dokunmada ikinci istek başlamasın.
-  final _inFlight = <String>{};
-  // Optimistik beğeni override'ı: post id → kullanıcının niyet ettiği son durum.
-  // invalidate sonrası sunucu gerçeği gelince temizlenir.
-  final _optimistic = <String, bool>{};
-
-  @override
-  Widget build(BuildContext context) {
-    final async = ref.watch(cloudPostsProvider);
-    return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          EmptyState(icon: Icons.error_outline_rounded, message: '$e'),
-      data: (posts) {
-        if (posts.isEmpty) {
-          return EmptyState(
-            icon: Icons.dynamic_feed_rounded,
-            message:
-                'Akışta henüz paylaşım yok.\nİlk ayet videonu üreterek başla.',
-            action: FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const StudioScreen()),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('İlk ayetini paylaş'),
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(cloudPostsProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            itemCount: posts.length,
-            itemBuilder: (context, i) {
-              final p = posts[i];
-              final isOwn =
-                  p.authorId ==
-                  ref
-                      .read(supabaseGatewayProvider)
-                      .client
-                      ?.auth
-                      .currentUser
-                      ?.id;
-              // Sunucu gerçeği optimistik niyetle uzlaştıysa override'ı bırak.
-              if (_optimistic[p.id] == p.likedByMe) _optimistic.remove(p.id);
-              final liked = _optimistic[p.id] ?? p.likedByMe;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _FeedItemCard(
-                  item: _FeedItem(
-                    title: p.authorName,
-                    isCuration: false,
-                    topic: p.topic,
-                    arabic: p.arabic,
-                    meal: p.meal,
-                    reference: p.reference,
-                    liked: liked,
-                    likeCount: p.likeCount,
-                    authorInitial: p.authorName.isNotEmpty
-                        ? p.authorName.characters.first
-                        : '?',
-                    thumbnailUrl: p.thumbnailUrl,
-                    commentCount: p.commentCount,
-                    onLike: () => _toggleLike(p.id, liked),
-                    onComment: () => _openComments(p.id),
-                    onReport: isOwn
-                        ? null
-                        : () => _reportContent(
-                            context,
-                            ref,
-                            targetId: p.id,
-                            isComment: false,
-                          ),
-                    onBlock: isOwn
-                        ? null
-                        : () => _blockAuthor(context, ref, p.authorId),
-                    onShare: () => ref
-                        .read(shareServiceProvider)
-                        .shareText('${p.meal}\n(${p.reference})'),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _ReelsView()),
+          // Başlık şeridi yok (reels tam kanar); yalnız dürüst çevrimdışı işareti.
+          if (!supabaseReady)
+            const SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(left: 18, top: 14),
+                child: Tooltip(
+                  message:
+                      'Canlı topluluk akışı için Supabase bağlantısı gerekli',
+                  child: Icon(
+                    Icons.cloud_off_rounded,
+                    color: Colors.white70,
+                    size: 20,
+                    semanticLabel: 'Çevrimdışı: canlı akış kullanılamıyor',
                   ),
                 ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  /// Beğeni: in-flight guard (çift dokunma engellenir) + optimistik ikon.
-  /// İkon hemen değişir; istek bitince invalidate ile sunucu gerçeğine uzlaşır.
-  Future<void> _toggleLike(String postId, bool currentlyLiked) async {
-    if (_inFlight.contains(postId)) return; // istek sürüyor → yok say.
-    _inFlight.add(postId);
-    setState(() => _optimistic[postId] = !currentlyLiked); // optimistik ikon.
-    try {
-      await ref
-          .read(socialRepositoryProvider)
-          .toggleLike(postId, currentlyLiked);
-      if (!mounted) return;
-      ref.invalidate(cloudPostsProvider);
-    } catch (_) {
-      // Hata → optimistik durumu geri al (gerçeğe dön).
-      if (mounted) setState(() => _optimistic.remove(postId));
-    } finally {
-      _inFlight.remove(postId);
-    }
-  }
-
-  /// Yorum sheet'ini aç.
-  void _openComments(String postId) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.emerald850,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+              ),
+            ),
+        ],
       ),
-      builder: (_) => CommentsSheet(postId: postId),
     );
   }
 }
@@ -663,12 +269,15 @@ class _Reel {
     required this.topic,
     required this.template,
     this.videoUrl,
+    this.thumbnailUrl,
     this.authorName,
     this.authorId,
     this.authorInitial,
     this.likeCount,
     this.liked = false,
     this.canModerate = false,
+    this.isOwn = false,
+    this.isPending = false,
   });
 
   final String id;
@@ -678,13 +287,24 @@ class _Reel {
   final String reference;
   final String topic;
   final VideoTemplate template; // gradyan fallback için (her zaman çözülür)
-  final String? videoUrl; // null → "video hazırlanıyor" kompozisyon
+  final String? videoUrl; // null → 'still' görseli ya da gradyan kompozisyon
+  /// Stüdyo görseli (kind='still') veya videonun poster karesi. Her ikisi de
+  /// `thumbnail_url`/`media_url` kolonundan gelir.
+  final String? thumbnailUrl;
   final String? authorName; // bulut
   final String? authorId; // bulut
   final String? authorInitial; // bulut
   final int? likeCount; // bulut: gerçek sayı; küratörlükte null
   final bool liked;
+
+  /// Başkasının içeriği mi? (Bildir/Engelle yalnız burada anlamlı.)
   final bool canModerate;
+
+  /// Kullanıcının kendi içeriği mi? (Sil yalnız burada anlamlı.)
+  final bool isOwn;
+
+  /// Yönetici onayı bekliyor mu? Yalnız yazarına görünür → "Onay bekliyor" rozeti.
+  final bool isPending;
 
   /// Şablon kimliğinden kTemplates gradyanını çöz (yoksa ilk şablon).
   static VideoTemplate templateFor(String? id) =>
@@ -735,6 +355,7 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
                   topic: p.topic,
                   template: _Reel.templateFor(p.templateId),
                   videoUrl: p.videoUrl,
+                  thumbnailUrl: p.thumbnailUrl,
                   authorName: p.authorName,
                   authorId: p.authorId,
                   authorInitial: p.authorName.isNotEmpty
@@ -743,6 +364,8 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
                   likeCount: p.likeCount,
                   liked: _optimistic[p.id] ?? p.likedByMe,
                   canModerate: p.authorId != myId,
+                  isOwn: myId != null && p.authorId == myId,
+                  isPending: p.isPending,
                 );
               })
               .toList(growable: false);
@@ -761,7 +384,7 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
                 _blockAuthor(context, ref, reel.authorId!);
               }
             },
-            onRefresh: () => ref.invalidate(cloudReelsProvider),
+            onDelete: _deleteReel,
           );
         },
       );
@@ -811,6 +434,28 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
     }
   }
 
+  /// Kendi reel'ini sil — yıkıcı işlem, önce onay diyalogu.
+  /// Hata yutulmaz: RLS reddi/ağ hatası kullanıcıya gösterilir.
+  Future<void> _deleteReel(_Reel reel) async {
+    final confirmed = await _confirmModeration(
+      context,
+      title: 'Reel’i sil',
+      message:
+          'Bu içerik kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misiniz?',
+      confirmLabel: 'Sil',
+    );
+    if (!confirmed || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(socialRepositoryProvider).deletePost(reel.id);
+      if (!mounted) return;
+      ref.invalidate(cloudReelsProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Reel silindi.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Silinemedi: $e')));
+    }
+  }
+
   /// Yorum sheet'ini aç (yalnız bulut reel'lerinde çağrılır).
   void _openComments(_Reel reel) {
     showModalBottomSheet<void>(
@@ -831,13 +476,12 @@ class _ReelsEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyState(
       icon: Icons.movie_creation_outlined,
-      message: 'Henüz reel yok.\nİlk ayet videonu üreterek başla.',
+      message: 'Henüz reel yok.\nStüdyoda ilk ayet görselini üreterek başla.',
       action: FilledButton.icon(
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const StudioScreen())),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('İlk ayet videonu üret'),
+        key: const Key('reels_empty_studio_cta'),
+        onPressed: () => context.push('/studio'),
+        icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+        label: const Text('Stüdyoyu aç'),
       ),
     );
   }
@@ -853,7 +497,7 @@ class _ReelsPager extends StatefulWidget {
     this.onComment,
     this.onReport,
     this.onBlock,
-    this.onRefresh,
+    this.onDelete,
   });
 
   final List<_Reel> reels;
@@ -861,7 +505,7 @@ class _ReelsPager extends StatefulWidget {
   final void Function(_Reel reel)? onComment;
   final void Function(_Reel reel)? onReport;
   final void Function(_Reel reel)? onBlock;
-  final VoidCallback? onRefresh;
+  final void Function(_Reel reel)? onDelete;
 
   @override
   State<_ReelsPager> createState() => _ReelsPagerState();
@@ -901,6 +545,9 @@ class _ReelsPagerState extends State<_ReelsPager> {
           onBlock: widget.onBlock == null || !reel.canModerate
               ? null
               : () => widget.onBlock!(reel),
+          onDelete: widget.onDelete == null || !reel.isOwn
+              ? null
+              : () => widget.onDelete!(reel),
           onShare: () => _shareReel(context, reel),
         );
       },
@@ -917,8 +564,8 @@ class _ReelsPagerState extends State<_ReelsPager> {
   }
 }
 
-/// Tek bir reel sayfası. videoUrl varsa gerçek video oynatır; yoksa şablon
-/// gradyanı + Arapça + meal + "Video hazırlanıyor" rozeti (dürüst fallback).
+/// Tek bir reel sayfası. videoUrl varsa gerçek video, yoksa 'still' görseli
+/// (Ken Burns), o da yoksa şablon gradyanı + Arapça + meal (dürüst fallback).
 class _ReelPage extends ConsumerStatefulWidget {
   const _ReelPage({
     super.key,
@@ -929,6 +576,7 @@ class _ReelPage extends ConsumerStatefulWidget {
     this.onComment,
     this.onReport,
     this.onBlock,
+    this.onDelete,
   });
 
   final _Reel reel;
@@ -938,6 +586,7 @@ class _ReelPage extends ConsumerStatefulWidget {
   final VoidCallback? onComment;
   final VoidCallback? onReport;
   final VoidCallback? onBlock;
+  final VoidCallback? onDelete;
 
   @override
   ConsumerState<_ReelPage> createState() => _ReelPageState();
@@ -953,10 +602,18 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   bool get _hasVideo =>
       widget.reel.videoUrl != null && widget.reel.videoUrl!.isNotEmpty;
 
+  String? get _poster {
+    final url = widget.reel.thumbnailUrl;
+    return (url == null || url.isEmpty) ? null : url;
+  }
+
   @override
   void initState() {
     super.initState();
-    if (_hasVideo) _initVideo();
+    // BELLEK: controller yalnız GÖRÜNÜR sayfada kurulur. PageView sürükleme
+    // sırasında komşu sayfaları da inşa eder; koşulsuz kurulsaydı aynı anda
+    // 2-3 video decoder canlı kalır, kare düşerdi. Aynı anda tek controller.
+    if (_hasVideo && widget.isActive) _initVideo();
   }
 
   Future<void> _initVideo() async {
@@ -965,21 +622,42 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     _video = c;
     try {
       await c.initialize();
-      // dispose sonrası async sürdürmede disposed controller'a dokunma →
-      // platform exception önlenir.
+      // KİMLİK KONTROLÜ (her await sonrası): bu arada sayfa bırakılıp yerine
+      // YENİ bir controller kurulmuş olabilir — hızlı ileri-geri kaydırma +
+      // yavaş ağ, reels'te sık görülen bir birleşim. `_disposed`/`mounted`
+      // bunu görmez, ikisi de hâlâ "canlı" der. Artık bizim değilsek kendi
+      // kaynağımızı bırakıp sessizce çekiliyoruz (dispose idempotent).
+      if (!identical(_video, c)) return await c.dispose();
       if (_disposed || !mounted) return;
       await c.setLooping(true);
       // Instagram gibi sessiz başlar; kullanıcı sessize-alma düğmesiyle açar.
       await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
+      if (!identical(_video, c)) return await c.dispose();
       if (_disposed || !mounted) return;
       setState(() => _initialized = true);
       if (widget.isActive && !_userPaused) await c.play();
     } catch (_) {
-      // Ağ/format hatası → dürüstçe kompozisyon fallback'ine düş (çökme yok).
-      if (_disposed || !mounted) return;
+      // Ağ/format hatası → dürüstçe poster/kompozisyon fallback'ine düş.
+      // (Yutulan bir hata değil: kullanıcı fallback kompozisyonu görür.)
+      //
+      // Koşulsuz `_video = null` yazmak, o sırada _video'nun işaret ettiği
+      // YENİ ve canlı controller'ın TEK referansını silerdi → native decoder
+      // dispose edilmeden sızar (düşük RAM'li cihazda oturum başına birkaç
+      // "hayalet" decoder = OOM riski). Bizim değilse dokunma.
+      if (!identical(_video, c)) return await c.dispose();
       _video = null;
+      await c.dispose();
+      if (_disposed || !mounted) return;
       setState(() => _initialized = false);
     }
+  }
+
+  /// Controller'ı bırak — sayfa görünürlükten çıkınca ya da reel değişince.
+  void _releaseVideo() {
+    _video?.dispose();
+    _video = null;
+    _initialized = false;
+    _userPaused = false;
   }
 
   @override
@@ -987,21 +665,19 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     super.didUpdateWidget(oldWidget);
     // Aynı slota farklı videoUrl'li reel gelirse (liste invalidate sonrası):
     // eski controller'ı dispose edip yeniden kur — orphan controller kalmaz.
+    // NOT: burada setState yok — didUpdateWidget'ı build zaten izler.
     if (oldWidget.reel.videoUrl != widget.reel.videoUrl) {
-      _video?.dispose();
-      _video = null;
-      _initialized = false;
-      _userPaused = false;
-      if (_hasVideo) _initVideo();
+      _releaseVideo();
+      if (_hasVideo && widget.isActive) _initVideo();
       return;
     }
-    final c = _video;
-    if (c == null || !_initialized) return;
-    // Görünür sayfa oynar; sayfadan çıkınca durur (kullanıcı duraklatmadıysa).
-    if (widget.isActive && !oldWidget.isActive) {
-      if (!_userPaused) c.play();
-    } else if (!widget.isActive && oldWidget.isActive) {
-      c.pause();
+    if (widget.isActive == oldWidget.isActive) return;
+    if (widget.isActive) {
+      // Sayfa görünür oldu → controller'ı şimdi kur (initState'te kurulmadı).
+      if (_hasVideo && _video == null) _initVideo();
+    } else {
+      // Sayfa görünmez oldu → decoder'ı serbest bırak (pil + bellek).
+      _releaseVideo();
     }
   }
 
@@ -1011,6 +687,42 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     _disposed = true;
     _video?.dispose();
     super.dispose();
+  }
+
+  /// "Yasin, 58" → ('Yasin', 58). Ayrıştırılamazsa null → künye tıklanamaz.
+  static (String, int)? _parseReference(String reference) {
+    final m = RegExp(r'^\s*(.+?)\s*,\s*(\d+)').firstMatch(reference);
+    if (m == null) return null;
+    return (m.group(1)!, int.parse(m.group(2)!));
+  }
+
+  /// Türkçe harf-duyarsız karşılaştırma (İ/I → i/ı; `toLowerCase` tek başına
+  /// 'İ' için birleşik nokta üretip eşleşmeyi bozar).
+  static String _fold(String s) =>
+      s.trim().replaceAll('İ', 'i').replaceAll('I', 'ı').toLowerCase();
+
+  /// Ayet künyesine dokunma → sureyi otoriter listeden çöz, okuyucuyu o ayete
+  /// kaydırarak aç (Ayet Bulucu'daki `_openInReader` kalıbının aynısı).
+  Future<void> _openReference() async {
+    final parsed = _parseReference(widget.reel.reference);
+    if (parsed == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final surahs = await ref.read(surahsProvider.future);
+    final name = _fold(parsed.$1);
+    final hits = surahs.where((s) => _fold(s.nameTr) == name);
+    if (!mounted) return;
+    if (hits.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Bu sûre okuyucuda bulunamadı.')),
+      );
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            SurahReaderScreen(surah: hits.first, initialAyah: parsed.$2),
+      ),
+    );
   }
 
   void _togglePlay() {
@@ -1097,6 +809,9 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
             onComment: widget.onComment,
             onReport: widget.onReport,
             onBlock: widget.onBlock,
+            onDelete: widget.onDelete,
+            onOpenReference:
+                _parseReference(reel.reference) == null ? null : _openReference,
             muted: muted,
             onToggleMute: () => ref.read(reelsMutedProvider.notifier).toggle(),
             showPlayIcon: _hasVideo && _initialized && _userPaused,
@@ -1118,11 +833,65 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
         ),
       );
     }
-    // Kompozisyon fallback (video yok / yükleniyor / hata): şablon gradyanı.
+    final poster = _poster;
+    if (poster != null) {
+      // Video posteri (ilk kare gelene kadar) VEYA 'still' reel'in kendisi.
+      // Ken Burns yalnız 'still'de ve yalnız sayfa görünürken çalışır: video
+      // posteri saniyeler içinde kaybolacağı için animasyon boşa pil yakar.
+      return _StillBackground(
+        url: poster,
+        animate: !_hasVideo && widget.isActive,
+        fallback: _ReelComposition(reel: widget.reel),
+      );
+    }
+    // Kompozisyon fallback (medya yok / yükleniyor / hata): şablon gradyanı.
     return _ReelComposition(
       reel: widget.reel,
       // videoUrl var ama henüz initialize değilse → "yükleniyor".
       loading: _hasVideo && !_initialized,
+    );
+  }
+}
+
+/// Tam ekran görsel arka plan (stüdyo 'still' reel'i veya video posteri).
+///
+/// Ken Burns: yavaş 1.0→1.08 ölçek, 12 sn, ileri-geri döngü. [animate] false
+/// olduğunda animasyon sarmalayıcısı hiç kurulmaz → controller da yok
+/// (görünmeyen sayfada sonsuz animasyon pil tüketmez). Görsel yüklenemezse
+/// dürüstçe [fallback] kompozisyona düşer — boş siyah ekran gösterilmez.
+class _StillBackground extends StatelessWidget {
+  const _StillBackground({
+    required this.url,
+    required this.animate,
+    required this.fallback,
+  });
+
+  final String url;
+  final bool animate;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final image = Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (context, error, stack) => fallback,
+    );
+    if (!animate || reduceMotion) return image;
+    // ClipRect şart: Transform.scale kırpmaz, büyüyen görsel sayfa sınırlarının
+    // dışına taşıp üstteki overlay'in altına sızardı.
+    return ClipRect(
+      child: image
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(
+            duration: const Duration(seconds: 12),
+            curve: Curves.easeInOut,
+            begin: const Offset(1, 1),
+            end: const Offset(1.08, 1.08),
+          ),
     );
   }
 }
@@ -1165,13 +934,16 @@ class _ReelComposition extends StatelessWidget {
               style: AppTypography.body(size: 17, color: AppColors.cream),
             ),
           ],
-          const SizedBox(height: 22),
-          _ReelBadge(
-            icon: loading
-                ? Icons.hourglass_top_rounded
-                : Icons.movie_filter_rounded,
-            label: loading ? 'Yükleniyor' : 'Video hazırlanıyor',
-          ),
+          // Rozet YALNIZ yüklenirken. Eskiden burada "Video hazırlanıyor"
+          // yazıyordu; gerçek video render'ı kapsam dışı olduğu için bu artık
+          // yanıltıcı bir vaat olurdu — kompozisyonun kendisi nihai içeriktir.
+          if (loading) ...[
+            const SizedBox(height: 22),
+            const _ReelBadge(
+              icon: Icons.hourglass_top_rounded,
+              label: 'Yükleniyor',
+            ),
+          ],
         ],
       ),
     );
@@ -1180,12 +952,28 @@ class _ReelComposition extends StatelessWidget {
 
 /// Küçük altın rozet (dürüst durum etiketi).
 class _ReelBadge extends StatelessWidget {
-  const _ReelBadge({required this.icon, required this.label});
+  const _ReelBadge({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.semanticsLabel,
+  });
   final IconData icon;
   final String label;
 
+  /// Ekran okuyucuya bildirilen tam cümle (rozet metni kısaltılmış olabilir).
+  final String? semanticsLabel;
+
   @override
   Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticsLabel ?? label,
+      excludeSemantics: semanticsLabel != null,
+      child: _pill(),
+    );
+  }
+
+  Widget _pill() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
@@ -1240,6 +1028,8 @@ class _ReelOverlay extends StatelessWidget {
     this.onComment,
     this.onReport,
     this.onBlock,
+    this.onDelete,
+    this.onOpenReference,
     this.muted = true,
     this.onToggleMute,
     this.showPlayIcon = false,
@@ -1251,6 +1041,11 @@ class _ReelOverlay extends StatelessWidget {
   final VoidCallback? onComment;
   final VoidCallback? onReport;
   final VoidCallback? onBlock;
+  final VoidCallback? onDelete;
+
+  /// Ayet künyesine dokunulunca okuyucuyu açar. Künye ayrıştırılamıyorsa null
+  /// → chip tıklanamaz görünür (yalnız renkle değil, etkileşimle de ayrışır).
+  final VoidCallback? onOpenReference;
   final bool muted;
   final VoidCallback? onToggleMute;
   final bool showPlayIcon;
@@ -1266,6 +1061,22 @@ class _ReelOverlay extends StatelessWidget {
               Icons.play_arrow_rounded,
               size: 72,
               color: Colors.white70,
+            ),
+          ),
+        // Sol üst: moderasyon şeffaflığı — bekleyen içerik yalnız yazarına görünür.
+        if (reel.isPending)
+          const Positioned(
+            left: 14,
+            top: 14,
+            child: Tooltip(
+              message: 'Onay bekliyor — yalnız sana görünür',
+              child: _ReelBadge(
+                key: Key('reel_pending_badge'),
+                icon: Icons.hourglass_top_rounded,
+                label: 'Onay bekliyor',
+                semanticsLabel:
+                    'Bu içerik onay bekliyor, yalnız sana görünür yayında değil',
+              ),
             ),
           ),
         // Sağ üst: sessize alma (yalnız gerçek video reel'lerinde anlamlı).
@@ -1326,6 +1137,18 @@ class _ReelOverlay extends StatelessWidget {
                   onTap: onBlock,
                 ),
               ],
+              // Kendi içeriği → Sil (yıkıcı; onay diyalogu çağıranda).
+              if (onDelete != null) ...[
+                const SizedBox(height: 12),
+                _ActionButton(
+                  key: const Key('reel_delete_action'),
+                  icon: Icons.delete_outline_rounded,
+                  color: Colors.white,
+                  label: 'Sil',
+                  tooltip: 'Bu reel’i sil',
+                  onTap: onDelete,
+                ),
+              ],
             ],
           ),
         ),
@@ -1384,11 +1207,29 @@ class _ReelOverlay extends StatelessWidget {
                   style: AppTypography.body(size: 14.5, color: AppColors.cream),
                 ),
               ],
+              // Ayet künyesi: dokununca sûreyi okuyucuda o ayete kaydırarak açar.
+              // `selected: true` bilinçli — altın zemin + onGold metin tema
+              // değişiminden ETKİLENMEZ; video/gradyan üstünde her iki temada
+              // da okunur (cream/cream2 açık temada koyulaşıp kaybolurdu).
               if (reel.reference.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  reel.reference,
-                  style: AppTypography.body(size: 12.5, color: AppColors.gold),
+                const SizedBox(height: 8),
+                Semantics(
+                  button: onOpenReference != null,
+                  label: onOpenReference == null
+                      ? reel.reference
+                      : '${reel.reference} — okuyucuda aç',
+                  // ≥44px dokunma hedefi: chip'in kendi yüksekliği ~40, gelen
+                  // minHeight kısıtı Container'a geçer → dokunma alanı da büyür.
+                  // (Araya Align koymak kısıtı gevşetir; bilerek doğrudan sarılı.)
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: GoldChip(
+                      key: const Key('reel_reference_chip'),
+                      label: reel.reference,
+                      selected: true,
+                      onTap: onOpenReference,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -1401,6 +1242,7 @@ class _ReelOverlay extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
+    super.key,
     required this.icon,
     required this.color,
     this.label,
@@ -1505,11 +1347,30 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
       _controller.clear();
       if (!mounted) return;
       _reload();
-      // Reels/Gönderiler sayacı güncellensin.
+      // Reels yorum sayacı güncellensin.
       ref.invalidate(cloudReelsProvider);
-      ref.invalidate(cloudPostsProvider);
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  /// Kendi yorumunu sil — yıkıcı işlem, önce onay diyalogu. Hata yutulmaz.
+  Future<void> _deleteComment(Comment comment) async {
+    final confirmed = await _confirmModeration(
+      context,
+      title: 'Yorumu sil',
+      message: 'Bu yorum kalıcı olarak silinecek. Emin misiniz?',
+      confirmLabel: 'Sil',
+    );
+    if (!confirmed || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(socialRepositoryProvider).deleteComment(comment.id);
+      if (!mounted) return;
+      _reload();
+      ref.invalidate(cloudReelsProvider);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Silinemedi: $e')));
     }
   }
 
@@ -1576,9 +1437,13 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                       itemCount: comments.length,
                       itemBuilder: (context, i) {
                         final comment = comments[i];
+                        final isOwn =
+                            myId != null && comment.authorId == myId;
                         return _CommentTile(
                           comment: comment,
-                          onReport: comment.authorId == myId
+                          // Kendi yorumunda yalnız Sil; başkasında Bildir/Engelle.
+                          onDelete: isOwn ? () => _deleteComment(comment) : null,
+                          onReport: isOwn
                               ? null
                               : () => _reportContent(
                                   context,
@@ -1586,7 +1451,7 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                                   targetId: comment.id,
                                   isComment: true,
                                 ),
-                          onBlock: comment.authorId == myId
+                          onBlock: isOwn
                               ? null
                               : () async {
                                   if (await _blockAuthor(
@@ -1659,10 +1524,16 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment, this.onReport, this.onBlock});
+  const _CommentTile({
+    required this.comment,
+    this.onReport,
+    this.onBlock,
+    this.onDelete,
+  });
   final Comment comment;
   final VoidCallback? onReport;
   final VoidCallback? onBlock;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1706,18 +1577,27 @@ class _CommentTile extends StatelessWidget {
               ],
             ),
           ),
-          if (onReport != null && onBlock != null)
-            _ModerationMenuButton(onReport: onReport!, onBlock: onBlock!),
+          if (onReport != null || onBlock != null || onDelete != null)
+            _ModerationMenuButton(
+              key: const Key('comment_menu'),
+              onReport: onReport,
+              onBlock: onBlock,
+              onDelete: onDelete,
+            ),
         ],
       ),
     );
   }
 }
 
-// ── Gönderi Oluşturma Sheet ────────────────────────────────────────────────────
+// ── Reel Paylaşma Sheet ───────────────────────────────────────────────────────
 
-/// Görsel veya video ekleyerek yeni topluluk gönderisi oluşturma sayfası.
-/// Supabase `post-media` bucket'ına yükler, `feed_posts` tablosuna kaydeder.
+/// Yeni reel paylaşma sayfası — YALNIZ dikey medya: galeriden bir video (mp4)
+/// veya stüdyoda üretilmiş bir görsel (PNG). Serbest fotoğraf yükleme yoktur;
+/// akış tek biçimdir (bkz. [FeedPost.kind] = 'video' | 'still').
+///
+/// Supabase `post-media` bucket'ına yükler, `feed_posts` tablosuna repository
+/// üzerinden kaydeder. Her yeni içerik sunucuda 'pending' başlar.
 class CreatePostSheet extends ConsumerStatefulWidget {
   const CreatePostSheet({super.key});
 
@@ -1730,8 +1610,23 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
   final _picker = ImagePicker();
 
   File? _selectedMedia;
-  String _mediaKind = 'text'; // 'text' | 'image' | 'video'
+
+  /// Seçili medyanın türü — doğrudan `feed_posts.kind` değeridir.
+  /// null → henüz medya seçilmedi (yayınlanamaz).
+  String? _kind; // 'video' | 'still'
+
+  /// Telif beyanı (App Store Guideline 5.2.3) — onaylanmadan yayın yapılamaz.
+  bool _rightsAccepted = false;
   bool _uploading = false;
+
+  /// Yayın sonrası onay kuyruğu bilgilendirmesi gösteriliyor mu?
+  bool _published = false;
+
+  static const _rightsLabel =
+      'Bu içeriğin bana ait olduğunu veya paylaşma hakkım olduğunu onaylıyorum.';
+
+  bool get _canPublish =>
+      !_uploading && _selectedMedia != null && _rightsAccepted;
 
   @override
   void dispose() {
@@ -1739,30 +1634,72 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final file = await _picker.pickImage(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() {
-        _selectedMedia = File(file.path);
-        _mediaKind = 'image';
-      });
-    }
-  }
-
   Future<void> _pickVideo() async {
     final file = await _picker.pickVideo(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() {
-        _selectedMedia = File(file.path);
-        _mediaKind = 'video';
-      });
+    if (file == null || !mounted) return;
+    final picked = File(file.path);
+    // BOYUT KAPISI — seçimin hemen ardından, kullanıcı başlık yazmadan önce.
+    // `_publish` videoyu `readAsBytes()` ile TAMAMEN belleğe alıyor: birkaç
+    // yüz MB'lık bir galeri videosu düşük RAM'li cihazda OOM ile uygulamayı
+    // düşürür, mobil veride kullanıcı farkında olmadan yükleme yapar.
+    // Ayet Bulucu video yolundaki (`backend_repositories.dart:902`) aynı
+    // sınırı kullanıyoruz — iki yol farklı sınır uygularsa biri anlamsız olur.
+    // `lengthSync` bilinçli: tek bir stat() çağrısı mikrosaniyeler sürer, ekstra
+    // bir async sıçraması kadar bile maliyeti yok — ve kodu await'siz tutar.
+    if (picked.lengthSync() > kAyahVideoMaxBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Video çok büyük (en fazla 20 MB). Daha kısa bir video seç.',
+          ),
+        ),
+      );
+      return;
     }
+    if (!mounted) return;
+    setState(() {
+      _selectedMedia = picked;
+      _kind = 'video';
+    });
+  }
+
+  /// Stüdyonun dışa aktardığı PNG'ler geçici dizine `ayet_<zaman>.png` adıyla
+  /// yazılır (bkz. StudioScreen `_export`). Buradan seçtiriyoruz — böylece
+  /// kullanıcı görselini galeriye kaydetmek zorunda kalmaz.
+  Future<void> _pickFromStudio() async {
+    final dir = await getTemporaryDirectory();
+    final files =
+        dir
+            .listSync()
+            .whereType<File>()
+            .where(
+              (f) =>
+                  f.uri.pathSegments.last.startsWith('ayet_') &&
+                  f.path.toLowerCase().endsWith('.png'),
+            )
+            .toList()
+          // Dosya adındaki zaman damgası artan → ters sırala: en yenisi başta.
+          ..sort((a, b) => b.path.compareTo(a.path));
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<File>(
+      context: context,
+      backgroundColor: AppColors.emerald850,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) => _StudioPickerSheet(files: files),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedMedia = picked;
+      _kind = 'still';
+    });
   }
 
   void _clearMedia() {
     setState(() {
       _selectedMedia = null;
-      _mediaKind = 'text';
+      _kind = null;
     });
   }
 
@@ -1775,34 +1712,40 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
       ).showSnackBar(const SnackBar(content: Text('Giriş yapmanız gerekiyor')));
       return;
     }
-    final caption = _captionController.text.trim();
-    if (caption.isEmpty && _selectedMedia == null) {
+    final media = _selectedMedia;
+    final kind = _kind;
+    if (media == null || kind == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Paylaşmak için bir metin veya medya ekleyin.'),
+          content: Text('Paylaşmak için bir video veya stüdyo görseli seçin.'),
         ),
+      );
+      return;
+    }
+    // Savunma amaçlı ikinci kapı: seçim ile yayın arasında dosya değişebilir
+    // ve ileride başka bir seçim yolu eklenirse sınır burada da tutsun.
+    if (media.lengthSync() > kAyahVideoMaxBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dosya çok büyük (en fazla 20 MB).')),
       );
       return;
     }
     setState(() => _uploading = true);
     try {
-      String? mediaUrl;
-      if (_selectedMedia != null) {
-        final ext = _mediaKind == 'image' ? 'jpg' : 'mp4';
-        final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
-        final bytes = await _selectedMedia!.readAsBytes();
-        final contentType = _mediaKind == 'image' ? 'image/jpeg' : 'video/mp4';
-        await client.storage
-            .from('post-media')
-            .uploadBinary(
-              path,
-              bytes,
-              fileOptions: FileOptions(contentType: contentType),
-            );
-        mediaUrl = client.storage.from('post-media').getPublicUrl(path);
-      }
+      final isVideo = kind == 'video';
+      final ext = isVideo ? 'mp4' : 'png';
+      final contentType = isVideo ? 'video/mp4' : 'image/png';
+      final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await client.storage
+          .from('post-media')
+          .uploadBinary(
+            path,
+            await media.readAsBytes(),
+            fileOptions: FileOptions(contentType: contentType),
+          );
+      final mediaUrl = client.storage.from('post-media').getPublicUrl(path);
 
-      final kind = _mediaKind == 'video' ? 'video' : 'ayah';
+      final caption = _captionController.text.trim();
       await ref
           .read(socialRepositoryProvider)
           .createPost(
@@ -1811,17 +1754,12 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
             meal: caption,
             caption: caption,
             kind: kind,
-            mediaUrl: _mediaKind == 'image' ? mediaUrl : null,
-            videoUrl: _mediaKind == 'video' ? mediaUrl : null,
+            // 'still' → poster/görsel; 'video' → oynatılabilir mp4.
+            mediaUrl: isVideo ? null : mediaUrl,
+            videoUrl: isVideo ? mediaUrl : null,
           );
-      ref.invalidate(kind == 'video' ? cloudReelsProvider : cloudPostsProvider);
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Paylaşıldı!')));
-      }
+      ref.invalidate(cloudReelsProvider);
+      if (mounted) setState(() => _published = true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1838,53 +1776,100 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPadding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Başlık
-          Row(
-            children: [
-              Text('Yeni Gönderi', style: AppTypography.display(size: 22)),
-              const Spacer(),
-              IconButton(
-                icon: Icon(Icons.close_rounded, color: AppColors.muted),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
+      child: _published ? _reviewNotice() : _form(),
+    );
+  }
 
-          // Yazı alanı
-          TextField(
-            controller: _captionController,
-            maxLines: 3,
-            style: AppTypography.body(size: 15, color: AppColors.cream),
-            decoration: InputDecoration(
-              hintText: 'Ne paylaşmak istiyorsunuz?',
-              hintStyle: AppTypography.body(size: 15, color: AppColors.muted),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: AppColors.emerald900,
+  /// Yayın sonrası onay kuyruğu şeffaflığı — kullanıcı içeriğini akışta hemen
+  /// göremezse "kayboldu" sanmasın diye açıkça söylüyoruz.
+  Widget _reviewNotice() {
+    return Column(
+      key: const Key('create_post_review_notice'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        const Icon(
+          Icons.hourglass_top_rounded,
+          size: 44,
+          color: AppColors.gold,
+          semanticLabel: 'İnceleme bekleniyor',
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'İçeriğin incelemeye alındı. Onaylandığında Reels’te yayınlanacak.',
+          textAlign: TextAlign.center,
+          style: AppTypography.body(size: 15.5, color: AppColors.cream),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'O zamana kadar içeriğini “Onay bekliyor” rozetiyle yalnız sen görürsün.',
+          textAlign: TextAlign.center,
+          style: AppTypography.body(size: 13, color: AppColors.muted),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.gold,
+            foregroundColor: AppColors.onGold,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-          const SizedBox(height: 14),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Tamam',
+            style: AppTypography.body(
+              size: 16,
+              weight: FontWeight.w600,
+              color: AppColors.onGold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-          // Medya seçim butonları
-          Row(
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.image_rounded, color: AppColors.gold),
-                label: Text(
-                  'Fotoğraf Seç',
-                  style: AppTypography.body(size: 14, color: AppColors.gold),
-                ),
-                onPressed: _uploading ? null : _pickImage,
-              ),
-              const SizedBox(width: 8),
-              TextButton.icon(
+  Widget _form() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text('Yeni Reel', style: AppTypography.display(size: 22)),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Kapat',
+              icon: Icon(Icons.close_rounded, color: AppColors.muted),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        TextField(
+          key: const Key('create_post_caption'),
+          controller: _captionController,
+          maxLines: 3,
+          style: AppTypography.body(size: 15, color: AppColors.cream),
+          decoration: InputDecoration(
+            hintText: 'Bir şeyler yaz (isteğe bağlı)…',
+            hintStyle: AppTypography.body(size: 15, color: AppColors.muted),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: AppColors.emerald900,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Medya seçimi: yalnız dikey video veya stüdyo görseli.
+        Row(
+          children: [
+            Expanded(
+              child: TextButton.icon(
+                key: const Key('create_post_pick_video'),
                 icon: const Icon(Icons.videocam_rounded, color: AppColors.gold),
                 label: Text(
                   'Video Seç',
@@ -1892,79 +1877,219 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
                 ),
                 onPressed: _uploading ? null : _pickVideo,
               ),
-              if (_selectedMedia != null) ...[
-                const Spacer(),
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppColors.muted,
-                  ),
-                  tooltip: 'Medyayı kaldır',
-                  onPressed: _clearMedia,
-                ),
-              ],
-            ],
-          ),
-
-          // Seçilen medya önizlemesi
-          if (_selectedMedia != null) ...[
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _mediaKind == 'image'
-                  ? Image.file(
-                      _selectedMedia!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.black,
-                      child: const Center(
-                        child: Icon(
-                          Icons.videocam_rounded,
-                          color: Colors.white,
-                          size: 48,
-                        ),
-                      ),
-                    ),
             ),
-          ],
-
-          const SizedBox(height: 18),
-
-          // Yayınla butonu
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.onGold,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: TextButton.icon(
+                key: const Key('create_post_pick_studio'),
+                icon: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.gold,
+                ),
+                label: Text(
+                  'Stüdyodan Seç',
+                  style: AppTypography.body(size: 14, color: AppColors.gold),
+                ),
+                onPressed: _uploading ? null : _pickFromStudio,
               ),
             ),
-            onPressed: _uploading ? null : _publish,
-            child: _uploading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.onGold,
-                    ),
+            if (_selectedMedia != null)
+              IconButton(
+                icon: Icon(Icons.delete_outline_rounded, color: AppColors.muted),
+                tooltip: 'Seçimi kaldır',
+                onPressed: _uploading ? null : _clearMedia,
+              ),
+          ],
+        ),
+
+        if (_selectedMedia != null) ...[
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _kind == 'still'
+                ? Image.file(
+                    _selectedMedia!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                   )
-                : Text(
-                    'Paylaş',
-                    style: AppTypography.body(
-                      size: 16,
-                      weight: FontWeight.w600,
-                      color: AppColors.onGold,
+                : Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: Colors.black,
+                    child: const Center(
+                      child: Icon(
+                        Icons.videocam_rounded,
+                        color: Colors.white,
+                        size: 48,
+                        semanticLabel: 'Seçili video',
+                      ),
                     ),
                   ),
           ),
         ],
+
+        const SizedBox(height: 14),
+
+        // Telif beyanı — onaylanmadan Yayınla devre dışı (Guideline 5.2.3).
+        MergeSemantics(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                label: _rightsLabel,
+                child: Checkbox(
+                  key: const Key('create_post_rights_checkbox'),
+                  value: _rightsAccepted,
+                  activeColor: AppColors.gold,
+                  checkColor: AppColors.onGold,
+                  side: const BorderSide(color: AppColors.gold, width: 1.6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  onChanged: _uploading
+                      ? null
+                      : (v) => setState(() => _rightsAccepted = v ?? false),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  key: const Key('create_post_rights_text'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _uploading
+                      ? null
+                      : () => setState(() => _rightsAccepted = !_rightsAccepted),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      _rightsLabel,
+                      style: AppTypography.body(
+                        size: 13.5,
+                        color: AppColors.cream2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Devre dışı olma nedeni metinle de bildirilir (yalnız renkle ayırma yok).
+        if (!_canPublish && !_uploading) ...[
+          const SizedBox(height: 4),
+          Text(
+            _selectedMedia == null
+                ? 'Yayınlamak için bir video veya stüdyo görseli seçin.'
+                : 'Yayınlamak için telif beyanını onaylayın.',
+            key: const Key('create_post_publish_hint'),
+            style: AppTypography.body(size: 12.5, color: AppColors.muted),
+          ),
+        ],
+
+        const SizedBox(height: 14),
+
+        ElevatedButton(
+          key: const Key('create_post_publish'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.gold,
+            foregroundColor: AppColors.onGold,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: _canPublish ? _publish : null,
+          child: _uploading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.onGold,
+                  ),
+                )
+              : Text(
+                  'Yayınla',
+                  style: AppTypography.body(
+                    size: 16,
+                    weight: FontWeight.w600,
+                    color: AppColors.onGold,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Stüdyoda üretilmiş PNG'leri seçtiren küçük sheet (en yenisi başta).
+/// Geçici dizin işletim sistemince temizlenebilir → boşsa dürüst yönlendirme.
+class _StudioPickerSheet extends StatelessWidget {
+  const _StudioPickerSheet({required this.files});
+  final List<File> files;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Stüdyo Görsellerin',
+              style: AppTypography.body(
+                size: 16,
+                weight: FontWeight.w600,
+                color: AppColors.cream,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (files.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: EmptyState(
+                  icon: Icons.auto_awesome_outlined,
+                  message:
+                      'Henüz kayıtlı stüdyo görseli yok.\nÖnce stüdyoda bir ayet görseli üret.',
+                  action: FilledButton.icon(
+                    key: const Key('studio_picker_open_studio'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      context.push('/studio');
+                    },
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                    label: const Text('Stüdyoyu aç'),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 190,
+                child: ListView.separated(
+                  key: const Key('studio_picker_list'),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: files.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) => InkWell(
+                    onTap: () => Navigator.of(context).pop(files[i]),
+                    borderRadius: BorderRadius.circular(12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        files[i],
+                        width: 110,
+                        height: 190,
+                        fit: BoxFit.cover,
+                        semanticLabel: 'Stüdyo görseli ${i + 1}',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

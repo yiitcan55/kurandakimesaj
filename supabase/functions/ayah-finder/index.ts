@@ -16,7 +16,7 @@ import { corsHeaders, json } from "../_shared/cors.ts";
 // Otoriter eslestirici `_shared/quran/`te — `ayah-finder-audio` da ayni matcher
 // ve ayni Kur'an veri setini kullanir (tek dogru kaynak).
 import { match } from "../_shared/quran/matcher.ts";
-import { resolvePostImage } from "./link_resolver.ts";
+import { fetchImage, resolvePostImage } from "./link_resolver.ts";
 
 // NOT: gemini-2.0-flash ücretsiz tier'dan kaldırıldı (free_tier limit:0 → 429).
 // gemini-2.5-flash ücretsiz tier'da aktif (2026-06 doğrulandı).
@@ -46,9 +46,12 @@ async function extractFromImage(
   apiKey: string,
   src: ImageSource,
 ): Promise<Extracted> {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  // Anahtar QUERY STRING'de DEGIL baslikta: Deno'nun fetch hatalari mesajin
+  // icinde TAM URL'yi tasir ("error sending request for url (...?key=AIza...)").
+  // Query string'de kalsaydi her ag hatasi GEMINI_API_KEY'i disari sizdirirdi.
+  const res = await fetch(GEMINI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{
         parts: [
@@ -82,22 +85,6 @@ function splitDataUrl(input: string): ImageSource {
   return { mime: "image/jpeg", base64: input };
 }
 
-// Gonderi baglantisindan gorsel indir → {base64, mime}. Cozulmezse null.
-async function fetchImageFromUrl(postUrl: string): Promise<ImageSource | null> {
-  const imgUrl = await resolvePostImage(postUrl);
-  if (!imgUrl) return null;
-  try {
-    const res = await fetch(imgUrl, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return null;
-    const mime = res.headers.get("content-type") ?? "image/jpeg";
-    if (!mime.startsWith("image/")) return null;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    return { base64: encodeBase64(bytes), mime };
-  } catch {
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -115,16 +102,23 @@ Deno.serve(async (req) => {
     if (imageBase64) {
       src = splitDataUrl(imageBase64);
     } else if (postUrl) {
-      src = await fetchImageFromUrl(postUrl);
-      if (src == null) {
-        // Baglanti cozulemedi ( or. Instagram giris duvari) → durust hata.
+      // Cozumleme de indirme de link_resolver'daki tek SSRF kapisindan gecer.
+      const resolved = await resolvePostImage(postUrl);
+      const dl = resolved.url
+        ? await fetchImage(resolved.url)
+        : { errorCode: resolved.errorCode ?? "link_unresolved" };
+      if ("errorCode" in dl) {
+        // Baglanti cozulemedi (or. Instagram giris duvari) → durust hata.
+        // Engellenen host disindaki tum nedenler ayni fallback'i onerir
+        // (ekran goruntusu / video sec) → link_unresolved.
         return json({
           status: "error",
-          errorCode: "link_unresolved",
+          errorCode: dl.errorCode === "blocked_host" ? "blocked_host" : "link_unresolved",
           extractedArabic: "",
           matches: [],
         });
       }
+      src = { base64: encodeBase64(dl.bytes), mime: dl.mime };
     } else {
       return json({ status: "error", errorCode: "no_image", matches: [] }, 400);
     }
@@ -152,6 +146,10 @@ Deno.serve(async (req) => {
     // Belirsiz: kullanici dogru adayi secsin.
     return json({ status: "ambiguous", extractedArabic: extracted.arabic, matches });
   } catch (e) {
-    return json({ status: "error", errorCode: "server_error", message: String(e), matches: [] }, 500);
+    // Ham istisna metnini ISTEMCIYE DONDURME: icinde ic uc nokta URL'leri,
+    // yigin izleri ve (anahtar baslikta olsa bile) ortam ayrintilari tasiyabilir.
+    // Sunucu gunlugune tam metin, istemciye yalniz kod.
+    console.error("ayah-finder beklenmeyen hata:", e);
+    return json({ status: "error", errorCode: "server_error", matches: [] }, 500);
   }
 });

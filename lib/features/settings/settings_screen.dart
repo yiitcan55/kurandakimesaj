@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories.dart';
 import '../../domain/models.dart';
+import '../home/home_screens.dart' show myProfileProvider;
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
@@ -17,6 +18,9 @@ class SettingsScreen extends ConsumerWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(
     'https://yiitcan55.github.io/kurandakimesaj-legal/privacy.html',
+  );
+  static final Uri _termsUri = Uri.parse(
+    'https://yiitcan55.github.io/kurandakimesaj-legal/terms.html',
   );
   static final Uri _supportUri = Uri.parse(
     'https://yiitcan55.github.io/kurandakimesaj-legal/support.html',
@@ -65,10 +69,38 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _LegalRow(
+                    icon: Icons.gavel_rounded,
+                    label: 'Kullanım Koşulları',
+                    onTap: () => _openExternalUrl(context, _termsUri),
+                  ),
+                  const SizedBox(height: 8),
+                  _LegalRow(
                     icon: Icons.mail_rounded,
                     label: 'İletişim & Destek',
                     onTap: () => _openExternalUrl(context, _supportUri),
                   ),
+
+                  const SizedBox(height: 28),
+                  // ── Güvenlik & Moderasyon ─────────────────────────────
+                  SectionLabel(eyebrow: 'Topluluk', title: 'Güvenlik'),
+                  const SizedBox(height: 12),
+                  _LegalRow(
+                    icon: Icons.person_off_rounded,
+                    label: 'Engellenen kullanıcılar',
+                    onTap: () => context.push('/blocked-users'),
+                  ),
+                  // Moderasyon kuyruğu yalnız yöneticiye görünür; RLS zaten
+                  // yetkisiz güncellemeyi reddediyor, bu sadece görünürlük.
+                  if (ref.watch(myProfileProvider).value?['is_admin']
+                          as bool? ??
+                      false) ...[
+                    const SizedBox(height: 8),
+                    _LegalRow(
+                      icon: Icons.shield_moon_rounded,
+                      label: 'İçerik moderasyonu',
+                      onTap: () => context.push('/moderation'),
+                    ),
+                  ],
 
                   const SizedBox(height: 28),
                   // ── Hesap ─────────────────────────────────────────────

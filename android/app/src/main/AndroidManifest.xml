@@ -31,6 +31,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Supabase e-posta dogrulama / OAuth donusu: io.kurandakimesaj://login-callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="io.kurandakimesaj" android:host="login-callback" />
+            </intent-filter>
             <!-- Paylas menusu: gorsel/video/baglanti → Ayet Bul (receive_sharing_intent) -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

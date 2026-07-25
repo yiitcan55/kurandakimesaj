@@ -27,8 +27,18 @@ class AyahFinderController extends AsyncNotifier<AyahFinderResult?> {
   }
 
   /// Yapıştırılan gönderi bağlantısından ayet bul (Faz 2).
-  Future<void> fromUrl(String url) async {
-    if (url.trim().isEmpty) return;
+  ///
+  /// Ham metin kabul eder: hem ekrandaki alan hem paylaş menüsü buraya girer;
+  /// doğrulama tek yerde (`normalizeAyahUrl`) yapılır ki paylaş-intent'ten gelen
+  /// "Şuna bak https://…" gibi metinler sunucuya çöp olarak gitmesin.
+  Future<void> fromUrl(String rawUrl) async {
+    final url = normalizeAyahUrl(rawUrl);
+    if (url == null) {
+      state = const AsyncValue.data(
+        AyahFinderResult(status: AyahFinderStatus.error, errorCode: 'invalid_url'),
+      );
+      return;
+    }
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repo.findFromUrl(url));
   }
@@ -62,6 +72,25 @@ class AyahFinderController extends AsyncNotifier<AyahFinderResult?> {
     if (p.endsWith('.webp')) return 'image/webp';
     return 'image/jpeg';
   }
+}
+
+/// Ham metinden tek bir http(s) bağlantısı çıkarır; çıkaramazsa `null`.
+///
+/// Girdi ya alandan yapıştırılan bağlantıdır ya da paylaş menüsünden gelen
+/// serbest metindir ("Şuna bak: https://… 😊"), o yüzden metin içinden arar.
+/// Bağlantı gövdesine sık yapışan sondaki noktalama temizlenir.
+String? normalizeAyahUrl(String raw) {
+  final text = raw.trim();
+  if (text.isEmpty) return null;
+  final match = RegExp(r'https?://[^\s<>"]+', caseSensitive: false).firstMatch(text);
+  // Şema yazılmamış tek parça girdi ("instagram.com/p/abc") https varsayılır.
+  var candidate = match?.group(0) ??
+      (text.contains(RegExp(r'\s')) ? null : 'https://$text');
+  if (candidate == null) return null;
+  candidate = candidate.replaceAll(RegExp(r'''[.,;:!?)\]'"]+$'''), '');
+  final uri = Uri.tryParse(candidate);
+  if (uri == null || !uri.hasAuthority || !uri.host.contains('.')) return null;
+  return uri.toString();
 }
 
 final ayahFinderProvider =

@@ -46,7 +46,7 @@ const List<FeatureDef> kFeatures = [
   FeatureDef(route: '/quiz', title: 'Sure Quiz', description: 'Sure adları, ayet sayıları, iniş yerleri ve anlamlarını test eden 10 soruluk quiz.', icon: Icons.quiz_rounded, category: FeatureCategory.kuran),
 
   // ── İçerik & Topluluk (3) ──
-  FeatureDef(route: '/studio', title: 'Video Edit + Meal', description: 'Şablon + tilavet + çoklu meal katmanı ile reels/TikTok videosu.', icon: Icons.movie_creation_rounded, category: FeatureCategory.icerik),
+  FeatureDef(route: '/studio', title: 'Ayet Kartı Stüdyosu', description: 'Şablon + arka plan + metin ile paylaşılabilir ayet kartı.', icon: Icons.photo_filter_rounded, category: FeatureCategory.icerik),
   FeatureDef(route: '/khatm', title: 'Hatim Halkaları', description: 'Grupça hatim, cüz dağıtımı, ortak ilerleme.', icon: Icons.groups_rounded, category: FeatureCategory.icerik),
   FeatureDef(route: '/collections', title: 'Koleksiyonlar', description: 'Ayetleri kaydet, listele, not al.', icon: Icons.bookmark_rounded, category: FeatureCategory.icerik),
   FeatureDef(route: '/ayah-finder', title: 'Ayet Bul', description: 'Görselden/bağlantıdan hangi ayet olduğunu bul (AI).', icon: Icons.image_search_rounded, category: FeatureCategory.icerik),

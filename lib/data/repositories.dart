@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart' show ThemeMode, debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show User, AuthState;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show User, AuthState, AuthResponse, AuthException;
 
 import 'package:dio/dio.dart';
 
@@ -105,9 +106,15 @@ class AuthRepository {
 
   Future<void> signIn(String email, String password) =>
       _supabase.signInWithEmail(email, password);
-  Future<void> signUp(String email, String password) =>
+
+  /// Kayıt sonucu aynen döner: `res.session == null` ise e-posta doğrulaması
+  /// bekleniyor demektir, oturum AÇILMAMIŞTIR.
+  Future<AuthResponse> signUp(String email, String password) =>
       _supabase.signUpWithEmail(email, password);
+  Future<void> resetPassword(String email) =>
+      _supabase.resetPasswordForEmail(email);
   Future<void> signInWithGoogle() => _supabase.signInWithGoogle();
+  Future<void> signInWithApple() => _supabase.signInWithApple();
   Future<void> signOut() => _supabase.signOut();
   Future<void> deleteAccount() => _supabase.deleteAccount();
 }
@@ -116,10 +123,45 @@ final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(supabaseServiceProvider)),
 );
 
-/// Auth durum akışı (router redirect ve profil için).
-final authStateProvider = StreamProvider<AuthState>(
-  (ref) => ref.watch(authRepositoryProvider).changes,
-);
+/// Auth durum akışı. Tek kaynak [authChangesProvider]
+/// (backend_repositories.dart) — burada yalnızca eski ad korunuyor, böylece
+/// akışa iki ayrı abonelik açılmaz.
+final authStateProvider = authChangesProvider;
+
+/// Supabase auth hatasını kullanıcıya gösterilecek Türkçe metne çevirir.
+///
+/// Hata YUTULMAZ: servis ve repository katmanları `AuthException`'ı aynen
+/// yukarı yayar; bu saf fonksiyon sadece gösterilecek metni üretir. Bilinmeyen
+/// kodlarda orijinal kod+mesaj hata ayıklama günlüğüne yazılır — bilgi kaybı
+/// olmaz, kullanıcı da İngilizce sunucu metni görmez.
+String authErrorMessage(Object error) {
+  if (error is AuthException) {
+    switch (error.code) {
+      case 'invalid_credentials':
+        return 'E-posta veya parola hatalı.';
+      case 'email_not_confirmed':
+        return 'E-postanı doğrula. Doğrulama bağlantısı gelen kutunda.';
+      case 'weak_password':
+        return 'Parola en az 6 karakter olmalı.';
+      case 'over_email_send_rate_limit':
+      case 'over_request_rate_limit':
+        return 'Çok fazla deneme yapıldı, biraz sonra tekrar dene.';
+      case 'user_already_exists':
+      case 'email_exists':
+        return 'Bu e-posta zaten kayıtlı.';
+      case 'validation_failed':
+        return 'E-posta veya parola geçersiz.';
+      case 'signup_disabled':
+        return 'Yeni kayıtlar şu an kapalı.';
+    }
+    debugPrint('AuthException (kod: ${error.code}): ${error.message}');
+    return 'İşlem tamamlanamadı, lütfen tekrar dene.';
+  }
+  // "Supabase yapılandırılmamış." gibi mesajlar zaten Türkçe.
+  if (error is StateError) return error.message;
+  debugPrint('Auth hatası: $error');
+  return 'Bir sorun oluştu, lütfen tekrar dene.';
+}
 
 // ── Cihaz / özellik servisleri (Sprint 1+) ─────────────────────────────────
 

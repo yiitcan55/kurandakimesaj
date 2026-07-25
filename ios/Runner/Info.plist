@@ -17,6 +17,17 @@
 				<string>homeWidget</string>
 			</array>
 		</dict>
+		<!-- Supabase e-posta doğrulama / OAuth dönüşü: io.kurandakimesaj://login-callback -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.kurandakimesaj.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>io.kurandakimesaj</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Kur'an'da ki Mesaj</string>

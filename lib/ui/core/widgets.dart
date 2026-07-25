@@ -1,6 +1,4 @@
-import 'dart:ui' show ImageFilter;
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -212,103 +210,6 @@ class _GoldChipState extends State<GoldChip> {
       duration: AppDurations.fast,
       curve: AppDurations.easeOut,
       child: chip,
-    );
-  }
-}
-
-/// Glassmorphism (cam) animasyonlu segment seçici — arkası bulanık, seçili
-/// segmentin altında kayan altın gösterge. Feed Gönderiler↔Reels geçişi için.
-///
-/// Implicit `AnimatedAlign` kullanır (controller yaşam döngüsü riski yok);
-/// reduced-motion açıkken geçiş anında olur (erişilebilirlik).
-class GlassSegmentedToggle extends StatelessWidget {
-  const GlassSegmentedToggle({
-    super.key,
-    required this.segments,
-    required this.index,
-    required this.onChanged,
-    this.height = 46,
-  });
-
-  final List<String> segments;
-  final int index;
-  final ValueChanged<int> onChanged;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final n = segments.length;
-    final radius = BorderRadius.circular(height / 2);
-    return SizedBox(
-      height: height,
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final segW = c.maxWidth / n;
-          // Gösterge hizası: n>1 için -1..1 aralığında segment merkezine oturur.
-          final align = n <= 1 ? 0.0 : -1.0 + 2.0 * index / (n - 1);
-          return ClipRRect(
-            borderRadius: radius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.08),
-                  borderRadius: radius,
-                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.22)),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Kayan altın gösterge.
-                    AnimatedAlign(
-                      duration: reduceMotion ? Duration.zero : AppDurations.normal,
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment(align, 0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Container(
-                          width: segW - 8,
-                          decoration: BoxDecoration(
-                            color: AppColors.gold,
-                            borderRadius: BorderRadius.circular(height / 2 - 4),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Segment etiketleri.
-                    Row(
-                      children: [
-                        for (var i = 0; i < n; i++)
-                          Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => onChanged(i),
-                              child: Center(
-                                child: AnimatedDefaultTextStyle(
-                                  duration:
-                                      reduceMotion ? Duration.zero : AppDurations.fast,
-                                  style: AppTypography.body(
-                                    size: 14,
-                                    weight: FontWeight.w600,
-                                    color: i == index
-                                        ? AppColors.onGold
-                                        : AppColors.cream2,
-                                  ),
-                                  child: Text(segments[i]),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }
