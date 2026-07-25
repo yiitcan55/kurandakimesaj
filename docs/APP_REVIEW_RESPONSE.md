@@ -125,7 +125,7 @@ Kaydı ASC → App Review Information → Notes alanına ekleyin.
 
 | # | İş | Nerede | Durum |
 |---|---|---|---|
-| 1 | Apple provider (Services ID, Team ID, Key ID, `.p8`) | Supabase Dashboard → Auth → Providers | ⬜ |
+| 1 | ~~Apple provider~~ **YAPILDI** — etkin, Client IDs = `com.kurandakimesaj.app` | Supabase Dashboard → Auth → Providers | ✅ |
 | 2 | App ID'ye **Sign in with Apple** capability + provisioning profile yenile | Apple Developer Portal → Codemagic "Fetch profiles" | ⬜ |
 | 3 | **`supabase db push`** — üç migration sırayla | Terminal (`npx supabase@latest`) | ⬜ |
 | 4 | Demo/kendi hesabına `is_admin = true` | Supabase SQL Editor | ⬜ |
@@ -135,6 +135,8 @@ Kaydı ASC → App Review Information → Notes alanına ekleyin.
 | 7 | Ekran kaydı (bölüm 3) → App Review Notes | Fiziksel cihaz + ASC | ⬜ |
 | 8 | ASC'de reddedilen gönderime yanıt yaz (bölüm 1) | App Store Connect | ⬜ |
 | 9 | `GOOGLE_WEB_CLIENT_ID` + `GOOGLE_IOS_CLIENT_ID` env grubunda tanımlı mı | Codemagic → `kdm_runtime` | ⬜ |
+
+> **Apple provider hakkında (plan düzeltmesi):** Plan "Services ID + Team ID + Key ID + `.p8` gir" diyordu. Bu **web/OAuth** akışının gereksinimi. Bizim uygulamamız yalnız **yerel (native)** iOS girişi yapıyor (`getAppleIDCredential` → `signInWithIdToken`), dolayısıyla Supabase'in yalnız **Client IDs** alanına bundle ID'nin yazılması yeterli. `.p8` üretmeye gerek yok. Web'de Sign in with Apple sunulursa o zaman gerekir.
 
 ### 3. adımın detayı — migration sırası
 
