@@ -98,16 +98,13 @@ void main() {
   // Not: `AppConfig.hasGoogleSignIn` derleme zamanı sabiti
   // (`String.fromEnvironment`) olduğu için bu test suite'i normal
   // `flutter test` ile (--dart-define=GOOGLE_WEB_CLIENT_ID=... VERİLMEDEN)
-  // çalıştığında her zaman false'tur — platformdan bağımsız. Google'ın
-  // iOS'ta da GÖSTERİLEBİLDİĞİNİN kanıtı burada "Google ile devam et"
-  // metninin görünmesi değil, iOS'a özel bir gizleme kodunun artık
-  // OLMAMASIdır (bkz. aşağıdaki "AppConfig.hasGoogleSignIn false iken..."
-  // testi — aynı gizlilik Android'de de aynen geçerli, yani platforma özel
-  // değil). Google'ın iOS'ta gerçekten göründüğünü uçtan uca doğrulamak için
-  // `flutter test --dart-define=GOOGLE_WEB_CLIENT_ID=test` gerekir (cihaz/
-  // derleme yapılandırması gerektirir, bu suite'te doğrulanamaz).
+  // çalıştığında her zaman false'tur — yani aşağıdaki "Google görünmüyor"
+  // beklentisi define'sız koşuda platformdan bağımsız olarak sağlanır.
+  // Google'ın iOS'taki GERÇEK koşulu ayrıca iOS client ID'sinin de dolu
+  // olmasıdır (aşağıdaki asimetri testi). Uçtan uca doğrulama:
+  // `flutter test test/auth_navigation_test.dart --dart-define=GOOGLE_WEB_CLIENT_ID=test`
   testWidgets(
-    'iOS\'ta Apple butonu (ve "veya" ayracı) görünür; Google yalnızca AppConfig.hasGoogleSignIn\'e bağlıdır (platforma değil)',
+    'iOS\'ta Apple butonu (ve "veya" ayracı) görünür; Google client ID yokken gizli',
     (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
@@ -173,6 +170,43 @@ void main() {
 
       expect(find.byKey(const Key('auth_google_button')), findsNothing);
       expect(find.text('Google ile devam et'), findsNothing);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  // REGRESYON KİLİDİ (1.0.1): Faz 1d Google butonunu iOS'ta da görünür yaptı,
+  // ama iOS'ta `GoogleSignIn.initialize` WEB client ID'ye ek olarak İOS client
+  // ID de ister — GOOGLE_IOS_CLIENT_ID tanımsız derlenirse buton görünür ve
+  // her dokunuşta hata verirdi. Beklenen asimetri: web ID varken Android
+  // gösterir, iOS gizler.
+  //
+  // Bu test yalnız `--dart-define=GOOGLE_WEB_CLIENT_ID=test` ile koşulduğunda
+  // AYIRT EDİCİDİR (define'sız iki platform da gizler, test yine geçer ama
+  // hiçbir şey kanıtlamaz). Kasıtlı: define'ı zorunlu kılmak tüm suite'i
+  // define'a bağımlı hale getirirdi.
+  testWidgets(
+    'iOS\'ta Google butonu iOS client ID olmadan gizli, Android\'de web ID yeterli',
+    (tester) async {
+      Future<bool> googleVisible(TargetPlatform platform) async {
+        debugDefaultTargetPlatformOverride = platform;
+        // UniqueKey ŞART: aynı `const` widget'la ikinci kez pumpWidget çağrılırsa
+        // Flutter ağacı identical görüp alt ağacı hiç yeniden inşa etmez; ikinci
+        // platform ölçümü birincinin sonucunu okurdu (bu test tam da bu yüzden
+        // ilk yazılışında yanlış "başarısız" verdi).
+        await tester.pumpWidget(
+          ProviderScope(child: MaterialApp(home: AuthScreen(key: UniqueKey()))),
+        );
+        await tester.pumpAndSettle();
+        return find.byKey(const Key('auth_google_button')).evaluate().isNotEmpty;
+      }
+
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      // GOOGLE_IOS_CLIENT_ID hiçbir koşuda verilmiyor → iOS her zaman gizli.
+      expect(await googleVisible(TargetPlatform.iOS), isFalse);
+      expect(
+        await googleVisible(TargetPlatform.android),
+        AppConfig.hasGoogleSignIn,
+      );
       debugDefaultTargetPlatformOverride = null;
     },
   );

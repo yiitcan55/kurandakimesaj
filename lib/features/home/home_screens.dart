@@ -1544,8 +1544,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     // Apple girişi yalnız iOS'ta anlamlı. Google artık iOS'ta da görünür
     // (Apple girişi sunulduğu için App Store Guideline 4.8 karşılanıyor),
     // ancak client ID yoksa buton gösterilmez — aksi halde StateError atardı.
-    final showApple = defaultTargetPlatform == TargetPlatform.iOS;
-    final showGoogle = AppConfig.hasGoogleSignIn;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final showApple = isIOS;
+    // iOS'ta WEB client ID tek başına YETMEZ: `GoogleSignIn.initialize` iOS'ta
+    // ayrıca `clientId` ister, yoksa butona basıldığında atar. `hasGoogleSignIn`
+    // yalnız web ID'ye baktığı için, GOOGLE_IOS_CLIENT_ID tanımsız derlenen bir
+    // iOS build'inde buton görünür ama HER dokunuşta hata verirdi. Eksik env
+    // değişkeni bozuk buton değil, gizli buton üretsin.
+    // Doğrulama: flutter test test/auth_navigation_test.dart \
+    //   --dart-define=GOOGLE_WEB_CLIENT_ID=test
+    final showGoogle = AppConfig.hasGoogleSignIn &&
+        (!isIOS || AppConfig.googleIosClientId.isNotEmpty);
 
     return Scaffold(
       body: SafeArea(
