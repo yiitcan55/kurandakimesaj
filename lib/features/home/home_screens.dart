@@ -47,7 +47,7 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: _BottomBar(
+      bottomNavigationBar: BottomBar(
         currentIndex: navigationShell.currentIndex,
         onTap: _onTap,
         onCreate: () => showCreateSheet(context),
@@ -56,8 +56,12 @@ class HomeShell extends StatelessWidget {
   }
 }
 
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({
+/// Yükseklik kilidi testten doğrulanabilsin diye public (bkz.
+/// `test/bottom_bar_height_test.dart`).
+@visibleForTesting
+class BottomBar extends StatelessWidget {
+  const BottomBar({
+    super.key,
     required this.currentIndex,
     required this.onTap,
     required this.onCreate,
@@ -136,7 +140,14 @@ class _BottomBar extends StatelessWidget {
 
   Widget _fab() {
     return Expanded(
+      // heightFactor: 1 ŞART. `Center` (Align) heightFactor verilmezse gelen
+      // maxHeight kadar BÜYÜR. Bar `SizedBox(height: 64)` iken maxHeight 64'tü,
+      // sorun görünmüyordu; `ConstrainedBox(minHeight: 64)`e geçince maxHeight
+      // Scaffold'un bottomNavigationBar yuvasından gelen EKRAN YÜKSEKLİĞİ oldu →
+      // bar tüm ekranı kapladı, içerik dikeyde ortalandı, gövdeye sıfır yer
+      // kaldı (1.0.1 build 3'te ana ekran tamamen boş göründü).
       child: Center(
+        heightFactor: 1,
         child:
             GestureDetector(
               onTap: onCreate,
