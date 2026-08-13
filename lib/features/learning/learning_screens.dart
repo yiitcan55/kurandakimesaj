@@ -56,7 +56,7 @@ class MiraclesScreen extends ConsumerWidget {
                               onTap: () => _showText(context, m.title, m.body),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.science_rounded, color: AppColors.gold),
+                                  Icon(Icons.science_rounded, color: AppColors.goldInk),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Text(m.title,
@@ -109,7 +109,7 @@ class StoriesScreen extends ConsumerWidget {
                           onTap: () => _showText(context, s.title, s.body),
                           child: Row(
                             children: [
-                              const Icon(Icons.history_edu_rounded, color: AppColors.gold),
+                              Icon(Icons.history_edu_rounded, color: AppColors.goldInk),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
@@ -209,7 +209,7 @@ class TajweedScreen extends ConsumerWidget {
           children: [
             Text(l.title, style: AppTypography.display(size: 24)),
             const SizedBox(height: 6),
-            Text(l.rule, style: AppTypography.body(size: 15, color: AppColors.gold)),
+            Text(l.rule, style: AppTypography.body(size: 15, color: AppColors.goldInk)),
             const SizedBox(height: 16),
             AyetFrame(arabic: l.example, fontSize: 24),
             const SizedBox(height: 16),
@@ -573,7 +573,7 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.quiz_rounded, size: 72, color: AppColors.gold),
+                  Icon(Icons.quiz_rounded, size: 72, color: AppColors.goldInk),
                   const SizedBox(height: 20),
                   Text(
                     'Sure Bilgisi Testi',
@@ -597,8 +597,8 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.emoji_events_rounded,
-                              color: AppColors.gold, size: 20),
+                          Icon(Icons.emoji_events_rounded,
+                              color: AppColors.goldInk, size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'En yüksek skor: $_highScore / 10',
@@ -656,7 +656,7 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                   Text(
                     'Skor: $_score',
                     style: AppTypography.body(
-                        size: 13, color: AppColors.gold, weight: FontWeight.w600),
+                        size: 13, color: AppColors.goldInk, weight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -668,7 +668,7 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                   minHeight: 6,
                   backgroundColor: AppColors.emerald850,
                   valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.gold),
+                      AlwaysStoppedAnimation<Color>(AppColors.goldInk),
                 ),
               ),
             ],
@@ -771,15 +771,15 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.emoji_events_rounded,
-                          color: AppColors.gold, size: 22),
+                      Icon(Icons.emoji_events_rounded,
+                          color: AppColors.goldInk, size: 22),
                       const SizedBox(width: 6),
                       Text(
                         'Yeni Rekor!',
                         style: AppTypography.body(
                             size: 17,
                             weight: FontWeight.w700,
-                            color: AppColors.gold),
+                            color: AppColors.goldInk),
                       ),
                     ],
                   ).animate().fadeIn(),
@@ -819,15 +819,15 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.check_circle_rounded,
-                                    color: Color(0xFF4CAF50), size: 16),
+                                Icon(Icons.check_circle_rounded,
+                                    color: AppColors.correct, size: 16),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     w.correct,
                                     style: AppTypography.body(
                                         size: 14,
-                                        color: Color(0xFF4CAF50),
+                                        color: AppColors.correct,
                                         weight: FontWeight.w600),
                                   ),
                                 ),
@@ -836,15 +836,15 @@ class _SurahQuizScreenState extends ConsumerState<SurahQuizScreen> {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(Icons.cancel_rounded,
-                                    color: Color(0xFFEF5350), size: 16),
+                                Icon(Icons.cancel_rounded,
+                                    color: AppColors.incorrect, size: 16),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     w.selected,
                                     style: AppTypography.body(
                                         size: 14,
-                                        color: Color(0xFFEF5350)),
+                                        color: AppColors.incorrect),
                                   ),
                                 ),
                               ],
@@ -902,13 +902,13 @@ class _ChoiceButton extends StatelessWidget {
 
     switch (state) {
       case true:
-        border = const Color(0xFF4CAF50);
-        bg = const Color(0xFF4CAF50).withValues(alpha: 0.15);
-        fg = const Color(0xFF4CAF50);
+        border = AppColors.correct;
+        bg = AppColors.correct.withValues(alpha: 0.15);
+        fg = AppColors.correct;
       case false:
-        border = const Color(0xFFEF5350);
-        bg = const Color(0xFFEF5350).withValues(alpha: 0.15);
-        fg = const Color(0xFFEF5350);
+        border = AppColors.incorrect;
+        bg = AppColors.incorrect.withValues(alpha: 0.15);
+        fg = AppColors.incorrect;
       case null:
         border = AppColors.muted.withValues(alpha: 0.35);
         bg = Colors.transparent;

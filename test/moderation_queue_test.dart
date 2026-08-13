@@ -52,6 +52,10 @@ class _FakeSocialRepository implements ISocialRepository {
       feedPosts;
 
   @override
+  Future<String> uploadPostMedia(Uint8List bytes, {required bool isVideo}) async =>
+      'https://example.com/media.${isVideo ? 'mp4' : 'png'}';
+
+  @override
   Future<void> createPost({
     required String reference,
     required String arabic,
@@ -62,6 +66,7 @@ class _FakeSocialRepository implements ISocialRepository {
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
+    String? audioTrackId,
   }) async {}
 
   @override

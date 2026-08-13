@@ -1,79 +1,88 @@
 # App Store gönderim dosyası
 
 > Uygulama: **Kur'an'da ki Mesaj**  
-> Bundle ID: `com.kurandakimesaj.app`  
-> SKU: `KDM-IOS-001`  
-> Sürüm: `1.0.0`  
-> Son doğrulama: **21 Temmuz 2026**
+> Bundle ID: `com.kurandakimesaj.app` · SKU: `KDM-IOS-001` · Sürüm: `1.0.0`  
+> Son doğrulama: **4 Ağustos 2026**
 
 Bu belge, kod tabanının mevcut davranışıyla eşleşen App Store Connect alanlarını ve yayın durumunu kaydeder. Mağaza metninde henüz çalışmayan video üretimi, sesli tefsir, sesli asistan, iOS widget veya paylaşım uzantısı vaat edilmemelidir.
 
-## 1. Güncel yayın durumu
+## 1. Gönderim durumu
 
-### Tamamlananlar
+**4 Ağustos 2026 güncellemesi — 1.0.0 (4) yeniden incelemede.** 1.0.0 (2) **Guideline 1.2 (User-Generated Content)** gerekçesiyle reddedilmişti (gönderim `cf08e6a4-b956-46b3-9064-2ecc40fa5742`, inceleme 24 Tem, cihaz iPad Air 11" M3). Apple beş önlem istedi: kayıt/giriş öncesi EULA onayı, uygunsuz içerik filtreleme, içerik bildirme, kullanıcı engelleme, bildirimlere 24 saat içinde müdahale — ayrıca bunların **fiziksel cihazda çekilmiş ekran kaydıyla** gösterilmesi.
 
-- [x] Bundle ID ve App Store Connect uygulama kaydı oluşturuldu.
-- [x] iPhone-only hedefi ayarlandı.
-- [x] `Info.plist` yalnız gerçekten kullanılan konum ve fotoğraf kitaplığı izinlerini açıklıyor.
-- [x] iOS'ta Google giriş seçeneği gizlendi; böylece Sign in with Apple zorunluluğu bu sürümde tetiklenmiyor.
-- [x] Topluluk gönderisi/reel/yorum için bildir ve kullanıcı engelle akışları eklendi.
-- [x] Engellenen kullanıcıların içerikleri akıştan filtreleniyor.
-- [x] Hesap silme akışı uygulama içinde mevcut.
-- [x] 1024×1024, alfasız App Store simgesi ve iOS simge boyutları üretildi.
-- [x] Gizlilik ve destek sayfaları canlı:
-  - Gizlilik: <https://yiitcan55.github.io/kurandakimesaj-legal/privacy.html>
-  - Destek: <https://yiitcan55.github.io/kurandakimesaj-legal/support.html>
-- [x] `codemagic.yaml` ile iOS App Store derleme iş akışı hazırlandı.
-- [x] Codemagic uygulaması özel GitHub deposuna bağlandı ve yapılandırma kaynağı `codemagic.yaml` olarak seçildi.
-- [x] App Store Connect adı, alt başlığı, açıklaması, anahtar kelimeleri, kategorileri, sürüm numarası, telif ve inceleme notları kaydedildi.
-- [x] App Privacy beyanı yayımlandı; gizlilik ve kullanıcı tercihleri URL'leri kaydedildi.
-- [x] Yaş derecelendirme formu kaydedildi; nihai derece **13+**.
-- [x] Codemagic'deki mevcut `codemagic_appstore` Apple entegrasyonu ve `deyiver-distribution` dağıtım sertifikası iş akışına bağlandı.
-- [x] `flutter analyze`: 0 sorun.
-- [x] `flutter test`: 33/33 geçti.
+Yapılanlar:
 
-### Gönderimden önce zorunlu kalanlar
+- [x] Codemagic `iOS App Store` iş akışı `main` / commit `b210eb3` ile çalıştı (build index 4, ID `6a710f3cc529f72d91069095`, Mac mini M2, 6m54s, `finished`; post-processing hatası yok). İmzalı IPA 30.49 MB.
+- [x] App Store Connect'e yüklendi: **Version 1.0.0, Build (4)** — `Complete` (4 Ağu 01:06). `pubspec.yaml` `1.0.1+4` olsa da binary 1.0.0 (4) olarak göründüğü için inflight 1.0.0 sürümüne doğrudan atanabildi.
+- [x] Sürümdeki **eski Build 2 çıkarılıp Build 4 atandı**.
+- [x] **App Review Notes** İngilizce olarak Guideline 1.2'nin beş maddesine göre yeniden yazıldı: zorunlu EULA onay kutusu (kayıt/giriş engellenir), `pending/approved/rejected` moderasyon durumu, "Bildir", "Kullanıcı engelle" + Ayarlar → Engellenen Kullanıcılar, 24 saat taahhüdü, demo hesap ve ekran yolları. Kaydedildi (Save → disabled).
+- [x] **Redde yanıt** Resolution Center'dan gönderildi (2690 karakter) + **ekran kaydı eklendi** (`apple review.mp4`, 2.6 MB; EULA onayı → Bildir → Kullanıcı engelle sırasıyla).
+- [x] **Resubmit to App Review** yapıldı → sürüm yeniden incelemede.
 
-- [ ] iPhone 6.9 inç için 1–10 gerçek uygulama ekran görüntüsü yüklenmeli. Mevcut `screenshots/` dosyaları Android ölçüsünde; App Store seti değildir.
-- [ ] App Review için çalışan bir demo hesap hazırlanmalı. Kayıtlı hesap 21 Temmuz 2026 doğrulamasında Supabase Auth tarafından HTTP 400 ile reddedildi.
-- [x] App Review iletişim adı, telefonu ve e-postası App Store Connect'e kaydedildi.
-- [ ] Diyanet meal/metin içeriği, İslam Ansiklopedisi içeriği ve EveryAyah sesleri için dağıtım/lisans kanıtları hazır tutulmalı.
-- [ ] App Store Connect'te Content Rights beyanı, lisans/izin kanıtı görülmeden işaretlenmemeli.
-- [ ] Codemagic'te `kdm_runtime` grubuna `SUPABASE_URL` ve `SUPABASE_ANON_KEY` uygulama değişkenleri eklenmeli.
-- [ ] `com.kurandakimesaj.app` için App Store provisioning profile oluşturulup Codemagic Code signing identities bölümüne alınmalı; şu anda yalnız başka bundle ID'lere ait profiller var.
-- [ ] İlk IPA oluşturulup TestFlight'a yüklenmeli ve gerçek iPhone'da smoke test yapılmalı.
+Notlar: ASC'nin "Attach File" alanı programatik yüklemeyi kabul etmiyor, ek dosya elle seçilmek zorunda. Ekran kaydının kalıcı yeri Apple'ın istediği gibi App Review Information → Notes alanıdır; sonraki gönderimlerde kayıt oraya da eklenmelidir.
 
-İlk sürüm için `What's New` alanı boş bırakılır. App Store incelemesine gönderim, TestFlight smoke testi tamamlanmadan yapılmamalıdır.
+**23 Temmuz 2026 güncellemesi:** Codemagic `ios-app-store` iş akışı başarıyla çalıştı (build #2, commit `b210eb3`, 11m20s). İmzalı IPA (30.49 MB) üretilip App Store Connect'e yüklendi; ASC'de **Version 1.0.0, Build (2)** olarak göründü (Processing).
 
-## 2. Türkçe ASO metadata paketi
+Çözülen engelleyiciler:
 
-### Uygulama adı
+- [x] `com.kurandakimesaj.app` için App Store provisioning profile Apple Developer Portal'da oluşturuldu ve Codemagic Code signing identities'e `kurandakimesaj-distribution` olarak çekildi (sertifika: `deyiver-distribution`, son kullanım 02 May 2027).
+- [x] Codemagic app ayarlarında `kdm_runtime` grubu oluşturuldu; `SUPABASE_URL` + `SUPABASE_ANON_KEY` (Secure) eklendi. (Kişisel hesaplarda global gruplar kaldırıldığı için app seviyesinde.)
+- [x] İmzalı IPA üretilip App Store Connect'e yüklendi (Build 2, Processing).
+- [x] iPhone 6.5" ekran görüntüleri yüklü (6/10) — App Store için yeterli.
+- [x] App Review demo hesabı çalışıyor (`test@gmail.com`); Supabase Auth `signInWithPassword` HTTP 200 döndürdü, inceleme notuna girildi.
+- [x] `ios/Runner.xcodeproj`: `IPHONEOS_DEPLOYMENT_TARGET` 13.0 → 14.0 (workmanager_apple iOS ≥14.0 gerektiriyordu; ilk build burada patlamıştı).
+
+Gönderimden önce kalanlar (kullanıcı aksiyonu):
+
+- [x] Apple işlemeyi bitirince (Processing → hazır) build sürüme eklenmeli. *(4 Ağu: Build 4 atandı.)*
+- [ ] TestFlight'ta gerçek iPhone ile smoke test yapılmalı. *(4 Ağu itibarıyla hâlâ yapılmadı; doğrulama Android cihazda — SM S731B — yapıldı.)*
+- [ ] Diyanet meal/metin, İslam Ansiklopedisi içeriği ve EveryAyah sesleri için dağıtım/lisans kanıtları hazır tutulmalı; Content Rights beyanı kanıt görülmeden işaretlenmemeli.
+- [x] Nihai Submit for Review için ayrı işlem-anı onayı alınmalı. *(4 Ağu: kullanıcı redde yanıtı ekran kaydıyla gönderip Resubmit'e bastı.)*
+
+İlk sürümde `What's New` alanı boş bırakılır. (Codemagic iş akışı `submit_to_app_store: false` ile yalnız binary yükler; incelemeyi başlatan işlem App Store Connect'te elle yapılır.)
+
+## 2. Tamamlananlar
+
+- Bundle ID, App Store Connect uygulama kaydı ve iPhone-only hedef ayarlandı.
+- ASO metadata (ad, alt başlık, açıklama, anahtar kelimeler), kategoriler, sürüm numarası, telif ve inceleme notları App Store Connect'e kaydedildi.
+- App Privacy beyanı yayımlandı; gizlilik ve kullanıcı tercihleri URL'leri kaydedildi.
+- Yaş derecelendirme formu kaydedildi; nihai derece **13+**.
+- App Review iletişim adı, telefonu ve e-postası kaydedildi.
+- Gizlilik ve destek sayfaları canlı (bkz. §4).
+- `Info.plist` yalnız gerçekten kullanılan konum ve fotoğraf kitaplığı izinlerini açıklıyor.
+- iOS'ta Google giriş seçeneği gizlendi; Sign in with Apple zorunluluğu bu sürümde tetiklenmiyor.
+- Moderasyon: gönderi/reel/yorum için bildir ve kullanıcı engelle akışları eklendi; engellenen kullanıcıların içerikleri akıştan filtreleniyor; hesap silme uygulama içinde mevcut.
+- 1024×1024, alfasız App Store simgesi ve iOS simge boyutları üretildi.
+- `codemagic.yaml` ile iOS App Store iş akışı hazırlandı; Codemagic özel GitHub deposuna bağlandı; `codemagic_appstore` Apple entegrasyonu ve `deyiver-distribution` dağıtım sertifikası iş akışına bağlandı.
+- `flutter analyze`: 0 sorun · `flutter test`: 33/33 geçti.
+
+## 3. Türkçe ASO metadata paketi
+
+### Uygulama adı — 18/30 karakter
 
 ```text
 Kur'an'da ki Mesaj
 ```
 
-### Alt başlık
+### Alt başlık — 26/30 karakter
 
 ```text
 Meal, namaz vakti ve kıble
 ```
 
-### Anahtar kelimeler
-
-92 karakter / 94 UTF-8 bayt:
+### Anahtar kelimeler — 92/100 karakter (94 UTF-8 bayt)
 
 ```text
 ayet,sure,dua,zikir,tesbih,ezan,ibadet,hatim,cüz,hizb,tecvid,imsakiye,oruç,esma,hadis,mushaf
 ```
 
-### Tanıtım metni
+### Tanıtım metni — 148/170 karakter
 
 ```text
 Kur'an'ı çevrimdışı oku, ibadetini takip et. Görsel veya kısa tilavet videosundaki ayeti bul, ayet kartını PNG olarak paylaş. Ücretsiz ve reklamsız.
 ```
 
-### Açıklama
+### Açıklama — 4.000 karakter sınırının altında
 
 ```text
 Kur'an'da ki Mesaj; Kur'an okumayı, günlük ibadet takibini ve paylaşımı tek bir uygulamada buluşturur.
@@ -115,13 +124,32 @@ Uygulama ücretsiz ve reklamsızdır.
 
 Apple telif işaretini arayüzde eklediği için alana ayrıca `©` yazılmaz. `Eren Asan` adı App Store Connect'teki hesap sahibi alanından doğrulanmıştır.
 
-## 3. App Store Connect URL alanları
+## 4. App Store Connect alanları
+
+### URL'ler
 
 - Privacy Policy URL: `https://yiitcan55.github.io/kurandakimesaj-legal/privacy.html`
 - Support URL: `https://yiitcan55.github.io/kurandakimesaj-legal/support.html`
 - Marketing URL: ilk sürümde boş bırakılabilir.
 
-## 4. App Privacy beyanı
+### Yaş derecelendirmesi
+
+Beklenen sonuç: **13+** (App Store Connect'in güncel yaş derecelendirme sistemi).
+
+- User-Generated Content: Yes
+- Social Media: Yes
+- Messaging and Chat: Yes
+- Unrestricted Web Access: No
+- Advertising: No
+- Parental Controls: No
+- Age Assurance: No
+- Mature or Suggestive Themes: Infrequent
+- Realistic Violence: Infrequent
+- Gambling, sexual content, graphic violence, drugs: None
+
+Formun ürettiği nihai derece App Store Connect'te ayrıca doğrulanmalıdır.
+
+## 5. App Privacy beyanı
 
 Tracking: **No**. Aşağıdaki verilerin amacı **App Functionality** olarak seçilir.
 
@@ -139,23 +167,6 @@ Tracking: **No**. Aşağıdaki verilerin amacı **App Functionality** olarak se�
 | Precise Location | Evet | Hayır |
 
 Konum namaz vakti/kıble hesabı için cihazda kullanılır; yakın cami araması açılırsa harita sağlayıcısına sorgu olarak iletilebilir. Ayet bulma için seçilen görsel Google Gemini'a; kısa video/ses ise özel Supabase Storage üzerinden Groq Whisper'a işlenmek üzere gönderilebilir. Bu akışlar gizlilik politikasında açıklanmıştır.
-
-## 5. Yaş derecelendirmesi
-
-Beklenen sonuç: **13+** (App Store Connect'in güncel yaş derecelendirme sistemi).
-
-- User-Generated Content: Yes
-- Social Media: Yes
-- Messaging and Chat: Yes
-- Unrestricted Web Access: No
-- Advertising: No
-- Parental Controls: No
-- Age Assurance: No
-- Mature or Suggestive Themes: Infrequent
-- Realistic Violence: Infrequent
-- Gambling, sexual content, graphic violence, drugs: None
-
-Formun ürettiği nihai derece App Store Connect'te ayrıca doğrulanmalıdır.
 
 ## 6. App Review notu taslağı
 
@@ -197,19 +208,4 @@ Bu nedenle ayrı `appstore_credentials` environment grubuna veya yeni bir `.p8` 
 - `SUPABASE_URL` — canlı proje URL'si
 - `SUPABASE_ANON_KEY` — canlı anon/publishable key, Secure
 
-İş akışı sırasıyla paketleri alır, analiz ve testleri çalıştırır, App Store imzalama dosyalarını hazırlar, IPA üretir ve App Store Connect'e yükler. İlk güvenli koşuda `submit_to_testflight: false` ve `submit_to_app_store: false` bırakılmıştır; bu yalnızca imzalı binary yükler, otomatik inceleme başlatmaz. `kdm_runtime` henüz Codemagic'e eklenmediği için build başlatılmamalıdır.
-
-## 8. Son kontrol listesi
-
-- [x] Canlı gizlilik ve destek URL'leri App Store Connect'e kaydedildi.
-- [x] ASO metadata alanları kaydedildi.
-- [x] App Privacy formu tamamlandı ve yayımlandı.
-- [x] Yaş derecelendirme formu tamamlandı.
-- [ ] Demo hesap ve App Review notu girildi.
-- [ ] iPhone 6.9 inç ekran görüntüleri yüklendi.
-- [x] Codemagic Apple entegrasyonu ve dağıtım sertifikası YAML iş akışına bağlandı.
-- [ ] Codemagic `kdm_runtime` environment grubu oluşturuldu.
-- [ ] IPA başarıyla üretildi ve App Store Connect'e yüklendi.
-- [ ] TestFlight gerçek cihaz smoke testi tamamlandı.
-- [ ] Lisans/izin kanıtları hazır.
-- [ ] Nihai Submit for Review için ayrı işlem-anı onayı alındı.
+İş akışı sırasıyla paketleri alır, analiz ve testleri çalıştırır, App Store imzalama dosyalarını hazırlar, IPA üretir ve App Store Connect'e yükler. İlk güvenli koşuda `submit_to_testflight: false` ve `submit_to_app_store: false` bırakılmıştır; bu yalnızca imzalı binary yükler, otomatik inceleme başlatmaz.

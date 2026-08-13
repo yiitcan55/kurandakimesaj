@@ -47,12 +47,14 @@ class _TopicalScreenState extends ConsumerState<TopicalScreen> {
                   final current = _topic ?? (topics.isNotEmpty ? topics.first : null);
                   return Column(
                     children: [
-                      SizedBox(
-                        height: 56,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          clipBehavior: Clip.none,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                      // 56 yazıyordu ama vertical:4 padding efektif 48 bırakıyordu
+                      // — chip 40.3px doğal + büyük yazı ölçeği = taşma. Sabit
+                      // yükseklik kaldırıldı; dokunma hedefi GoldChip'in içinde.
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                        child: Row(
                           children: [
                             for (final t in topics)
                               Padding(
@@ -117,18 +119,18 @@ class _TopicAyahs extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(a.reference,
-                              style: AppTypography.body(size: 13, color: AppColors.gold)),
+                              style: AppTypography.body(size: 13, color: AppColors.goldInk)),
                         ),
                         IconButton(
                           visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.share_rounded, color: AppColors.gold, size: 20),
+                          icon: Icon(Icons.share_rounded, color: AppColors.goldInk, size: 20),
                           onPressed: () => ref
                               .read(shareServiceProvider)
                               .shareText('${a.meal}\n(${a.reference})', subject: topic),
                         ),
                         IconButton(
                           visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.gold, size: 20),
+                          icon: Icon(Icons.bookmark_add_outlined, color: AppColors.goldInk, size: 20),
                           onPressed: () async {
                             await ref.read(collectionsRepositoryProvider).add(
                                   reference: a.reference,

@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
 
@@ -78,6 +79,8 @@ class FeedPost {
     this.templateId,
     this.commentCount = 0,
     this.status = 'approved',
+    this.caption = '',
+    this.audioUrl,
   });
 
   final String id;
@@ -112,6 +115,16 @@ class FeedPost {
   /// Kolon moderasyon göçüyle gelir; SELECT'te yoksa 'approved' (eski davranış).
   final String status;
 
+  /// Kullanıcının yazdığı açıklama. `createPost` bunu HER ZAMAN yazıyordu ama
+  /// `fromMap` hiç okumuyordu — ekranda görünen aslında `meal` idi. Bugün iki
+  /// yayın yolu da aynı metni ikisine birden yazdığı için **davranış
+  /// değişmiyor**; ayrıştıkları an doğru alan gösterilmiş olacak.
+  final String caption;
+
+  /// Küratörlü arka plan sesinin URL'i (`feed_audio_tracks` embed'inden).
+  /// Kolon/göç yoksa null — istemci göçten bağımsız çalışır.
+  final String? audioUrl;
+
   /// Oynatılabilir mp4 mü? Değilse 'still' — stüdyo görseli olarak render edilir.
   bool get isVideo => kind == 'video';
 
@@ -141,6 +154,9 @@ class FeedPost {
       templateId: m['template_id'] as String?,
       commentCount: m['comment_count'] as int? ?? 0,
       status: m['status'] as String? ?? 'approved',
+      caption: m['caption'] as String? ?? '',
+      // `feed_audio_tracks(url, title)` embed'i; göç uygulanmamışsa yok.
+      audioUrl: (m['feed_audio_tracks'] as Map?)?['url'] as String?,
     );
   }
 }
@@ -303,20 +319,31 @@ class ProfileRepository {
     } catch (_) {}
   }
 
-  Future<List<Map<String, dynamic>>> getUserPosts(String userId) async {
+  /// Profil ızgarasındaki gönderiler — en yeni önce.
+  ///
+  /// `select('*')` + [FeedPost.fromMap]: `thumbnail_url` kolonu HİÇ yazılmıyor
+  /// ([SupabaseSocialRepository.createPost] payload'ı yalnız `media_url` /
+  /// `video_url` yazar), poster URL'i `media_url`'de duruyor. Fallback'i burada
+  /// tekrarlamak yerine [FeedPost.fromMap]'ten geçiyoruz — Reels tarafı da aynı
+  /// fonksiyondan besleniyor, düzeltme tek yerde kalıyor.
+  ///
+  /// Hata YUTULMAZ (moderasyon dörtlüsüyle aynı sözleşme): RLS reddi veya ağ
+  /// hatası "Henüz gönderi yok" diye görünmemeli — çağıran ekran hatayı
+  /// ayırt edip "Tekrar dene" gösterebilmeli.
+  Future<List<FeedPost>> getUserPosts(String userId) async {
     final c = _client;
-    if (c == null) return [];
-    try {
-      final res = await c
-          .from('feed_posts')
-          .select('id, kind, thumbnail_url, caption, created_at')
-          .eq('author_id', userId)
-          .order('created_at', ascending: false)
-          .limit(30);
-      return List<Map<String, dynamic>>.from(res);
-    } catch (_) {
-      return [];
-    }
+    if (c == null) return const [];
+    final rows = await c
+        .from('feed_posts')
+        .select('*')
+        .eq('author_id', userId)
+        .order('created_at', ascending: false)
+        .limit(30);
+    // myId: null — ızgarada beğeni durumu gösterilmiyor, `likes` embed'i de
+    // çekilmiyor; `fromMap` ikisinin yokluğunda defansif.
+    return (rows as List)
+        .map((r) => FeedPost.fromMap(r as Map<String, dynamic>, myId: null))
+        .toList(growable: false);
   }
 }
 
@@ -334,6 +361,18 @@ abstract interface class ISocialRepository {
   /// rozetiyle) — aksi hâlde paylaştığı içerik kaybolmuş sanılırdı.
   /// Ayrımı ekran [FeedPost.isPending] üzerinden yapar.
   Future<List<FeedPost>> fetchReels();
+
+  /// Gönderi medyasını `post-media` bucket'ına yükler ve genel URL'ini döner.
+  ///
+  /// İKİ yayın yolu da (CreatePostSheet + StudioScreen) buradan geçer: yükleme
+  /// mantığı ekranlarda kopyalanırsa boyut kapısı/yol şeması/içerik tipi
+  /// zamanla ayrışır. [isVideo] yalnız uzantı + content-type seçer; `kind`
+  /// kararını çağıran verir.
+  ///
+  /// Hata YUTMAZ — çağıran kullanıcıya mesaj gösterebilsin diye [StateError]
+  /// veya depolama istisnası yayılır.
+  Future<String> uploadPostMedia(Uint8List bytes, {required bool isVideo});
+
   Future<void> createPost({
     required String reference,
     required String arabic,
@@ -344,6 +383,7 @@ abstract interface class ISocialRepository {
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
+    String? audioTrackId,
   });
   Future<void> toggleLike(String postId, bool currentlyLiked);
   Future<void> follow(String userId);
@@ -415,7 +455,8 @@ class SocialRepository implements ISocialRepository {
     final rows = await c
         .from('feed_posts')
         .select(
-          '*, profiles!feed_posts_author_id_fkey(display_name), likes(user_id)',
+          '*, profiles!feed_posts_author_id_fkey(display_name), '
+          'likes(user_id), feed_audio_tracks(url, title)',
         )
         .eq('is_hidden', false)
         .order('created_at', ascending: false)
@@ -424,6 +465,39 @@ class SocialRepository implements ISocialRepository {
         .map((r) => FeedPost.fromMap(r as Map<String, dynamic>, myId: myId))
         .toList();
     return filterBlockedFeedPosts(posts, await fetchBlockedUserIds());
+  }
+
+  static const _postMediaBucket = 'post-media';
+
+  @override
+  Future<String> uploadPostMedia(
+    Uint8List bytes, {
+    required bool isVideo,
+  }) async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null) {
+      throw StateError('Yüklemek için giriş yapmanız gerekiyor.');
+    }
+    // Boyut kapısı: seçim ekranındaki kontrolün son savunması. Yükleme
+    // yolları çoğaldıkça (video seçimi, stüdyo PNG'si) kural TEK yerde
+    // dursun — yoksa yeni bir çağıran sınırı sessizce atlar.
+    if (bytes.lengthInBytes > kAyahVideoMaxBytes) {
+      throw StateError('Dosya çok büyük (en fazla 20 MB).');
+    }
+    // Yol '<uid>/...' olmalı: bucket RLS'i sahiplik için bunu şart koşar.
+    final path =
+        '$uid/${DateTime.now().millisecondsSinceEpoch}.${isVideo ? 'mp4' : 'png'}';
+    await c.storage
+        .from(_postMediaBucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: isVideo ? 'video/mp4' : 'image/png',
+          ),
+        );
+    return c.storage.from(_postMediaBucket).getPublicUrl(path);
   }
 
   @override
@@ -437,6 +511,7 @@ class SocialRepository implements ISocialRepository {
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
+    String? audioTrackId,
   }) async {
     // Sunucudaki feed_posts_kind_check'in istemci karşılığı. Sessizce
     // düzeltmiyoruz: geçersiz değer çağıranın hatasıdır, 23514'ü beklemeden
@@ -462,6 +537,9 @@ class SocialRepository implements ISocialRepository {
     if (mediaUrl != null) payload['media_url'] = mediaUrl;
     if (videoUrl != null) payload['video_url'] = videoUrl;
     if (templateId != null) payload['template_id'] = templateId;
+    // Mevcut opsiyonel-kolon kalıbı: göç uygulanmamışsa insert'e HİÇ ekleme
+    // (yoksa "column does not exist" ile patlar).
+    if (audioTrackId != null) payload['audio_track_id'] = audioTrackId;
     await c.from('feed_posts').insert(payload);
   }
 
@@ -732,15 +810,80 @@ class MessagesRepository {
   MessagesRepository(this._client);
   final SupabaseClient? _client;
 
+  /// Sohbet listesi. 1:1 sohbetlerde başlık KARŞI TARAFIN adıdır.
+  ///
+  /// `conversations.title` 1:1'de kullanılamaz: tek kolon, iki taraf — her
+  /// ikisine de aynı başlığı gösterirdi. `.eq('user_id', uid)` filtresi
+  /// BİLEREK yok: `cmembers_select_self_conv` politikası zaten yalnız benim
+  /// üye olduğum sohbetlerin satırlarını görünür kılıyor, dolayısıyla
+  /// filtresiz sorgu tam olarak O sohbetlerin tüm üyelerini verir.
   Future<List<Map<String, dynamic>>> myConversations() async {
     final c = _client;
     final uid = c?.auth.currentUser?.id;
     if (c == null || uid == null) return const [];
     final rows = await c
         .from('conversation_members')
-        .select('conversation_id, conversations(id, title, is_group)')
-        .eq('user_id', uid);
-    return (rows as List).cast<Map<String, dynamic>>();
+        .select(
+          'conversation_id, user_id, '
+          'conversations(id, title, is_group), '
+          'profiles(display_name, avatar_url)',
+        );
+    return resolveConversationTitles(
+      (rows as List).cast<Map<String, dynamic>>(),
+      uid,
+    );
+  }
+
+  /// Profilden 1:1 sohbet aç — varsa mevcudu döndürür, yoksa oluşturur.
+  ///
+  /// **RPC YAZILMADI**: mevcut politikalar bunu zaten mümkün kılıyor
+  /// (`conv_insert_own` + `cmembers_insert`). İki tuzak var:
+  ///
+  /// 1. **Sıra zorunlu.** `cmembers_insert` iki kollu:
+  ///    `auth.uid() = user_id OR is_conversation_member(conversation_id, auth.uid())`.
+  ///    Önce KENDİ üyeliğimi eklerim (birinci kol), ancak ondan sonra ikinci
+  ///    kol karşı tarafı eklememe izin verir. Tek çağrıda çok satırlı insert
+  ///    yapılmaz: ikinci satırın kontrolü birinciyi aynı komut içinde görür mü
+  ///    garanti değil.
+  /// 2. **Id istemcide üretilir.** Insert'ten sonra satırı `.select()` ile geri
+  ///    okumak İMKÂNSIZ: `conv_select_member` henüz üye olmadığım için 0 satır
+  ///    döner — hata değil, sessiz boş sonuç.
+  Future<String?> openDirectConversation(String otherId) async {
+    final c = _client;
+    final uid = c?.auth.currentUser?.id;
+    if (c == null || uid == null || otherId.isEmpty || otherId == uid) {
+      return null;
+    }
+
+    // Tekilleştirme tek sorguyla: `cmembers_select_self_conv` "yalnız benim
+    // üye olduğum sohbetler" diyor → karşı tarafın üyeliklerini sorgulamak tam
+    // olarak İKİMİZİN de üye olduğu sohbetleri verir.
+    final existing = await c
+        .from('conversation_members')
+        .select('conversation_id, conversations(is_group)')
+        .eq('user_id', otherId);
+    for (final r in (existing as List).cast<Map<String, dynamic>>()) {
+      final conv = r['conversations'];
+      if (conv is Map && conv['is_group'] == false) {
+        return r['conversation_id'] as String;
+      }
+    }
+
+    final convId = const Uuid().v4();
+    await c.from('conversations').insert({
+      'id': convId,
+      'is_group': false,
+      'created_by': uid,
+    });
+    await c.from('conversation_members').insert({
+      'conversation_id': convId,
+      'user_id': uid,
+    });
+    await c.from('conversation_members').insert({
+      'conversation_id': convId,
+      'user_id': otherId,
+    });
+    return convId;
   }
 
   /// Bir sohbetin mesaj akışı (Realtime).
@@ -766,6 +909,84 @@ class MessagesRepository {
     });
   }
 }
+
+/// Üyelik satırlarını sohbet başına tekilleştirir ve 1:1 sohbetlerde başlığı
+/// KARŞI TARAFIN adıyla değiştirir.
+///
+/// Ayrı ve saf bir fonksiyon: kural ("benim olmayan üyelik satırındaki profil
+/// adı başlıktır") sessizce yanlış olabilecek tek yer burası ve Supabase
+/// istemcisi olmadan doğrulanabilmesi gerekiyor.
+@visibleForTesting
+List<Map<String, dynamic>> resolveConversationTitles(
+  List<Map<String, dynamic>> rows,
+  String myId,
+) {
+  final byConv = <String, Map<String, dynamic>>{};
+  for (final r in rows) {
+    final convId = r['conversation_id'] as String?;
+    final conv = (r['conversations'] as Map?)?.cast<String, dynamic>();
+    if (convId == null || conv == null) continue;
+    final entry = byConv.putIfAbsent(
+      convId,
+      () => <String, dynamic>{
+        'conversation_id': convId,
+        'conversations': Map<String, dynamic>.from(conv),
+      },
+    );
+    // Grup sohbetinde `conversations.title` zaten anlamlı — dokunma.
+    if (r['user_id'] == myId || conv['is_group'] == true) continue;
+    final p = (r['profiles'] as Map?)?.cast<String, dynamic>();
+    final name = p?['display_name'] as String?;
+    if (name != null && name.isNotEmpty) {
+      (entry['conversations'] as Map)['title'] = name;
+    }
+    entry['avatar_url'] = p?['avatar_url'];
+  }
+  return byConv.values.toList(growable: false);
+}
+
+/// Küratörlü arka plan müziği parçası. Kullanıcı YAZAMAZ — tabloya yalnız
+/// service_role ekler (20260803120000_reel_audio.sql), telif güvencesi
+/// uygulamada değil yabancı anahtarda durur.
+class ReelAudioTrack {
+  const ReelAudioTrack({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.url,
+  });
+
+  final String id;
+  final String title;
+  final String artist;
+  final String url;
+
+  factory ReelAudioTrack.fromMap(Map<String, dynamic> m) => ReelAudioTrack(
+    id: m['id'] as String,
+    title: m['title'] as String? ?? '',
+    artist: m['artist'] as String? ?? '',
+    url: m['url'] as String? ?? '',
+  );
+}
+
+/// Küratörlü müzik listesi. Göç uygulanmamışsa boş döner — stüdyodaki "Müzik"
+/// şeridi sessizce gizlenir, ekran çökmez.
+final reelAudioTracksProvider = FutureProvider<List<ReelAudioTrack>>((ref) async {
+  final c = ref.watch(supabaseClientProvider);
+  if (c == null) return const [];
+  try {
+    final rows = await c
+        .from('feed_audio_tracks')
+        .select('id, title, artist, url')
+        .eq('is_active', true)
+        .order('sort_order');
+    return (rows as List)
+        .map((r) => ReelAudioTrack.fromMap(r as Map<String, dynamic>))
+        .toList(growable: false);
+  } catch (_) {
+    return const [];
+  }
+});
 
 // ── Hatim Halkaları ──────────────────────────────────────────────────────────
 

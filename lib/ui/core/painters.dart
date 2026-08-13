@@ -77,6 +77,9 @@ class TasbihPainter extends CustomPainter {
     }
   }
 
+  // Renk karşılaştırması yok — bu painter yalnız SABİT (`const`) marka renkleri
+  // okur (gold/goldBright), tema dönüşünde bayatlamaz. Buraya tema ile dönen
+  // bir renk (goldInk, cream, line…) eklenirse onu alan yapıp burada karşılaştır.
   @override
   bool shouldRepaint(TasbihPainter old) => old.filled != filled;
 }
@@ -114,6 +117,9 @@ class CircularProgressPainter extends CustomPainter {
     c.drawArc(rect, -pi / 2, 2 * pi * progress.clamp(0, 1), false, arc);
   }
 
+  // Renk karşılaştırması yok — yalnız SABİT marka renkleri (goldSoft/goldBright/
+  // gold) okunuyor; tema dönüşünde bayatlamaz. Tema ile dönen bir renk eklenirse
+  // onu alan yapıp burada karşılaştır.
   @override
   bool shouldRepaint(CircularProgressPainter old) =>
       old.progress != progress || old.strokeWidth != strokeWidth;
@@ -121,10 +127,16 @@ class CircularProgressPainter extends CustomPainter {
 
 /// Kıble kadranı — [headingToQibla] radyan (cihaz yönüne göre Kâbe açısı).
 class QiblaDialPainter extends CustomPainter {
-  QiblaDialPainter({required this.headingToQibla, required this.aligned});
+  QiblaDialPainter({required this.headingToQibla, required this.aligned})
+      : _alignedInk = AppColors.success;
 
   final double headingToQibla;
   final bool aligned;
+
+  /// `AppColors.success` tema ile DÖNER (açık temada `#186B33`). Kurulum anında
+  /// yakalanır ki [shouldRepaint] bayatlamayı görebilsin — diğer painter'ların
+  /// aksine bu painter sabit olmayan bir renk okuyor.
+  final Color _alignedInk;
 
   @override
   void paint(Canvas c, Size size) {
@@ -132,7 +144,7 @@ class QiblaDialPainter extends CustomPainter {
     final radius = size.shortestSide / 2 - 6;
 
     final ring = Paint()
-      ..color = (aligned ? AppColors.success : AppColors.gold)
+      ..color = (aligned ? _alignedInk : AppColors.gold)
           .withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
@@ -158,12 +170,18 @@ class QiblaDialPainter extends CustomPainter {
       ..close();
     c.drawPath(
       arrow,
-      Paint()..color = aligned ? AppColors.success : AppColors.goldBright,
+      Paint()..color = aligned ? _alignedInk : AppColors.goldBright,
     );
     c.restore();
   }
 
+  // `_alignedInk` tema ile DÖNDÜĞÜ için karşılaştırılır. Şu an `app.dart`'taki
+  // `KeyedSubtree(ValueKey(isDark))` ağacı komple yeniden kurduğundan bayatlama
+  // görünmüyordu; o hack kaldırılırsa bu karşılaştırma olmadan kadran eski
+  // temanın yeşiliyle donardı.
   @override
   bool shouldRepaint(QiblaDialPainter old) =>
-      old.headingToQibla != headingToQibla || old.aligned != aligned;
+      old.headingToQibla != headingToQibla ||
+      old.aligned != aligned ||
+      old._alignedInk != _alignedInk;
 }

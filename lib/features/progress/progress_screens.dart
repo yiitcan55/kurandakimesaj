@@ -157,7 +157,7 @@ class MemorizeScreen extends ConsumerWidget {
                                   ),
                                   Text('${(pct * 100).round()}%',
                                       style: AppTypography.body(
-                                          size: 13, weight: FontWeight.w700, color: AppColors.gold)),
+                                          size: 13, weight: FontWeight.w700, color: AppColors.goldInk)),
                                 ],
                               ),
                             ),
@@ -210,7 +210,7 @@ class _MemoCard extends ConsumerWidget {
                       style: AppTypography.body(size: 16, weight: FontWeight.w600, color: AppColors.cream)),
                 ),
                 Text('${item.memorizedAyahs}/${item.totalAyahs}',
-                    style: AppTypography.body(size: 14, color: AppColors.gold)),
+                    style: AppTypography.body(size: 14, color: AppColors.goldInk)),
               ],
             ),
             const SizedBox(height: 10),
@@ -220,7 +220,7 @@ class _MemoCard extends ConsumerWidget {
                 value: pct,
                 minHeight: 7,
                 backgroundColor: AppColors.emerald850,
-                color: AppColors.gold,
+                color: AppColors.goldInk,
               ),
             ),
             const SizedBox(height: 8),
@@ -229,14 +229,14 @@ class _MemoCard extends ConsumerWidget {
               children: [
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.remove_circle_outline_rounded, color: AppColors.gold),
+                  icon: Icon(Icons.remove_circle_outline_rounded, color: AppColors.goldInk),
                   onPressed: item.memorizedAyahs <= 0
                       ? null
                       : () => repo.setMemorized(item.id, item.memorizedAyahs - 1),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.gold),
+                  icon: Icon(Icons.add_circle_outline_rounded, color: AppColors.goldInk),
                   onPressed: item.memorizedAyahs >= item.totalAyahs
                       ? null
                       : () => repo.setMemorized(item.id, item.memorizedAyahs + 1),

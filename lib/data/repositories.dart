@@ -184,8 +184,23 @@ final audioServiceProvider = Provider<AudioService>((ref) {
   return s;
 });
 
+/// Reels arka plan müziği için AYRI oynatıcı örneği.
+///
+/// Tilavetle (`audioServiceProvider`) aynı oynatıcıyı paylaşmaz: akışı
+/// kaydırmak kullanıcının süren tilavetini ÖLDÜRMEMELİ. İki ayrı `AudioPlayer`
+/// olduğu için ikisi de kendi yaşam döngüsünü sürdürür.
+final reelAudioServiceProvider = Provider<AudioService>((ref) {
+  final s = AudioService();
+  ref.onDispose(s.dispose);
+  return s;
+});
+
 final ttsServiceProvider = Provider<TtsService>((ref) {
-  final svc = TtsService();
+  // Tilavet artık arka planda da çalıyor → TTS ile üst üste binme olasılığı
+  // eskisinden çok yüksek. Konuşma başlamadan tilaveti duraklat.
+  final svc = TtsService(
+    onSpeakStart: () => ref.read(audioServiceProvider).pause(),
+  );
   svc.init();
   ref.onDispose(svc.stop);
   return svc;

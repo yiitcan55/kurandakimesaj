@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories.dart';
 import '../../domain/models.dart';
+import '../ayah_finder/ayah_finder_controller.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
@@ -29,6 +30,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!mounted) return;
     final settings = ref.read(settingsProvider);
     context.go(settings.onboardingComplete ? '/home' : '/setup');
+    // `go` navigasyon yığınını TAMAMEN değiştirir → `_onShared`'ın t≈0'da
+    // (initState, `getInitialMedia`) push ettiği `/ayah-finder` bu satırda
+    // silinmiş olur; soğuk başlatmada paylaşım sessizce kayboluyordu.
+    // Provider hâlâ dolu olduğu için rotayı burada geri koyuyoruz.
+    // `push`: geri tuşu ana sayfaya döner — `go` olsaydı uygulamadan çıkardı.
+    if (ref.read(sharedAyahInputProvider) != null) {
+      context.push('/ayah-finder');
+    }
   }
 
   @override
@@ -69,7 +78,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               const SizedBox(height: 10),
               Text(
                 'Anla  ·  Düşün  ·  Paylaş',
-                style: AppTypography.body(size: 15, color: AppColors.gold),
+                style: AppTypography.body(size: 15, color: AppColors.goldInk),
               ).animate(delay: 700.ms).fadeIn(),
             ],
           ),
@@ -292,7 +301,7 @@ class _MealStep extends StatelessWidget {
                       selected == m
                           ? Icons.radio_button_checked
                           : Icons.radio_button_off,
-                      color: AppColors.gold,
+                      color: AppColors.goldInk,
                     ),
                     const SizedBox(width: 14),
                     Text(m.label, style: AppTypography.body(size: 16, color: AppColors.cream)),
@@ -403,7 +412,7 @@ class _AhaStep extends StatelessWidget {
                     style: AppTypography.body(size: 15.5, color: AppColors.cream)),
                 const SizedBox(height: 8),
                 Text(ayah.reference,
-                    style: AppTypography.body(size: 12.5, color: AppColors.gold)),
+                    style: AppTypography.body(size: 12.5, color: AppColors.goldInk)),
               ],
             ),
           )

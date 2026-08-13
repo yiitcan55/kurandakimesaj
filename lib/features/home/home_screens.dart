@@ -116,7 +116,7 @@ class BottomBar extends StatelessWidget {
                 duration: AppDurations.fast,
                 curve: AppDurations.easeOut,
                 tween: ColorTween(
-                  end: active ? AppColors.gold : AppColors.muted,
+                  end: active ? AppColors.goldInk : AppColors.muted,
                 ),
                 builder: (_, color, _) => Icon(icon, size: 24, color: color),
               ),
@@ -128,7 +128,7 @@ class BottomBar extends StatelessWidget {
               style: AppTypography.body(
                 size: 10.5,
                 weight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? AppColors.gold : AppColors.muted,
+                color: active ? AppColors.goldInk : AppColors.muted,
               ),
               child: Text(label, textAlign: TextAlign.center),
             ),
@@ -180,7 +180,8 @@ class BottomBar extends StatelessWidget {
   }
 }
 
-/// Oluştur sheet — Video Edit / AI / Paylaşım / Hikaye (FAB'den açılır).
+/// Oluştur sheet — Ayet Bul · Video Edit · Paylaşım (FAB'den açılır).
+/// Üç öğe; ayrı bir "AI" öğesi yoktur (AI, Ayet Bul'un içindedir).
 Future<void> showCreateSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -248,7 +249,7 @@ Widget _createItem(
               color: AppColors.goldFaint,
               borderRadius: AppRadii.smAll,
             ),
-            child: Icon(icon, color: AppColors.gold),
+            child: Icon(icon, color: AppColors.goldInk),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -277,87 +278,222 @@ Widget _createItem(
   );
 }
 
-/// Ana Sayfa — selamlama, vakit şeridi, Günün Ayeti, 8'li hızlı işlem grid.
+/// Ana Sayfa — uygulamanın çekirdek döngüsünü ("Anla → Düşün → Paylaş")
+/// yansıtan üç bölüm: **Bugün** (vakit + hedef), **Günün Ayeti** (tek baskın
+/// hero + AI girişi), **Keşfet** (metin öncelikli kısayol satırları).
+///
+/// Eskiden burada 8 hücreli bir ikon-kutusu ızgarası vardı. Üç yapısal sorunu
+/// birden taşıyordu ve kaldırıldı:
+///  1. DESIGN.md'nin adıyla yasakladığı desen ("ikon-daire ızgarası yok"),
+///  2. 8 kısayolun 4'ü (namaz, zikir, kıble, günün ayeti) sayfanın üstüyle
+///     birebir mükerrerdi,
+///  3. `mainAxisExtent: 120` sabit hücre yüksekliğiydi; 1.15× yazı ölçeğinde
+///     360dp ekranda başlıklar 2 satıra sarınca aynı anda 7 hücre taşıyordu.
+/// Yerine gelen satırların sabit yüksekliği yoktur ve `FeatureDef.description`
+/// alanlarını gösterir (26 açıklama yazılıydı, hiçbir ekranda görünmüyordu).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quick = kQuickActionRoutes.map(_feature).toList();
     // Veri hazır oldukça telefon ana ekran widget'larını besle.
     _syncHomeWidgets(ref);
+    final greg = DateFormat('d MMMM yyyy', 'tr').format(DateTime.now());
+    final finder = _feature('/ayah-finder');
     return Scaffold(
+      // FAB `HomeShell`e değil, bu ekranın KENDİ `Scaffold`'una takılır —
+      // `HomeShell`/`BottomBar` build 3'ü bozan hatanın düzeltmesini taşıyor,
+      // oraya dokunulmaz.
+      //
+      // `heroTag` ZORUNLU: `FeedScreen`in FAB'ı (`feed_create_fab`) tag'siz ve
+      // `StatefulShellRoute.indexedStack` her iki dalı da ağaçta canlı tutuyor
+      // → iki tag'siz FAB "multiple heroes share the same tag" ile patlar.
+      floatingActionButton: FloatingActionButton(
+        key: const Key('home_ai_fab'),
+        heroTag: 'home_ayah_finder_fab',
+        tooltip: 'Ayet Bul',
+        onPressed: () => context.push('/ayah-finder'),
+        child: const Icon(Icons.auto_awesome_rounded),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          // Alt boşluk 24 → 96: FAB son satırın üstünü örtmesin.
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 96),
           children: [
             Text('Selamünaleyküm', style: AppTypography.display(size: 30)),
             Text(
               'Hayırlı günler dileriz.',
               style: AppTypography.body(size: 14, color: AppColors.muted),
             ),
-            const SizedBox(height: 18),
-            const _HijriDateCard(),
-            const SizedBox(height: 12),
-            const _ReadingGoalCard(),
-            const SizedBox(height: 12),
-            const _PrayerStrip(),
-            const SizedBox(height: 12),
-            const _QiblaMosqueCard(),
-            const SizedBox(height: 16),
-            const _DailyAyahHero(),
             const SizedBox(height: 22),
-            const SectionLabel(title: 'Hızlı İşlemler', eyebrow: 'Kısayollar'),
-            const SizedBox(height: 14),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              // Sabit hücre yüksekliği: ikon kutusu (72) + boşluk (8) + 2 satır
-              // başlık metni. childAspectRatio genişliğe bağlı olduğundan dar
-              // ekranlarda taşıyordu; mainAxisExtent bunu garanti eder.
-              mainAxisExtent: 120,
+
+            // ── Bugün ────────────────────────────────────────────────────
+            const SectionLabel(title: 'Bugün', eyebrow: 'VAKİT'),
+            const SizedBox(height: 12),
+            _HomeRow(
+              icon: Icons.calendar_month_rounded,
+              title: WidgetSyncService.hijriToday(),
+              subtitle: greg,
+              onTap: () => context.push('/holy-days'),
+            ),
+            const SizedBox(height: 10),
+            const _PrayerStrip(),
+            const SizedBox(height: 10),
+            Row(
               children: [
-                for (var i = 0; i < quick.length; i++)
-                  _QuickAction(feature: quick[i])
-                      .animate(delay: (60 + i * 70).ms)
-                      .fadeIn(duration: AppDurations.normal)
-                      .scale(
-                        begin: const Offset(0.8, 0.8),
-                        duration: AppDurations.slow,
-                        curve: AppDurations.spring,
-                      )
-                      .slideY(begin: 0.22, curve: AppDurations.easeOut),
+                Expanded(
+                  child: _HomeRow(
+                    icon: Icons.explore_rounded,
+                    title: 'Kıble',
+                    trailing: const SizedBox.shrink(),
+                    onTap: () => context.push('/qibla'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _HomeRow(
+                    icon: Icons.mosque_rounded,
+                    title: 'En Yakın Cami',
+                    trailing: const SizedBox.shrink(),
+                    onTap: () => context.push('/mosque'),
+                  ),
+                ),
               ],
             ),
+            const SizedBox(height: 10),
+            const _ReadingGoalCard(),
+            const SizedBox(height: 10),
+            const _HomeStats(),
+            const SizedBox(height: 28),
+
+            // ── Ayet ─────────────────────────────────────────────────────
+            const SectionLabel(
+              title: 'Günün Ayeti',
+              eyebrow: 'ANLA · DÜŞÜN · PAYLAŞ',
+            ),
             const SizedBox(height: 12),
-            // Ana sayfa yalnızca 8 öne çıkan kısayol gösterir; 24 özelliğin
-            // tamamına buradan erişilir (keşfedilebilirlik).
-            AppCard(
-              onTap: () => context.push('/features'),
-              child: Row(
-                children: [
-                  const Icon(Icons.grid_view_rounded, color: AppColors.gold),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Tüm Özellikler',
+            const _DailyAyahHero(),
+            const SizedBox(height: 10),
+            // Bölümün mantıklı devamı: kullanıcı bir ayet GÖRDÜ → elindeki
+            // görselden/bağlantıdan onu bulsun. Alt bardaki altın FAB ve
+            // "Ayet Bul" sheet öğesiyle yarışmaz, onları tamamlar — yeni
+            // yetenek değil, var olanın tek belirgin girişi.
+            _HomeRow(
+              icon: finder.icon,
+              title: finder.title,
+              subtitle: finder.description,
+              onTap: () => context.push(finder.route),
+            ),
+            const SizedBox(height: 28),
+
+            // ── Keşfet ───────────────────────────────────────────────────
+            const SectionLabel(title: 'Keşfet', eyebrow: 'KISAYOLLAR'),
+            const SizedBox(height: 12),
+            // Kademeli ızgara animasyonu (delay + scale(spring) + slideY)
+            // slop hissinin parçasıydı; blok tek ve sakin bir fade ile girer.
+            Column(
+              children: [
+                for (final f in kQuickActionRoutes.map(_feature))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _HomeRow(
+                      icon: f.icon,
+                      title: f.title,
+                      subtitle: f.description,
+                      onTap: () => context.push(f.route),
+                    ),
+                  ),
+                _HomeRow(
+                  icon: Icons.grid_view_rounded,
+                  title: 'Tüm Özellikler',
+                  subtitle: '26 özelliğin tamamı, modüllere ayrılmış.',
+                  onTap: () => context.push('/features'),
+                ),
+              ],
+            ).animate().fadeIn(duration: AppDurations.normal),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ana sayfanın sakin satırı: solda ince ikon, sağda başlık + açıklama.
+///
+/// [AppCard]'ın gradyanı burada BİLİNÇLİ kullanılmaz — sayfada tek baskın
+/// yüzey Günün Ayeti hero'su olsun diye satırlar yalnızca hairline kenarlıkla
+/// çizilir (görsel ağırlık farkı). Sabit yükseklik de yoktur: doğal yükseklik
+/// 16+16 dolgu + max(ikon 20, başlık ~23) ≈ 52px (≥44px dokunma hedefi) ve
+/// yazı ölçeği büyüdükçe satır içerikle birlikte uzar, taşmaz.
+class _HomeRow extends StatelessWidget {
+  const _HomeRow({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// Genelde [FeatureDef.description].
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  /// Verilmezse chevron çizilir. Dar (yarım genişlik) satırlarda
+  /// `SizedBox.shrink()` geçilerek metne yer bırakılır.
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadii.mdAll,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: AppRadii.mdAll,
+            border: Border.all(color: AppColors.line),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.goldInk, size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
                       style: AppTypography.body(
                         size: 15,
                         weight: FontWeight.w600,
                         color: AppColors.cream,
                       ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: AppColors.muted),
-                ],
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
+                        style: AppTypography.body(
+                          size: 12.5,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 22),
-            const _HomeStats(),
-          ],
+              trailing ??
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.muted,
+                    size: 20,
+                  ),
+            ],
+          ),
         ),
       ),
     );
@@ -383,99 +519,6 @@ void _syncHomeWidgets(WidgetRef ref) {
   if (ayah != null) sync.syncAyah(ayah.$1, ayah.$2);
 }
 
-/// Hicri + miladi tarih kartı.
-class _HijriDateCard extends StatelessWidget {
-  const _HijriDateCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final greg = DateFormat('d MMMM yyyy', 'tr').format(DateTime.now());
-    return AppCard(
-      onTap: () => context.push('/holy-days'),
-      child: Row(
-        children: [
-          const Icon(Icons.calendar_month_rounded, color: AppColors.gold),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  WidgetSyncService.hijriToday(),
-                  style: AppTypography.body(
-                    size: 15,
-                    weight: FontWeight.w600,
-                    color: AppColors.cream,
-                  ),
-                ),
-                Text(
-                  greg,
-                  style: AppTypography.body(size: 12.5, color: AppColors.muted),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: AppColors.muted),
-        ],
-      ),
-    );
-  }
-}
-
-/// Kıble + En Yakın Cami kısayol kartı (yan yana iki aksiyon).
-class _QiblaMosqueCard extends StatelessWidget {
-  const _QiblaMosqueCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _mini(context, Icons.explore_rounded, 'Kıble', '/qibla'),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _mini(
-            context,
-            Icons.mosque_rounded,
-            'En Yakın Cami',
-            '/mosque',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _mini(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String route,
-  ) {
-    return AppCard(
-      onTap: () => context.push(route),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.gold, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.body(
-                size: 14,
-                weight: FontWeight.w600,
-                color: AppColors.cream,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Günün ayeti hero kartı — gerçek seed verisinden (deterministik).
 class _DailyAyahHero extends ConsumerWidget {
   const _DailyAyahHero();
@@ -490,8 +533,6 @@ class _DailyAyahHero extends ConsumerWidget {
         loading: () => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            ShimmerSkeleton(height: 11, width: 90),
-            SizedBox(height: 14),
             ShimmerSkeleton(height: 22, width: 160),
             SizedBox(height: 14),
             ShimmerSkeleton(height: 14),
@@ -513,16 +554,10 @@ class _DailyAyahHero extends ConsumerWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('GÜNÜN AYETİ', style: AppTypography.eyebrow()),
-              const SizedBox(height: 12),
-              Directionality(
-                textDirection: TextDirection.rtl,
-                child: Text(
-                  ayah.arabic,
-                  textAlign: TextAlign.right,
-                  style: arabicStyle(size: 24),
-                ),
-              ),
+              // Başlık artık bölüm etiketinde ("Günün Ayeti") — hero içinde
+              // tekrarlanmıyor. Arapça, elle RTL kurmak yerine paylaşılan
+              // AyetFrame ile render edilir (RTL + Amiri Quran garanti).
+              AyetFrame(arabic: ayah.arabic, fontSize: 24),
               const SizedBox(height: 12),
               Text(
                 ayah.meal,
@@ -531,7 +566,7 @@ class _DailyAyahHero extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 ref0,
-                style: AppTypography.body(size: 12.5, color: AppColors.gold),
+                style: AppTypography.body(size: 12.5, color: AppColors.goldInk),
               ),
               const SizedBox(height: 8),
               AyetActionBar(
@@ -568,7 +603,7 @@ class _DailyAyahHero extends ConsumerWidget {
           );
         },
       ),
-    ).animate().fadeIn(duration: AppDurations.normal).slideY(begin: 0.15);
+    ).animate().fadeIn(duration: AppDurations.normal);
   }
 }
 
@@ -642,7 +677,28 @@ class _ReadingGoalCardState extends State<_ReadingGoalCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const SizedBox.shrink();
+    // Yüklenene kadar `SizedBox.shrink()` dönüyordu: kart ilk karede yok,
+    // ikinci karede ~98px → altındaki her şey aşağı ZIPLIYORDU. Aynı kap +
+    // aynı yükseklikte shimmer iskeleti yer tutar (satır 24 + 10 + bar 8 +
+    // 6 + 18 = 66 + 32 dolgu = 98px, gerçek kartla birebir).
+    if (!_loaded) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShimmerSkeleton(height: 24, width: 160),
+              SizedBox(height: 10),
+              ShimmerSkeleton(height: 8),
+              SizedBox(height: 6),
+              ShimmerSkeleton(height: 18, width: 110),
+            ],
+          ),
+        ),
+      );
+    }
     final progress = (_today / _goal).clamp(0.0, 1.0);
     return Card(
       margin: EdgeInsets.zero,
@@ -653,20 +709,26 @@ class _ReadingGoalCardState extends State<_ReadingGoalCard> {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.local_fire_department_rounded,
-                  color: Colors.orange,
+                  color: AppColors.warning,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '$_streak gün streak',
-                  style: AppTypography.body(
-                    size: 15,
-                    weight: FontWeight.bold,
-                    color: AppColors.cream,
+                // Expanded (eski `Spacer`+serbest Text değil): büyük yazı
+                // ölçeğinde iki etiket 288px'lik kart genişliğini aşıyor ve
+                // satır yatayda taşıyordu. Sağdaki sayaç doğal genişliğini
+                // korur, soldaki etiket kalan yere sarar.
+                Expanded(
+                  child: Text(
+                    '$_streak gün streak',
+                    style: AppTypography.body(
+                      size: 15,
+                      weight: FontWeight.bold,
+                      color: AppColors.cream,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   '$_today/$_goal sayfa',
                   style: AppTypography.body(size: 13, color: AppColors.muted),
@@ -686,7 +748,7 @@ class _ReadingGoalCardState extends State<_ReadingGoalCard> {
                   minHeight: 8,
                   backgroundColor: AppColors.line,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    progress >= 1.0 ? Colors.green : AppColors.gold,
+                    progress >= 1.0 ? AppColors.success : AppColors.goldInk,
                   ),
                 ),
               ),
@@ -741,122 +803,18 @@ class _PrayerStripState extends ConsumerState<_PrayerStrip> {
       countdown =
           '${r.inHours}:${(r.inMinutes % 60).toString().padLeft(2, '0')}:${(r.inSeconds % 60).toString().padLeft(2, '0')}';
     }
-    return AppCard(
+    return _HomeRow(
+      icon: Icons.access_time_filled_rounded,
+      title: label,
       onTap: () => context.push('/prayer'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.access_time_filled_rounded,
-                color: AppColors.gold,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: AppTypography.body(
-                  size: 15,
-                  weight: FontWeight.w600,
-                  color: AppColors.cream,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            countdown,
-            style: AppTypography.body(
-              size: 15,
-              weight: FontWeight.w700,
-              color: AppColors.gold,
-            ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
-        ],
+      trailing: Text(
+        countdown,
+        style: AppTypography.body(
+          size: 15,
+          weight: FontWeight.w700,
+          color: AppColors.goldInk,
+        ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
       ),
-    );
-  }
-}
-
-class _QuickAction extends StatefulWidget {
-  const _QuickAction({required this.feature});
-  final FeatureDef feature;
-
-  @override
-  State<_QuickAction> createState() => _QuickActionState();
-}
-
-class _QuickActionState extends State<_QuickAction> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed != value) setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final content = InkWell(
-      onTap: () => context.push(widget.feature.route),
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      borderRadius: AppRadii.lgAll,
-      splashColor: AppColors.goldFaint,
-      highlightColor: Colors.transparent,
-      child: Column(
-        children: [
-          // Büyük ikon kutusu — dokununca altın kenarlık + altın glow ile parlar.
-          AnimatedContainer(
-            duration: AppDurations.fast,
-            curve: AppDurations.easeOut,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: _pressed
-                  ? AppColors.cardGradientActive
-                  : AppColors.cardGradient,
-              borderRadius: AppRadii.lgAll,
-              border: Border.all(
-                color: _pressed ? AppColors.gold : AppColors.line,
-                width: _pressed ? 1.4 : 1,
-              ),
-              boxShadow: _pressed
-                  ? [
-                      BoxShadow(
-                        color: AppColors.gold.withValues(alpha: 0.28),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : const [],
-            ),
-            child: AnimatedScale(
-              scale: _pressed ? 1.14 : 1.0,
-              duration: AppDurations.fast,
-              curve: AppDurations.spring,
-              child: Icon(widget.feature.icon, color: AppColors.gold, size: 30),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.feature.title,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.body(size: 12, color: AppColors.cream2),
-          ),
-        ],
-      ),
-    );
-
-    if (reduceMotion) return content;
-    return AnimatedScale(
-      scale: _pressed ? 0.93 : 1.0,
-      duration: AppDurations.fast,
-      curve: AppDurations.easeOut,
-      child: content,
     );
   }
 }
@@ -879,7 +837,7 @@ class _StreakCard extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, color: AppColors.gold),
+          Icon(icon, color: AppColors.goldInk),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -887,7 +845,10 @@ class _StreakCard extends StatelessWidget {
               children: [
                 AnimatedCounter(
                   value: value,
-                  style: AppTypography.display(size: 24, color: AppColors.gold),
+                  style: AppTypography.display(
+                    size: 24,
+                    color: AppColors.goldInk,
+                  ),
                 ),
                 Text(
                   label,
@@ -979,9 +940,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: AppColors.goldFaint,
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_rounded,
-                      color: AppColors.gold,
+                      color: AppColors.goldInk,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1032,7 +993,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onTap: () => context.push('/features'),
               child: Row(
                 children: [
-                  const Icon(Icons.grid_view_rounded, color: AppColors.gold),
+                  Icon(Icons.grid_view_rounded, color: AppColors.goldInk),
                   const SizedBox(width: 14),
                   Text(
                     'Tüm Özellikler',
@@ -1063,7 +1024,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// Tüm Özellikler kataloğu — kategorili, tüm 24 özellik.
+/// Tüm Özellikler kataloğu — kategorili, `kFeatures`'ın tamamı (26 özellik).
 class FeaturesCatalogScreen extends StatelessWidget {
   const FeaturesCatalogScreen({super.key});
 
@@ -1095,7 +1056,7 @@ class FeaturesCatalogScreen extends StatelessWidget {
                               onTap: () => context.push(f.route),
                               child: Row(
                                 children: [
-                                  Icon(f.icon, color: AppColors.gold),
+                                  Icon(f.icon, color: AppColors.goldInk),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Text(
@@ -1719,9 +1680,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           key: const Key('auth_google_button'),
                           svg: _kGoogleLogoSvg,
                           label: 'Google ile devam et',
+                          // Zemin Google marka kılavuzu gereği SABİT beyaz →
+                          // üstündeki metin de sabit koyu olmalı (`cream` açık
+                          // temada koyu, KOYU temada krem olurdu → beyaz buton
+                          // üstünde kaybolurdu). `onGold` her iki temada koyu.
                           background: Colors.white,
-                          foreground: const Color(0xFF1F1F1F),
-                          border: Colors.white.withValues(alpha: 0.9),
+                          foreground: AppColors.onGold,
+                          // Kenarlık eskiden `Colors.white.withValues(0.9)`
+                          // idi: beyaz buton + beyaz kenarlık + krem sayfa
+                          // (#F4ECDD) → açık temada butonun sınırı tamamen
+                          // kayboluyordu. `goldInk` açık temada #8A6A1F'e döner
+                          // (krem sayfaya karşı 4.30:1), koyu temada #D4B25B
+                          // kalır — aynı düzeltme koşul onay kutusunda da var.
+                          border: AppColors.goldInk,
                           onPressed: _googleSignIn,
                         ),
                     ],
@@ -1744,7 +1715,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             : 'Hesabım yok, kayıt ol',
                         style: AppTypography.body(
                           size: 14,
-                          color: AppColors.gold,
+                          color: AppColors.goldInk,
                         ),
                       ),
                     ),

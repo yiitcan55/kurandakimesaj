@@ -11,6 +11,41 @@ import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
 
+/// Sepya okuma modu kendi SABİT paletini kurar ve global temadan bağımsızdır.
+/// Bu yüzden sepya zemininin üstünde `AppColors.cream/muted/goldInk/lineSoft`
+/// okumak yasak: koyu temada bunlar açık tonlara döner ve açık sepya zemininde
+/// kaybolur (koyu tema + sepya = #F3EADB metin, #F3EADB zemin → 1.0:1).
+///
+/// Kontrast oranları [bg] üstünde ölçüldü; hepsi WCAG AA (4.5:1) üstünde.
+class _SepiaPalette {
+  const _SepiaPalette();
+
+  /// Sayfa zemini.
+  Color get bg => const Color(0xFFF3EADB);
+
+  /// Birincil metin (meal, başlık) — 12.8:1.
+  Color get fg => const Color(0xFF2C2418);
+
+  /// İkincil metin (süre, pasif kontrol) — 5.5:1.
+  Color get sub => const Color(0xFF6A5B41);
+
+  /// Altın metin/ikonun sepya eşi — `AppColors.goldInk`'in açık tonu. 5.0:1.
+  /// Parlak altın (`#D4B25B`) burada 1.66:1'de kalırdı.
+  Color get ink => const Color(0xFF7E5F14);
+
+  /// Ayraç / hairline — `AppColors.lineSoft`'un sepya eşi.
+  Color get line => fg.withValues(alpha: 0.10);
+
+  /// Rozet zemini + filigran ikon — `AppColors.goldFaint`'in sepya eşi.
+  /// Alfa 0.08: üstündeki [ink] metin tam 4.5:1 kalır.
+  Color get faint => ink.withValues(alpha: 0.08);
+
+  /// Tilavet barı zemini — sayfadan bir tık koyu.
+  Color get barBg => const Color(0xFFEADFCB);
+}
+
+const _kSepia = _SepiaPalette();
+
 final surahsProvider = FutureProvider<List<Surah>>(
   (ref) => ref.read(contentRepositoryProvider).surahs(),
 );
@@ -28,12 +63,17 @@ String _ayahAudioUrl(int surah, int ayah) {
 class QuranPlayback {
   const QuranPlayback({
     this.surahNumber,
+    this.surahName = '',
     this.ayahNumbers = const [],
     this.index = -1,
     this.playing = false,
   });
 
   final int? surahNumber;
+
+  /// Bildirim/kilit ekranı başlığı için sure adı. Tilavet artık ekran dışında
+  /// da sürdüğü için oynatıcının "ne çaldığını" kendi başına bilmesi gerekiyor.
+  final String surahName;
   final List<int> ayahNumbers; // sure içindeki ayet numaraları (sıra)
   final int index; // ayahNumbers içindeki çalan konum
   final bool playing;
@@ -51,12 +91,14 @@ class QuranPlayback {
 
   QuranPlayback copyWith({
     int? surahNumber,
+    String? surahName,
     List<int>? ayahNumbers,
     int? index,
     bool? playing,
   }) =>
       QuranPlayback(
         surahNumber: surahNumber ?? this.surahNumber,
+        surahName: surahName ?? this.surahName,
         ayahNumbers: ayahNumbers ?? this.ayahNumbers,
         index: index ?? this.index,
         playing: playing ?? this.playing,
@@ -91,16 +133,28 @@ class QuranPlayerController extends Notifier<QuranPlayback> {
   }
 
   /// [ayahNumbers] sırasındaki [index] konumundan tilaveti başlatır.
-  Future<void> playAt(int surahNumber, List<int> ayahNumbers, int index) async {
+  Future<void> playAt(
+    int surahNumber,
+    String surahName,
+    List<int> ayahNumbers,
+    int index,
+  ) async {
     if (index < 0 || index >= ayahNumbers.length) return;
     state = QuranPlayback(
       surahNumber: surahNumber,
+      surahName: surahName,
       ayahNumbers: ayahNumbers,
       index: index,
       playing: true,
     );
-    await _audio.playUrl(_ayahAudioUrl(surahNumber, ayahNumbers[index]));
+    await _play(surahNumber, surahName, ayahNumbers[index]);
   }
+
+  Future<void> _play(int surahNumber, String surahName, int ayah) =>
+      _audio.playUrl(
+        _ayahAudioUrl(surahNumber, ayah),
+        title: AudioService.mediaTitleFor(surahName, ayah),
+      );
 
   /// Oynat/duraklat — aynı ayette kaldığı yerden devam eder.
   Future<void> toggle() async {
@@ -118,7 +172,7 @@ class QuranPlayerController extends Notifier<QuranPlayback> {
   Future<void> _jump(int i) async {
     if (!state.active || i < 0 || i >= state.ayahNumbers.length) return;
     state = state.copyWith(index: i, playing: true);
-    await _audio.playUrl(_ayahAudioUrl(state.surahNumber!, state.ayahNumbers[i]));
+    await _play(state.surahNumber!, state.surahName, state.ayahNumbers[i]);
   }
 
   void _onComplete() {
@@ -168,9 +222,10 @@ class _QuranScreenState extends ConsumerState<QuranScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: TextField(
                 onChanged: (v) => setState(() => _query = v.toLowerCase()),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Sure ara…',
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.gold),
+                  prefixIcon:
+                      Icon(Icons.search_rounded, color: AppColors.goldInk),
                 ),
               ),
             ),
@@ -253,7 +308,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen> {
                                     width: 40,
                                     child: Text('${s.number}',
                                         textAlign: TextAlign.center,
-                                        style: AppTypography.display(size: 20, color: AppColors.gold)),
+                                        style: AppTypography.display(size: 20, color: AppColors.goldInk)),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -276,7 +331,7 @@ class _QuranScreenState extends ConsumerState<QuranScreen> {
                                   IconButton(
                                     icon: Icon(
                                       isFav ? Icons.star_rounded : Icons.star_border_rounded,
-                                      color: isFav ? AppColors.gold : AppColors.muted,
+                                      color: isFav ? AppColors.goldInk : AppColors.muted,
                                     ),
                                     tooltip: isFav ? 'Favorilerden çıkar' : 'Favorilere ekle',
                                     onPressed: () => ref
@@ -321,9 +376,18 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   bool _didScroll = false;
   bool _highlight = false;
 
+  // `dispose()` içinde `ref` KULLANILAMAZ: Riverpod, widget unmount edilirken
+  // BuildContext'e dayanan `ref`i reddeder (StateError). Eskiden `dispose`
+  // servisleri oradan okuyordu; atılan hata `dispose`u YARIDA kesiyordu, yani
+  // okuma istatistiği hiç kaydedilmiyor ve altındaki `stop()` hiç çalışmıyordu
+  // (ekrandan çıkınca tilavet arka planda çalmaya devam ediyordu). Servisleri
+  // `ref`in güvenli olduğu initState'te yakala.
+  late final StatsService _stats;
+
   @override
   void initState() {
     super.initState();
+    _stats = ref.read(statsServiceProvider);
     _stopwatch.start();
   }
 
@@ -348,13 +412,16 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   @override
   void dispose() {
     _stopwatch.stop();
-    ref.read(statsServiceProvider).recordReading(
+    _stats.recordReading(
       surahId: widget.surah.number,
       ayahCount: widget.surah.ayahCount,
       durationSeconds: _stopwatch.elapsed.inSeconds,
     );
-    // Ekrandan çıkınca tilaveti durdur — kontrolü olmayan arka plan sesi kalmasın.
-    ref.read(quranPlayerProvider.notifier).stop();
+    // Eskiden burada `_player.stop()` vardı: ekrandan çıkınca tilavet susuyordu.
+    // Artık ses ARKA PLANDA da sürüyor ve kullanıcı onu bildirim/kilit ekranı
+    // medya çubuğundan durdurabiliyor — yani "kontrolü olmayan arka plan sesi"
+    // gerekçesi ortadan kalktı. Durdurmak, kullanıcının açıkça istediği
+    // davranışı (ekranı kapatınca dinlemeye devam) engellerdi.
     super.dispose();
   }
 
@@ -362,9 +429,14 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   Widget build(BuildContext context) {
     final s = widget.surah;
     final async = ref.watch(surahAyahsProvider(s.number));
-    final bg = _sepia ? const Color(0xFFF3EADB) : AppColors.emerald950;
-    final fg = _sepia ? const Color(0xFF2C2418) : AppColors.cream;
-    final sub = _sepia ? const Color(0xFF6A5B41) : AppColors.muted;
+    // Sepya zemininin üstündeki HER renk buradan türetilir; global temadan
+    // renk okuyan tek bir widget bile kalmamalı (bkz. [_SepiaPalette]).
+    final bg = _sepia ? _kSepia.bg : AppColors.emerald950;
+    final fg = _sepia ? _kSepia.fg : AppColors.cream;
+    final sub = _sepia ? _kSepia.sub : AppColors.muted;
+    final ink = _sepia ? _kSepia.ink : AppColors.goldInk;
+    final line = _sepia ? _kSepia.line : AppColors.lineSoft;
+    final faint = _sepia ? _kSepia.faint : AppColors.goldFaint;
 
     return Scaffold(
       backgroundColor: bg,
@@ -374,22 +446,30 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
           children: [
             AppHeader(
               title: s.nameTr,
+              foreground: fg,
+              iconColor: ink,
               trailing: IconButton(
                 icon: Icon(_sepia ? Icons.dark_mode_rounded : Icons.wb_sunny_rounded,
-                    color: AppColors.gold),
+                    color: ink),
                 onPressed: () => setState(() => _sepia = !_sepia),
               ),
             ),
             Expanded(
               child: async.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => EmptyState(icon: Icons.error_outline_rounded, message: '$e'),
+                loading: () => Center(child: CircularProgressIndicator(color: ink)),
+                error: (e, _) => EmptyState(
+                    icon: Icons.error_outline_rounded,
+                    message: '$e',
+                    color: sub,
+                    iconColor: faint),
                 data: (ayahs) {
                   if (ayahs.isEmpty) {
                     return EmptyState(
                       icon: Icons.menu_book_rounded,
                       message:
                           '${s.nameTr} suresinin metni bu sürümde henüz paketlenmedi.\nKısa ve meşhur sureler okunmaya hazır.',
+                      color: sub,
+                      iconColor: faint,
                     );
                   }
                   final ayahNumbers = [for (final a in ayahs) a.numberInSurah];
@@ -404,7 +484,7 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
                             textDirection: TextDirection.rtl,
                             child: Text('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
                                 textAlign: TextAlign.center,
-                                style: arabicStyle(size: 24, color: AppColors.gold)),
+                                style: arabicStyle(size: 24, color: ink)),
                           ),
                         ),
                       for (var i = 0; i < ayahs.length; i++)
@@ -416,17 +496,21 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
                             index: i,
                             ayahNumbers: ayahNumbers,
                             fg: fg,
-                            sub: sub,
+                            ink: ink,
+                            faint: faint,
+                            line: line,
                           );
                           if (!isTarget) return tile;
-                          // Hedef ayet: kaydırma anahtarı + solup giden altın vurgu.
+                          // Hedef ayet: kaydırma anahtarı + solup giden vurgu.
+                          // Sabit `gold` burada işe yaramaz: sepya zemininde de,
+                          // açık temada da fark edilmeyecek kadar soluk kalıyor.
                           return AnimatedContainer(
                             key: _targetKey,
                             duration: AppDurations.slow,
                             curve: Curves.easeOut,
                             decoration: BoxDecoration(
                               color: _highlight
-                                  ? AppColors.gold.withValues(alpha: 0.14)
+                                  ? ink.withValues(alpha: 0.14)
                                   : Colors.transparent,
                               borderRadius: AppRadii.mdAll,
                             ),
@@ -469,13 +553,20 @@ class _TilawahBar extends ConsumerWidget {
 
     final ctrl = ref.read(quranPlayerProvider.notifier);
     final player = ref.read(audioServiceProvider).player;
-    final barBg = sepia ? const Color(0xFFEADFCB) : AppColors.emerald900;
-    final fg = sepia ? const Color(0xFF2C2418) : AppColors.cream;
+    // Bar da sepya zemininin üstünde duruyor — tek bir rengi bile global
+    // temadan okuyamaz (bkz. [_SepiaPalette]).
+    final barBg = sepia ? _kSepia.barBg : AppColors.emerald900;
+    final fg = sepia ? _kSepia.fg : AppColors.cream;
+    final sub = sepia ? _kSepia.sub : AppColors.muted;
+    final ink = sepia ? _kSepia.ink : AppColors.goldInk;
+    final line = sepia ? _kSepia.line : AppColors.lineSoft;
+    // Slider'ın dolu kısmı: marka altını açık sepya barda 1.5:1'de kaybolur.
+    final track = sepia ? _kSepia.ink : AppColors.gold;
 
     return Container(
       decoration: BoxDecoration(
         color: barBg,
-        border: Border(top: BorderSide(color: AppColors.lineSoft)),
+        border: Border(top: BorderSide(color: line)),
       ),
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Column(
@@ -497,9 +588,9 @@ class _TilawahBar extends ConsumerWidget {
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           trackHeight: 2.5,
-                          activeTrackColor: AppColors.gold,
-                          inactiveTrackColor: AppColors.lineSoft,
-                          thumbColor: AppColors.gold,
+                          activeTrackColor: track,
+                          inactiveTrackColor: line,
+                          thumbColor: track,
                           overlayShape:
                               const RoundSliderOverlayShape(overlayRadius: 14),
                           thumbShape:
@@ -521,9 +612,9 @@ class _TilawahBar extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(_fmt(pos),
-                                style: AppTypography.body(size: 11, color: fg)),
+                                style: AppTypography.body(size: 11, color: sub)),
                             Text(_fmt(dur),
-                                style: AppTypography.body(size: 11, color: fg)),
+                                style: AppTypography.body(size: 11, color: sub)),
                           ],
                         ),
                       ),
@@ -544,7 +635,7 @@ class _TilawahBar extends ConsumerWidget {
               IconButton(
                 iconSize: 34,
                 icon: Icon(Icons.skip_previous_rounded,
-                    color: pb.hasPrev ? AppColors.gold : AppColors.muted),
+                    color: pb.hasPrev ? ink : sub),
                 onPressed: pb.hasPrev ? ctrl.previous : null,
               ),
               IconButton(
@@ -553,14 +644,14 @@ class _TilawahBar extends ConsumerWidget {
                   pb.playing
                       ? Icons.pause_circle_filled_rounded
                       : Icons.play_circle_fill_rounded,
-                  color: AppColors.gold,
+                  color: ink,
                 ),
                 onPressed: ctrl.toggle,
               ),
               IconButton(
                 iconSize: 34,
                 icon: Icon(Icons.skip_next_rounded,
-                    color: pb.hasNext ? AppColors.gold : AppColors.muted),
+                    color: pb.hasNext ? ink : sub),
                 onPressed: pb.hasNext ? ctrl.next : null,
               ),
               const Spacer(),
@@ -570,7 +661,7 @@ class _TilawahBar extends ConsumerWidget {
                   alignment: Alignment.centerRight,
                   child: IconButton(
                     iconSize: 22,
-                    icon: Icon(Icons.close_rounded, color: AppColors.muted),
+                    icon: Icon(Icons.close_rounded, color: sub),
                     onPressed: ctrl.stop,
                   ),
                 ),
@@ -590,14 +681,28 @@ class _AyahTile extends ConsumerWidget {
     required this.index,
     required this.ayahNumbers,
     required this.fg,
-    required this.sub,
+    required this.ink,
+    required this.faint,
+    required this.line,
   });
   final Surah surah;
   final Ayah ayah;
   final int index;
   final List<int> ayahNumbers;
+
+  /// Meal metni. Sepyada [_SepiaPalette.fg], normalde `AppColors.cream`.
   final Color fg;
-  final Color sub;
+
+  /// Arapça metin + eylem ikonları. Sepyada [_SepiaPalette.ink], normalde
+  /// `AppColors.goldInk`. Tile sepya zemininin üstünde durduğu için bu
+  /// renkleri global temadan KENDİ okuyamaz.
+  final Color ink;
+
+  /// Ayet no rozetinin zemini — [ink]'in düşük alfası.
+  final Color faint;
+
+  /// Ayetleri ayıran hairline.
+  final Color line;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -615,7 +720,8 @@ class _AyahTile extends ConsumerWidget {
                 height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isCurrent ? AppColors.gold : AppColors.goldFaint,
+                  // `gold`/`onGold` sabit marka çifti — her zemin üstünde 8.9:1.
+                  color: isCurrent ? AppColors.gold : faint,
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.gold),
                 ),
@@ -623,7 +729,7 @@ class _AyahTile extends ConsumerWidget {
                     style: AppTypography.body(
                         size: 12,
                         weight: FontWeight.w700,
-                        color: isCurrent ? AppColors.onGold : AppColors.gold)),
+                        color: isCurrent ? AppColors.onGold : ink)),
               ),
               const Spacer(),
               IconButton(
@@ -631,13 +737,13 @@ class _AyahTile extends ConsumerWidget {
                   isCurrent && pb.playing
                       ? Icons.pause_circle_outline_rounded
                       : Icons.play_circle_outline_rounded,
-                  color: AppColors.gold,
+                  color: ink,
                 ),
                 onPressed: () => isCurrent
                     ? ref.read(quranPlayerProvider.notifier).toggle()
                     : ref
                         .read(quranPlayerProvider.notifier)
-                        .playAt(surah.number, ayahNumbers, index),
+                        .playAt(surah.number, surah.nameTr, ayahNumbers, index),
               ),
               Consumer(
                 builder: (context, ref, _) {
@@ -647,7 +753,9 @@ class _AyahTile extends ConsumerWidget {
                       tts.isSpeaking
                           ? Icons.stop_circle_outlined
                           : Icons.volume_up_rounded,
-                      color: Theme.of(context).colorScheme.primary,
+                      // `colorScheme.primary` = sabit `gold`; sepya zemininde
+                      // 1.66:1 kalıyordu. Satırdaki diğer ikonlarla aynı ton.
+                      color: ink,
                     ),
                     tooltip: tts.isSpeaking ? 'Durdur' : 'Sesli Dinle',
                     onPressed: () {
@@ -661,7 +769,7 @@ class _AyahTile extends ConsumerWidget {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.gold),
+                icon: Icon(Icons.bookmark_add_outlined, color: ink),
                 onPressed: () async {
                   await ref.read(collectionsRepositoryProvider).add(
                         reference: '${surah.nameTr}, ${ayah.numberInSurah}',
@@ -680,12 +788,12 @@ class _AyahTile extends ConsumerWidget {
           Directionality(
             textDirection: TextDirection.rtl,
             child: Text(ayah.arabic,
-                textAlign: TextAlign.right, style: arabicStyle(size: 28, color: AppColors.gold)),
+                textAlign: TextAlign.right, style: arabicStyle(size: 28, color: ink)),
           ),
           const SizedBox(height: 12),
           Text(ayah.meal, style: AppTypography.body(size: 16, color: fg)),
           const SizedBox(height: 12),
-          Divider(color: AppColors.lineSoft),
+          Divider(color: line),
         ],
       ),
     );

@@ -1,5 +1,8 @@
 package com.kurandakimesaj.app
 
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 
-class MainActivity : FlutterActivity()
+// AudioServiceActivity, FlutterActivity'den türer; arka plan ses servisinin
+// activity'ye bağlanabilmesi için gerekli. Manifest'teki activity ADI
+// değişmedi — deep-link ve paylaşım intent-filter'ları o ada bağlı.
+class MainActivity : AudioServiceActivity()

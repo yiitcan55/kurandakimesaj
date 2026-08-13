@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -6,6 +7,12 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Tilavetin arka planda sürmesi (just_audio_background → audio_service).
+         FOREGROUND_SERVICE_MEDIA_PLAYBACK targetSdk 34+ için ZORUNLU: tipsiz
+         foreground service Android 14'te SecurityException ile reddedilir. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <application
         android:label="kurandakimesaj"
         android:name="${applicationName}"
@@ -79,6 +86,31 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/ayah_widget_info" />
+        </receiver>
+
+        <!-- Arka plan ses servisi + bildirim medya çubuğu.
+             DİKKAT: `.MainActivity`nin android:name'i DEĞİŞTİRİLMEDİ — o ad
+             widget provider'ları, deep-link ve paylaşım intent-filter'larıyla
+             bağlı. Bunun yerine MainActivity.kt AudioServiceActivity'den
+             türetildi. `launchMode="singleTop"` de KORUNDU (singleTask,
+             taskAffinity="" ile birleşince recents davranışını ve home_widget
+             deep-link'ini bozar). -->
+        <service
+            android:name="com.ryanheise.audioservice.AudioService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService"/>
+            </intent-filter>
+        </service>
+        <receiver
+            android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON"/>
+            </intent-filter>
         </receiver>
 
         <!-- Don't delete the meta-data below.

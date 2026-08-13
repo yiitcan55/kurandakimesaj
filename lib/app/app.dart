@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:just_audio_background/just_audio_background.dart'
+    show JustAudioBackground;
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,6 +29,16 @@ Future<BootstrapResult> bootstrap() async {
 
   // Türkçe tarih biçimlendirme (intl) — Dini Günler vb. ekranlar için.
   await initializeDateFormatting('tr', null);
+
+  // Tilavetin arka planda sürmesi + bildirim/kilit ekranı medya çubuğu.
+  // `runApp` ÖNCESİ çağrılmalı: paket, ilk oynatıcı kurulmadan servisi
+  // bağlamak zorunda. `androidNotificationOngoing: true` → çalarken bildirim
+  // kaydırılıp kapatılamaz (yanlışlıkla sesi öldürmeyi engeller).
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.kurandakimesaj.app.channel.audio',
+    androidNotificationChannelName: 'Tilavet',
+    androidNotificationOngoing: true,
+  );
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -103,7 +115,16 @@ class _KuranAppState extends ConsumerState<KuranApp> {
     };
     if (input == null) return;
     ref.read(sharedAyahInputProvider.notifier).set(input);
-    ref.read(routerProvider).push('/ayah-finder');
+    final router = ref.read(routerProvider);
+    // Soğuk başlatma: `getInitialMedia` burayı t≈0'da çağırır, ama ekranda
+    // hâlâ `/splash` var ve `SplashScreen._go` 2400 ms sonra `go('/home')` ile
+    // yığını TAMAMEN değiştiriyor — buradan push edilen rota silinirdi.
+    // Üstelik push edilen AyahFinderScreen bir frame sonra provider'ı
+    // `clear()` ettiği için silinen rotayla birlikte paylaşım da kaybolurdu.
+    // Splash'teysek rotayı ona bırakıyoruz: provider dolu kalır, splash
+    // `/home`'a geçtikten sonra `/ayah-finder`'ı kendisi push eder.
+    if (router.state.uri.path == '/splash') return;
+    router.push('/ayah-finder');
   }
 
   @override
@@ -135,7 +156,16 @@ class _KuranAppState extends ConsumerState<KuranApp> {
         // olur, böylece AppColors okuyan `const` widget'lar da güncel paleti
         // alır (go_router delegate mevcut route'u koruduğundan navigasyon
         // kaybolmaz). İsim-düzenleme çökmesiyle ilgisiz olduğu doğrulandı.
-        return KeyedSubtree(key: ValueKey(isDark), child: child!);
+        //
+        // Yazı ölçeği kelepçesi: Android "Yazı tipi boyutu" 2.0×'e, iOS
+        // Dynamic Type AX5 ≈3.1×'e kadar çıkıyor ve her sabit-piksel kabı
+        // taşırıyor. 1.3 tavanı erişilebilirliği tamamen kesmeden kapları
+        // korur (yapısal düzeltmeler bunun ÜSTÜNE gelir — tek başına yetmez).
+        return MediaQuery.withClampedTextScaling(
+          minScaleFactor: 1.0,
+          maxScaleFactor: 1.3,
+          child: KeyedSubtree(key: ValueKey(isDark), child: child!),
+        );
       },
       routerConfig: router,
     );

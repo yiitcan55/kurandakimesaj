@@ -88,7 +88,7 @@ class FastingScreen extends ConsumerWidget {
                       AppCard(
                         child: Row(
                           children: [
-                            const Icon(Icons.event_repeat_rounded, color: AppColors.gold),
+                            Icon(Icons.event_repeat_rounded, color: AppColors.goldInk),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text('Kalan kaza orucu',
@@ -96,13 +96,13 @@ class FastingScreen extends ConsumerWidget {
                             ),
                             IconButton(
                               onPressed: () => ref.read(kazaProvider.notifier).set(kaza - 1),
-                              icon: const Icon(Icons.remove_circle_outline_rounded, color: AppColors.gold),
+                              icon: Icon(Icons.remove_circle_outline_rounded, color: AppColors.goldInk),
                             ),
                             Text('$kaza',
-                                style: AppTypography.display(size: 24, color: AppColors.gold)),
+                                style: AppTypography.display(size: 24, color: AppColors.goldInk)),
                             IconButton(
                               onPressed: () => ref.read(kazaProvider.notifier).set(kaza + 1),
-                              icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.gold),
+                              icon: Icon(Icons.add_circle_outline_rounded, color: AppColors.goldInk),
                             ),
                           ],
                         ),
@@ -174,7 +174,7 @@ class _FastingCountdownState extends State<_FastingCountdown> {
         Text(label.toUpperCase(), style: AppTypography.eyebrow()),
         const SizedBox(height: 6),
         Text(hhmmss,
-            style: AppTypography.display(size: 44, color: AppColors.gold)
+            style: AppTypography.display(size: 44, color: AppColors.goldInk)
                 .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
       ],
     );
@@ -193,9 +193,9 @@ class _TimeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.gold),
+          Icon(icon, color: AppColors.goldInk),
           const SizedBox(height: 10),
-          Text(time, style: AppTypography.display(size: 26, color: AppColors.gold)),
+          Text(time, style: AppTypography.display(size: 26, color: AppColors.goldInk)),
           Text(label, style: AppTypography.body(size: 12.5, color: AppColors.muted)),
         ],
       ),

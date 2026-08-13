@@ -84,6 +84,21 @@ ThemeData buildAppTheme(Brightness brightness) {
   // ThemeData içindeki AppColors getter'larının doğru paleti döndürmesi için
   // global brightness'ı bu tema kurulmadan ÖNCE ayarla. Renkler ThemeData'ya
   // somut değer olarak gömülür, dolayısıyla sonraki tema kurulumu bunu bozmaz.
+  //
+  // SAFLIK: global'i KALICI değiştirmiyoruz. `theme:` ve `darkTheme:` arka
+  // arkaya değerlendirildiği için eskiden global her zaman son çağrıda
+  // (dark) kalıyordu; `MaterialApp.builder` alt-ağacının DIŞINDA renk okuyan
+  // her yer (route inşası, showModalBottomSheet/showDialog argümanları,
+  // ScaffoldMessenger) yanlış paleti alıyordu. Çıkışta geri yükle.
+  final previous = AppColors.brightness;
+  try {
+    return _buildAppTheme(brightness);
+  } finally {
+    AppColors.brightness = previous;
+  }
+}
+
+ThemeData _buildAppTheme(Brightness brightness) {
   AppColors.brightness = brightness;
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.gold,
@@ -119,7 +134,8 @@ ThemeData buildAppTheme(Brightness brightness) {
     textTheme: textTheme,
     splashColor: AppColors.goldFaint,
     highlightColor: AppColors.goldFaint,
-    iconTheme: const IconThemeData(color: AppColors.gold),
+    // İkon = ön plan → goldInk (sabit `gold` açık temada krem zeminde 1.66:1).
+    iconTheme: IconThemeData(color: AppColors.goldInk),
     dividerColor: AppColors.lineSoft,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,

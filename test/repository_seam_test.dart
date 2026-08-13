@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kurandakimesaj/data/backend_repositories.dart';
@@ -20,6 +22,10 @@ class _FakeSocialRepository implements ISocialRepository {
   Future<List<FeedPost>> fetchReels() async => const [];
 
   @override
+  Future<String> uploadPostMedia(Uint8List bytes, {required bool isVideo}) async =>
+      'https://example.com/media.${isVideo ? 'mp4' : 'png'}';
+
+  @override
   Future<void> createPost({
     required String reference,
     required String arabic,
@@ -30,6 +36,7 @@ class _FakeSocialRepository implements ISocialRepository {
     String? mediaUrl,
     String? videoUrl,
     String? templateId,
+    String? audioTrackId,
   }) async {
     createdPosts.add(reference);
   }

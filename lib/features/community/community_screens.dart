@@ -5,8 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/backend_repositories.dart';
@@ -210,7 +208,8 @@ class FeedScreen extends ConsumerWidget {
     final isSignedIn = ref.watch(isSignedInProvider);
     return Scaffold(
       // Reels tam ekran akar; zemin videonun letterbox rengiyle aynı olsun.
-      backgroundColor: AppColors.onGold,
+      // `onGold` DEĞİL: o rol "altın yüzey üstündeki metin"dir, yüzey değil.
+      backgroundColor: AppColors.mediaLetterbox,
       floatingActionButton: isSignedIn
           ? FloatingActionButton(
               key: const Key('feed_create_fab'),
@@ -265,11 +264,13 @@ class _Reel {
     required this.isCuration,
     required this.arabic,
     required this.meal,
+    required this.caption,
     required this.reference,
     required this.topic,
     required this.template,
     this.videoUrl,
     this.thumbnailUrl,
+    this.audioUrl,
     this.authorName,
     this.authorId,
     this.authorInitial,
@@ -284,6 +285,10 @@ class _Reel {
   final bool isCuration;
   final String arabic;
   final String meal;
+
+  /// Kullanıcının yazdığı açıklama. Boşsa `meal`e düşülür — bugün iki yayın
+  /// yolu da ikisine aynı metni yazıyor, ayrıştıkları an doğrusu gösterilir.
+  final String caption;
   final String reference;
   final String topic;
   final VideoTemplate template; // gradyan fallback için (her zaman çözülür)
@@ -291,6 +296,10 @@ class _Reel {
   /// Stüdyo görseli (kind='still') veya videonun poster karesi. Her ikisi de
   /// `thumbnail_url`/`media_url` kolonundan gelir.
   final String? thumbnailUrl;
+
+  /// Küratörlü arka plan müziği (FK ile kilitli kütüphaneden). Doluysa videonun
+  /// KENDİ sesi susturulur — iki ses üst üste binmez.
+  final String? audioUrl;
   final String? authorName; // bulut
   final String? authorId; // bulut
   final String? authorInitial; // bulut
@@ -351,11 +360,13 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
                   isCuration: false,
                   arabic: p.arabic,
                   meal: p.meal,
+                  caption: p.caption,
                   reference: p.reference,
                   topic: p.topic,
                   template: _Reel.templateFor(p.templateId),
                   videoUrl: p.videoUrl,
                   thumbnailUrl: p.thumbnailUrl,
+                  audioUrl: p.audioUrl,
                   authorName: p.authorName,
                   authorId: p.authorId,
                   authorInitial: p.authorName.isNotEmpty
@@ -405,6 +416,8 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
               isCuration: true,
               arabic: items[i].arabic,
               meal: items[i].meal,
+              // Küratörlük içeriğinde kullanıcı açıklaması yok → meal gösterilir.
+              caption: '',
               reference: items[i].reference,
               topic: items[i].topic,
               // Küratörlük: şablonu döngüsel ata (görsel çeşitlilik).
@@ -676,9 +689,28 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
       // Sayfa görünür oldu → controller'ı şimdi kur (initState'te kurulmadı).
       if (_hasVideo && _video == null) _initVideo();
     } else {
-      // Sayfa görünmez oldu → decoder'ı serbest bırak (pil + bellek).
+      // Sayfa görünmez oldu → decoder'ı serbest bırak (pil + bellek) ve
+      // arka plan müziğini durdur (bir sonraki sayfa kendi parçasını açar).
       _releaseVideo();
+      ref.read(reelAudioServiceProvider).pause();
     }
+  }
+
+  /// Küratörlü arka plan müziğini sayfanın görünürlüğüyle senkronla.
+  ///
+  /// `build`ten çağrılır çünkü hem `isActive` hem `muted` değişimini izlemesi
+  /// gerekiyor. Oynatıcı AYRI bir örnek (`reelAudioServiceProvider`) — akışı
+  /// kaydırmak kullanıcının süren tilavetini öldürmez.
+  void _syncBackgroundAudio(bool muted) {
+    final url = widget.reel.audioUrl;
+    final audio = ref.read(reelAudioServiceProvider);
+    if (!widget.isActive || url == null || muted || _userPaused) {
+      audio.pause();
+      return;
+    }
+    audio.playUrl(url, title: widget.reel.reference.isEmpty
+        ? 'Reels müziği'
+        : widget.reel.reference);
   }
 
   @override
@@ -753,7 +785,12 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final reel = widget.reel;
     // Sessize-alma durumu global; değişince oynayan videoya anında uygula.
     final muted = ref.watch(reelsMutedProvider);
-    if (_video != null && _initialized) _video!.setVolume(muted ? 0 : 1);
+    // Arka plan müziği varken videonun KENDİ sesi susar: küratörlü parça
+    // duyulsun, iki ses üst üste binmesin.
+    if (_video != null && _initialized) {
+      _video!.setVolume(muted || reel.audioUrl != null ? 0 : 1);
+    }
+    _syncBackgroundAudio(muted);
 
     return GestureDetector(
       onTap: _hasVideo ? _togglePlay : null,
@@ -824,7 +861,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
   Widget _background() {
     if (_hasVideo && _initialized && _video != null) {
       return ColoredBox(
-        color: AppColors.onGold,
+        // Dikey videonun yanındaki boşluğu dolduran letterbox — yüzey rolü.
+        color: AppColors.mediaLetterbox,
         child: Center(
           child: AspectRatio(
             aspectRatio: _video!.value.aspectRatio,
@@ -898,6 +936,90 @@ class _StillBackground extends StatelessWidget {
 
 /// Video olmayan reel için tam ekran kompozisyon: gradyan + RTL Arapça + meal
 /// + "Video hazırlanıyor" / "Yükleniyor" rozeti. Asla boş/bozuk görünmez.
+/// Reels açıklaması — 2 satırda kırpılır, dokununca 8 satıra açılır.
+///
+/// "…devamı" affordance'ı YALNIZ metin gerçekten taşıyorsa gösterilir
+/// (`TextPainter.didExceedMaxLines`); kısa bir açıklamada tıklayacak bir şey
+/// yokken "devamı" yazmak kullanıcıya yalan söylerdi.
+///
+/// Genişleme EFEMER bir UI durumu — sayfa değişince sıfırlanması DOĞRU
+/// davranış, bu yüzden Notifier'a taşımak gereksiz soyutlama olurdu.
+///
+/// Renk: bu katman her zaman koyu bir yüzeyin (video / koyu şablon gradyanı +
+/// `_BottomScrim`) üstünde durur → tema DÖNEN roller (`cream`/`muted`)
+/// kullanılamaz, sabit `onMedia`/`gold` kullanılır.
+@visibleForTesting
+class ReelCaption extends StatefulWidget {
+  const ReelCaption({super.key, required this.text});
+  final String text;
+
+  static const int collapsedLines = 2;
+  static const int expandedLines = 8;
+
+  @override
+  State<ReelCaption> createState() => _ReelCaptionState();
+}
+
+class _ReelCaptionState extends State<ReelCaption> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppTypography.body(size: 14.5, color: AppColors.onMedia);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: ReelCaption.collapsedLines,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final overflows = painter.didExceedMaxLines;
+        painter.dispose();
+
+        final body = Text(
+          widget.text,
+          key: const Key('reel_caption_text'),
+          maxLines: _expanded
+              ? ReelCaption.expandedLines
+              : ReelCaption.collapsedLines,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        );
+        if (!overflows) return body;
+
+        return Semantics(
+          button: true,
+          label: _expanded
+              ? 'Açıklamayı kısalt'
+              : 'Açıklamanın devamını göster',
+          child: GestureDetector(
+            key: const Key('reel_caption_toggle'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                body,
+                const SizedBox(height: 2),
+                Text(
+                  _expanded ? 'daha az' : '…devamı',
+                  style: AppTypography.body(
+                    size: 13,
+                    weight: FontWeight.w600,
+                    color: AppColors.gold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ReelComposition extends StatelessWidget {
   const _ReelComposition({required this.reel, this.loading = false});
   final _Reel reel;
@@ -914,6 +1036,10 @@ class _ReelComposition extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.fromLTRB(28, 60, 28, 120),
+      // Şablon gradyanlarının (kTemplates) HEPSİ koyudur; bu yüzden buradaki
+      // metin tema DÖNMEYEN rollerle yazılır. `arabicStyle`ın varsayılanı
+      // `goldInk`, gövde metni ise `cream`di — ikisi de açık temada koyulaşıp
+      // koyu gradyan üstünde okunamaz hale geliyordu.
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -923,7 +1049,7 @@ class _ReelComposition extends StatelessWidget {
               child: Text(
                 reel.arabic,
                 textAlign: TextAlign.center,
-                style: arabicStyle(size: 30),
+                style: arabicStyle(size: 30, color: AppColors.gold),
               ),
             ),
           if (reel.meal.isNotEmpty) ...[
@@ -931,7 +1057,11 @@ class _ReelComposition extends StatelessWidget {
             Text(
               reel.meal,
               textAlign: TextAlign.center,
-              style: AppTypography.body(size: 17, color: AppColors.cream),
+              // Sınırsızdı: uzun bir meal `Column`u taşırıyordu (latent
+              // overflow — kompozisyon sabit yükseklikli bir karede çizilir).
+              maxLines: 10,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.body(size: 17, color: AppColors.onMedia),
             ),
           ],
           // Rozet YALNIZ yüklenirken. Eskiden burada "Video hazırlanıyor"
@@ -1192,25 +1322,24 @@ class _ReelOverlay extends StatelessWidget {
                       style: AppTypography.body(
                         size: 14,
                         weight: FontWeight.w600,
-                        color: AppColors.cream,
+                        color: AppColors.onMedia,
                       ),
                     ),
                   ),
                 ],
               ),
-              if (reel.meal.isNotEmpty) ...[
+              if (reel.caption.isNotEmpty || reel.meal.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Text(
-                  reel.meal,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.body(size: 14.5, color: AppColors.cream),
+                ReelCaption(
+                  text: reel.caption.isEmpty ? reel.meal : reel.caption,
                 ),
               ],
-              // Ayet künyesi: dokununca sûreyi okuyucuda o ayete kaydırarak açar.
-              // `selected: true` bilinçli — altın zemin + onGold metin tema
-              // değişiminden ETKİLENMEZ; video/gradyan üstünde her iki temada
-              // da okunur (cream/cream2 açık temada koyulaşıp kaybolurdu).
+              // Bu katmanın TAMAMI daima koyu bir yüzeyin (video / koyu şablon
+              // gradyanı + `_BottomScrim`) üstünde durur, dolayısıyla tema DÖNEN
+              // hiçbir metin rolü kullanılamaz: `cream`/`cream2`/`muted` açık
+              // temada koyulaşıp koyu üstüne koyu yazardı. Yazar adı ve meal
+              // bu yüzden SABİT `onMedia`; künye chip'i ise `selected: true`
+              // ile sabit altın zemin + `onGold` metin kullanır.
               if (reel.reference.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Semantics(
@@ -1498,17 +1627,17 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
                       IconButton(
                         onPressed: _sending ? null : _send,
                         icon: _sending
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: AppColors.gold,
+                                  color: AppColors.goldInk,
                                 ),
                               )
-                            : const Icon(
+                            : Icon(
                                 Icons.send_rounded,
-                                color: AppColors.gold,
+                                color: AppColors.goldInk,
                               ),
                       ),
                     ],
@@ -1552,7 +1681,7 @@ class _CommentTile extends StatelessWidget {
               style: AppTypography.body(
                 size: 13,
                 weight: FontWeight.w700,
-                color: AppColors.gold,
+                color: AppColors.goldInk,
               ),
             ),
           ),
@@ -1592,12 +1721,15 @@ class _CommentTile extends StatelessWidget {
 
 // ── Reel Paylaşma Sheet ───────────────────────────────────────────────────────
 
-/// Yeni reel paylaşma sayfası — YALNIZ dikey medya: galeriden bir video (mp4)
-/// veya stüdyoda üretilmiş bir görsel (PNG). Serbest fotoğraf yükleme yoktur;
-/// akış tek biçimdir (bkz. [FeedPost.kind] = 'video' | 'still').
+/// Yeni reel paylaşma sayfası — galeriden dikey bir video (mp4). Serbest
+/// fotoğraf yükleme yoktur; akış tek biçimdir (bkz. [FeedPost.kind]).
 ///
-/// Supabase `post-media` bucket'ına yükler, `feed_posts` tablosuna repository
-/// üzerinden kaydeder. Her yeni içerik sunucuda 'pending' başlar.
+/// Stüdyo çıktısı ARTIK buradan geçmez: stüdyo kendi içeriğini (görsel ya da
+/// video arka planlı ayet kartı) doğrudan yayınlar. Eskiden PNG geçici dizine
+/// yazılıp burada `ayet_*.png` diye taranıyordu — o dolambaç kaldırıldı.
+///
+/// Medya [ISocialRepository.uploadPostMedia] ile yüklenir, `feed_posts`
+/// tablosuna repository üzerinden kaydedilir. Her yeni içerik 'pending' başlar.
 class CreatePostSheet extends ConsumerStatefulWidget {
   const CreatePostSheet({super.key});
 
@@ -1609,11 +1741,8 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
   final _captionController = TextEditingController();
   final _picker = ImagePicker();
 
+  /// Seçili video. null → henüz medya seçilmedi (yayınlanamaz).
   File? _selectedMedia;
-
-  /// Seçili medyanın türü — doğrudan `feed_posts.kind` değeridir.
-  /// null → henüz medya seçilmedi (yayınlanamaz).
-  String? _kind; // 'video' | 'still'
 
   /// Telif beyanı (App Store Guideline 5.2.3) — onaylanmadan yayın yapılamaz.
   bool _rightsAccepted = false;
@@ -1657,107 +1786,51 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
       return;
     }
     if (!mounted) return;
-    setState(() {
-      _selectedMedia = picked;
-      _kind = 'video';
-    });
+    setState(() => _selectedMedia = picked);
   }
 
-  /// Stüdyonun dışa aktardığı PNG'ler geçici dizine `ayet_<zaman>.png` adıyla
-  /// yazılır (bkz. StudioScreen `_export`). Buradan seçtiriyoruz — böylece
-  /// kullanıcı görselini galeriye kaydetmek zorunda kalmaz.
-  Future<void> _pickFromStudio() async {
-    final dir = await getTemporaryDirectory();
-    final files =
-        dir
-            .listSync()
-            .whereType<File>()
-            .where(
-              (f) =>
-                  f.uri.pathSegments.last.startsWith('ayet_') &&
-                  f.path.toLowerCase().endsWith('.png'),
-            )
-            .toList()
-          // Dosya adındaki zaman damgası artan → ters sırala: en yenisi başta.
-          ..sort((a, b) => b.path.compareTo(a.path));
-    if (!mounted) return;
-    final picked = await showModalBottomSheet<File>(
-      context: context,
-      backgroundColor: AppColors.emerald850,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) => _StudioPickerSheet(files: files),
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      _selectedMedia = picked;
-      _kind = 'still';
-    });
-  }
-
-  void _clearMedia() {
-    setState(() {
-      _selectedMedia = null;
-      _kind = null;
-    });
-  }
+  void _clearMedia() => setState(() => _selectedMedia = null);
 
   Future<void> _publish() async {
-    final client = ref.read(supabaseClientProvider);
-    final userId = client?.auth.currentUser?.id;
-    if (client == null || userId == null) {
+    if (!ref.read(isSignedInProvider)) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Giriş yapmanız gerekiyor')));
       return;
     }
     final media = _selectedMedia;
-    final kind = _kind;
-    if (media == null || kind == null) {
+    if (media == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paylaşmak için bir video veya stüdyo görseli seçin.'),
-        ),
+        const SnackBar(content: Text('Paylaşmak için bir video seçin.')),
       );
       return;
     }
-    // Savunma amaçlı ikinci kapı: seçim ile yayın arasında dosya değişebilir
-    // ve ileride başka bir seçim yolu eklenirse sınır burada da tutsun.
-    if (media.lengthSync() > kAyahVideoMaxBytes) {
+    // Telif kapısı butonda zaten kilitli; burada da dursun — buton koşulu
+    // ileride değişirse kural sessizce kalkmasın (StudioScreen ile aynı kalıp).
+    if (!_rightsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dosya çok büyük (en fazla 20 MB).')),
+        const SnackBar(content: Text('Yayınlamak için telif beyanını onaylayın.')),
       );
       return;
     }
     setState(() => _uploading = true);
     try {
-      final isVideo = kind == 'video';
-      final ext = isVideo ? 'mp4' : 'png';
-      final contentType = isVideo ? 'video/mp4' : 'image/png';
-      final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
-      await client.storage
-          .from('post-media')
-          .uploadBinary(
-            path,
-            await media.readAsBytes(),
-            fileOptions: FileOptions(contentType: contentType),
-          );
-      final mediaUrl = client.storage.from('post-media').getPublicUrl(path);
-
+      final repo = ref.read(socialRepositoryProvider);
+      // Boyut kapısı `uploadPostMedia` içinde (tek yer) — seçim ile yayın
+      // arasında dosya değişse bile orada yakalanır.
+      final mediaUrl = await repo.uploadPostMedia(
+        await media.readAsBytes(),
+        isVideo: true,
+      );
       final caption = _captionController.text.trim();
-      await ref
-          .read(socialRepositoryProvider)
-          .createPost(
-            reference: '',
-            arabic: '',
-            meal: caption,
-            caption: caption,
-            kind: kind,
-            // 'still' → poster/görsel; 'video' → oynatılabilir mp4.
-            mediaUrl: isVideo ? null : mediaUrl,
-            videoUrl: isVideo ? mediaUrl : null,
-          );
+      await repo.createPost(
+        reference: '',
+        arabic: '',
+        meal: caption,
+        caption: caption,
+        kind: 'video',
+        videoUrl: mediaUrl,
+      );
       ref.invalidate(cloudReelsProvider);
       if (mounted) setState(() => _published = true);
     } catch (e) {
@@ -1789,10 +1862,10 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        const Icon(
+        Icon(
           Icons.hourglass_top_rounded,
           size: 44,
-          color: AppColors.gold,
+          color: AppColors.goldInk,
           semanticLabel: 'İnceleme bekleniyor',
         ),
         const SizedBox(height: 14),
@@ -1864,32 +1937,38 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
         ),
         const SizedBox(height: 14),
 
-        // Medya seçimi: yalnız dikey video veya stüdyo görseli.
+        // Medya seçimi: yalnız dikey video. Ayet kartı üretmek isteyen
+        // kullanıcı stüdyoya gider ve oradan doğrudan yayınlar.
         Row(
           children: [
             Expanded(
               child: TextButton.icon(
                 key: const Key('create_post_pick_video'),
-                icon: const Icon(Icons.videocam_rounded, color: AppColors.gold),
+                icon: Icon(Icons.videocam_rounded, color: AppColors.goldInk),
                 label: Text(
                   'Video Seç',
-                  style: AppTypography.body(size: 14, color: AppColors.gold),
+                  style: AppTypography.body(size: 14, color: AppColors.goldInk),
                 ),
                 onPressed: _uploading ? null : _pickVideo,
               ),
             ),
             Expanded(
               child: TextButton.icon(
-                key: const Key('create_post_pick_studio'),
-                icon: const Icon(
+                key: const Key('create_post_open_studio'),
+                icon: Icon(
                   Icons.auto_awesome_rounded,
-                  color: AppColors.gold,
+                  color: AppColors.goldInk,
                 ),
                 label: Text(
-                  'Stüdyodan Seç',
-                  style: AppTypography.body(size: 14, color: AppColors.gold),
+                  'Stüdyoyu Aç',
+                  style: AppTypography.body(size: 14, color: AppColors.goldInk),
                 ),
-                onPressed: _uploading ? null : _pickFromStudio,
+                onPressed: _uploading
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        context.push('/studio');
+                      },
               ),
             ),
             if (_selectedMedia != null)
@@ -1905,26 +1984,19 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: _kind == 'still'
-                ? Image.file(
-                    _selectedMedia!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    height: 200,
-                    width: double.infinity,
-                    color: Colors.black,
-                    child: const Center(
-                      child: Icon(
-                        Icons.videocam_rounded,
-                        color: Colors.white,
-                        size: 48,
-                        semanticLabel: 'Seçili video',
-                      ),
-                    ),
-                  ),
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              color: Colors.black,
+              child: const Center(
+                child: Icon(
+                  Icons.videocam_rounded,
+                  color: Colors.white,
+                  size: 48,
+                  semanticLabel: 'Seçili video',
+                ),
+              ),
+            ),
           ),
         ],
 
@@ -1942,7 +2014,12 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
                   value: _rightsAccepted,
                   activeColor: AppColors.gold,
                   checkColor: AppColors.onGold,
-                  side: const BorderSide(color: AppColors.gold, width: 1.6),
+                  // İşaretsiz kenarlık tema-duyarlı olmalı — auth ekranındaki
+                  // koşul onay kutusuyla aynı düzeltme (home_screens.dart):
+                  // sabit `gold` (#D4B25B) açık temada sheet zeminine karşı
+                  // 3:1'in altında kalıp kutunun sınırını görünmez kılıyordu
+                  // (WCAG 1.4.11). `goldInk` açık temada #8A6A1F'e döner.
+                  side: BorderSide(color: AppColors.goldInk, width: 1.6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -1979,7 +2056,7 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
           const SizedBox(height: 4),
           Text(
             _selectedMedia == null
-                ? 'Yayınlamak için bir video veya stüdyo görseli seçin.'
+                ? 'Yayınlamak için bir video seçin.'
                 : 'Yayınlamak için telif beyanını onaylayın.',
             key: const Key('create_post_publish_hint'),
             style: AppTypography.body(size: 12.5, color: AppColors.muted),
@@ -2018,79 +2095,6 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-/// Stüdyoda üretilmiş PNG'leri seçtiren küçük sheet (en yenisi başta).
-/// Geçici dizin işletim sistemince temizlenebilir → boşsa dürüst yönlendirme.
-class _StudioPickerSheet extends StatelessWidget {
-  const _StudioPickerSheet({required this.files});
-  final List<File> files;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Stüdyo Görsellerin',
-              style: AppTypography.body(
-                size: 16,
-                weight: FontWeight.w600,
-                color: AppColors.cream,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (files.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: EmptyState(
-                  icon: Icons.auto_awesome_outlined,
-                  message:
-                      'Henüz kayıtlı stüdyo görseli yok.\nÖnce stüdyoda bir ayet görseli üret.',
-                  action: FilledButton.icon(
-                    key: const Key('studio_picker_open_studio'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      context.push('/studio');
-                    },
-                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                    label: const Text('Stüdyoyu aç'),
-                  ),
-                ),
-              )
-            else
-              SizedBox(
-                height: 190,
-                child: ListView.separated(
-                  key: const Key('studio_picker_list'),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: files.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (context, i) => InkWell(
-                    onTap: () => Navigator.of(context).pop(files[i]),
-                    borderRadius: BorderRadius.circular(12),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        files[i],
-                        width: 110,
-                        height: 190,
-                        fit: BoxFit.cover,
-                        semanticLabel: 'Stüdyo görseli ${i + 1}',
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -2170,9 +2174,14 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                       ),
                       data: (convs) {
                         if (convs.isEmpty) {
+                          // Sohbet başlatma yolu artık VAR (profildeki
+                          // "Mesaj Gönder"), bu yüzden boş durum kullanıcıya
+                          // nereden başlayacağını söylüyor.
                           return EmptyState(
                             icon: Icons.mail_outline_rounded,
-                            message: 'Henüz sohbet yok.',
+                            message:
+                                'Henüz sohbet yok. Bir kullanıcının profilinden '
+                                '"Mesaj Gönder" ile başlatabilirsin.',
                           );
                         }
                         return ListView.builder(
@@ -2207,7 +2216,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                                         isGroup
                                             ? Icons.groups_rounded
                                             : Icons.person_rounded,
-                                        color: AppColors.gold,
+                                        color: AppColors.goldInk,
                                       ),
                                     ),
                                     const SizedBox(width: 14),
@@ -2238,9 +2247,22 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 }
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key, required this.title, this.conversationId});
+  const ChatScreen({
+    super.key,
+    required this.title,
+    required this.conversationId,
+    this.otherUserId,
+  });
   final String title;
-  final String? conversationId;
+
+  /// 1:1 sohbette karşı tarafın id'si — "Kullanıcıyı engelle" için.
+  /// Guideline 1.2: mesajlaşma açıyorsan engelleme oradan da erişilebilir
+  /// olmalı. Grup sohbetinde null (tek bir "karşı taraf" yok).
+  final String? otherUserId;
+
+  /// Tek çağıran (`MessagesScreen`) her zaman gerçek bir id geçiriyor;
+  /// nullable imza yalnız ölü bir "çevrimdışı sohbet" dalını besliyordu.
+  final String conversationId;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -2261,9 +2283,14 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   int _followerCount = 0;
   int _followingCount = 0;
   bool _isFollowing = false;
-  List<Map<String, dynamic>> _posts = [];
+  List<FeedPost> _posts = const [];
   bool _loading = true;
   String? _effectiveUserId;
+
+  /// Yükleme hatası mesajı. `null` = hata yok. Boş liste ile hatayı ayırmak
+  /// şart: RLS reddi/ağ hatası "Henüz gönderi yok" diye görünürse kullanıcı
+  /// gönderisinin kaybolduğunu sanır.
+  String? _error;
 
   @override
   void initState() {
@@ -2279,26 +2306,79 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
       return;
     }
     final repo = ref.read(profileRepositoryProvider);
-    final results = await Future.wait([
-      repo.getUserProfile(_effectiveUserId!),
-      repo.getFollowerCount(_effectiveUserId!),
-      repo.getFollowingCount(_effectiveUserId!),
-      repo.getUserPosts(_effectiveUserId!),
-    ]);
-    bool following = false;
-    final myId = client?.auth.currentUser?.id;
-    if (myId != null && myId != _effectiveUserId) {
-      following = await repo.isFollowing(myId, _effectiveUserId!);
+    try {
+      final results = await Future.wait([
+        repo.getUserProfile(_effectiveUserId!),
+        repo.getFollowerCount(_effectiveUserId!),
+        repo.getFollowingCount(_effectiveUserId!),
+        repo.getUserPosts(_effectiveUserId!),
+      ]);
+      bool following = false;
+      final myId = client?.auth.currentUser?.id;
+      if (myId != null && myId != _effectiveUserId) {
+        following = await repo.isFollowing(myId, _effectiveUserId!);
+      }
+      if (!mounted) return;
+      setState(() {
+        _profile = results[0] as Map<String, dynamic>?;
+        _followerCount = results[1] as int;
+        _followingCount = results[2] as int;
+        _posts = results[3] as List<FeedPost>;
+        _isFollowing = following;
+        _error = null;
+        _loading = false;
+      });
+    } catch (_) {
+      // `getUserPosts` artık hata yutmuyor → buraya RLS reddi veya ağ hatası
+      // düşebilir. Sessizce boş liste göstermek yerine ayırt edip söylüyoruz.
+      if (!mounted) return;
+      setState(() {
+        _error = 'Gönderiler yüklenemedi.';
+        _loading = false;
+      });
     }
-    if (!mounted) return;
+  }
+
+  /// Profilden 1:1 sohbet aç. Repository varsa mevcut sohbeti döndürür,
+  /// yoksa iki insert ile oluşturur (RPC yok — mevcut politikalar yetiyor).
+  Future<void> _openChat(String displayName) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      final convId = await ref
+          .read(messagesRepositoryProvider)
+          .openDirectConversation(_effectiveUserId!);
+      if (convId == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Sohbet açılamadı.')),
+        );
+        return;
+      }
+      // Sohbet listesi bayat kalmasın (yeni sohbet oluşmuş olabilir).
+      ref.invalidate(conversationsProvider);
+      await navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => ChatScreen(
+            title: displayName,
+            conversationId: convId,
+            otherUserId: _effectiveUserId,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Engellenmiş kullanıcıya sohbet açma denemesi de buraya düşer.
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Sohbet açılamadı. Tekrar deneyin.')),
+      );
+    }
+  }
+
+  Future<void> _retry() async {
     setState(() {
-      _profile = results[0] as Map<String, dynamic>?;
-      _followerCount = results[1] as int;
-      _followingCount = results[2] as int;
-      _posts = results[3] as List<Map<String, dynamic>>;
-      _isFollowing = following;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    await _load();
   }
 
   Future<void> _showEditNameDialog() async {
@@ -2434,11 +2514,35 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                       },
                       child: Text(_isFollowing ? 'Takibi Bırak' : 'Takip Et'),
                     ),
+                  if (!isOwnProfile && myId != null) ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      key: const Key('profile_send_message'),
+                      icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                      label: const Text('Mesaj Gönder'),
+                      onPressed: () => _openChat(displayName),
+                    ),
+                  ],
                 ],
               ),
             ),
             const Divider(),
-            if (_posts.isEmpty)
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      key: const Key('profile_posts_retry'),
+                      onPressed: _retry,
+                      child: const Text('Tekrar dene'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_posts.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(32),
                 child: Text('Henüz gönderi yok'),
@@ -2456,18 +2560,59 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                 itemCount: _posts.length,
                 itemBuilder: (ctx, i) {
                   final post = _posts[i];
-                  final thumb = post['thumbnail_url'] as String?;
-                  return thumb != null
-                      ? Image.network(
+                  // `thumbnailUrl` zaten `thumbnail_url ?? media_url` — stüdyo
+                  // gönderileri poster'ı `media_url`'e yazdığı için fallback
+                  // ızgarayı dolduran şey (bkz. FeedPost.fromMap).
+                  final thumb = post.thumbnailUrl;
+                  // Yer tutucu tema-duyarlı yüzey rolü kullanır: sabit
+                  // `Colors.grey.shade200` koyu temada ızgarayı beyaza
+                  // boyuyor, üstündeki ikonu da görünmez kılıyordu.
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (thumb != null)
+                        Image.network(
                           thumb,
                           fit: BoxFit.cover,
                           errorBuilder: (context, err, stack) =>
-                              Container(color: Colors.grey.shade200),
+                              ColoredBox(color: AppColors.emerald850),
                         )
-                      : Container(
-                          color: Colors.grey.shade200,
+                      else
+                        ColoredBox(
+                          color: AppColors.emerald850,
                           child: const Icon(Icons.article_rounded),
-                        );
+                        ),
+                      // Onay bekleyen gönderi yalnız yazarına görünür
+                      // (`feed_select_visible`); "gönderim nerede" sorusunu
+                      // ızgarada yanıtlıyoruz.
+                      if (post.isPending)
+                        Positioned(
+                          left: 4,
+                          top: 4,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              // Scrim sabit koyu → üstündeki altın metin
+                              // tema değişse de okunur kalır.
+                              color: Colors.black.withValues(alpha: 0.66),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              child: Text(
+                                'İncelemede',
+                                style: AppTypography.body(
+                                  size: 10,
+                                  color: AppColors.gold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
                 },
               ),
           ],
@@ -2546,20 +2691,15 @@ class _StatBadge extends StatelessWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _input = TextEditingController();
-  final _offlineMessages = <(bool, String)>[
-    (false, 'Selamünaleyküm, hoş geldin! 🌙'),
-  ];
   bool _sending = false;
-  Stream<List<ChatMessage>>? _messageStream;
+  late final Stream<List<ChatMessage>> _messageStream;
 
   @override
   void initState() {
     super.initState();
-    if (widget.conversationId != null) {
-      _messageStream = ref
-          .read(messagesRepositoryProvider)
-          .watchMessages(widget.conversationId!);
-    }
+    _messageStream = ref
+        .read(messagesRepositoryProvider)
+        .watchMessages(widget.conversationId);
   }
 
   @override
@@ -2568,13 +2708,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  void _sendOffline() {
-    final t = _input.text.trim();
-    if (t.isEmpty) return;
-    setState(() {
-      _offlineMessages.add((true, t));
-      _input.clear();
-    });
+  /// Guideline 1.2 gereği mesaj ekranından da engelleme. Onay ister —
+  /// yanlışlıkla dokunmak sohbeti sessizce kilitlememelidir.
+  Future<void> _confirmBlock() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kullanıcıyı engelle'),
+        content: const Text(
+          'Engellendiğinde bu kullanıcı sana mesaj gönderemez ve içeriğini '
+          'akışta görmezsin.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Engelle'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await ref.read(socialRepositoryProvider).blockUser(widget.otherUserId!);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Kullanıcı engellendi.')),
+      );
+      navigator.pop();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Engellenemedi. Tekrar deneyin.')),
+      );
+    }
   }
 
   Future<void> _sendOnline() async {
@@ -2584,7 +2755,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       await ref
           .read(messagesRepositoryProvider)
-          .send(widget.conversationId!, t);
+          .send(widget.conversationId, t);
       _input.clear();
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -2593,109 +2764,80 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = widget.conversationId != null;
     final myId = ref.read(supabaseClientProvider)?.auth.currentUser?.id;
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            AppHeader(title: widget.title),
+            AppHeader(
+              title: widget.title,
+              trailing: widget.otherUserId == null
+                  ? null
+                  : IconButton(
+                      key: const Key('chat_block_user'),
+                      tooltip: 'Kullanıcıyı engelle',
+                      icon: const Icon(Icons.block_rounded),
+                      onPressed: _confirmBlock,
+                    ),
+            ),
             Expanded(
-              child: isOnline
-                  ? StreamBuilder<List<ChatMessage>>(
-                      stream: _messageStream,
-                      builder: (context, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        final messages = snap.data ?? const [];
-                        if (messages.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'Henüz mesaj yok.',
-                              style: AppTypography.body(
-                                size: 14,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          );
-                        }
-                        return ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                          itemCount: messages.length,
-                          itemBuilder: (context, i) {
-                            final msg = messages[i];
-                            final mine = msg.senderId == myId;
-                            return Align(
-                              alignment: mine
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 5),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: mine
-                                      ? AppColors.gold
-                                      : AppColors.emerald900,
-                                  borderRadius: AppRadii.chatBubble(mine: mine),
-                                  border: Border.all(color: AppColors.line),
-                                ),
-                                child: Text(
-                                  msg.body,
-                                  style: AppTypography.body(
-                                    size: 15,
-                                    color: mine
-                                        ? AppColors.onGold
-                                        : AppColors.cream,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      itemCount: _offlineMessages.length,
-                      itemBuilder: (context, i) {
-                        final (mine, text) = _offlineMessages[i];
-                        return Align(
-                          alignment: mine
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 5),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
+              child: StreamBuilder<List<ChatMessage>>(
+                stream: _messageStream,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final messages = snap.data ?? const [];
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Henüz mesaj yok.',
+                        style: AppTypography.body(
+                          size: 14,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    itemCount: messages.length,
+                    itemBuilder: (context, i) {
+                      final msg = messages[i];
+                      final mine = msg.senderId == myId;
+                      return Align(
+                        alignment: mine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: mine
+                                ? AppColors.gold
+                                : AppColors.emerald900,
+                            borderRadius: AppRadii.chatBubble(mine: mine),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: Text(
+                            msg.body,
+                            style: AppTypography.body(
+                              size: 15,
                               color: mine
-                                  ? AppColors.gold
-                                  : AppColors.emerald900,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.line),
-                            ),
-                            child: Text(
-                              text,
-                              style: AppTypography.body(
-                                size: 15,
-                                color: mine
-                                    ? AppColors.onGold
-                                    : AppColors.cream,
-                              ),
+                                  ? AppColors.onGold
+                                  : AppColors.cream,
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -2704,16 +2846,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Expanded(
                     child: TextField(
                       controller: _input,
-                      onSubmitted: (_) =>
-                          isOnline ? _sendOnline() : _sendOffline(),
+                      onSubmitted: (_) => _sendOnline(),
                       decoration: const InputDecoration(hintText: 'Mesaj yaz…'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   FilledButton(
-                    onPressed: _sending
-                        ? null
-                        : (isOnline ? _sendOnline : _sendOffline),
+                    onPressed: _sending ? null : _sendOnline,
                     child: const Icon(Icons.send_rounded, size: 20),
                   ),
                 ],

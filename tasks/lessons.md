@@ -108,3 +108,116 @@ Bu sürümde bulunan 11 gerçek kusurun **hiçbiri** `flutter analyze` veya test
 "kodu okuyup kırmayı dene" ile çıktı, biri (SSRF redirect bypass) yerel iki sunucuyla ampirik olarak
 kanıtlandı. **Kural:** güvenlik/uyumluluk yüzeyine dokunan işte, uygulayan ajanın raporuna güvenme —
 bağımsız bir mercek koy ve ondan **kırmasını** iste, "kontrol etmesini" değil.
+
+---
+
+## 1.0.1 build 4 dersleri
+
+### 9. Renk rolleri: "zemin mi, ön plan mı" sorusu tasarım değil, tip meselesi
+78 kontrast ihlalinin kök nedeni tek bir karışıklıktı: `gold`, `success`, `accent`, `info` SABİT
+tanımlanıp hem zemin hem METİN rengi olarak kullanılıyordu. Açık temada metin olarak 1.6–2.5:1
+veriyorlardı (AA = 4.5:1) → görünmezdiler. Düzeltme 186 çağrı yerine değil, `app_colors.dart`'a
+yapıldı: ön plan rolleri brightness'a göre dönen getter oldu, çağrı yerleri kendiliğinden düzeldi.
+**Kural:** yeni bir renk token'ı eklerken önce "bu zeminde mi durur, zeminin ÜSTÜNDE mi" diye sor.
+Cevap "ikisi de" ise iki ayrı token gerekiyordur (`gold` + `goldInk`, `dangerSurface` + `onDanger`).
+Alfa'lı renkleri ölçmeden önce zemine kompozit et — yoksa ölçüm iyimser çıkar.
+
+### 10. "Geri alınca düşüyor mu" testi, testin kendisinden önemli
+Üç regresyon testi de yazıldıktan SONRA düzeltme geçici geri alınıp gerçekten düştükleri
+doğrulandı. Kıble testi ilk hâlinde 360×640'ta düzeltme olmadan da geçiyordu — yani hiçbir şey
+kilitlemiyordu; gerçekten taştığı 360×560'a çekilince anlamlı oldu. **Kural:** yeşil bir test
+kanıt değildir; kanıt, kırmızıya döndüğünü görmektir.
+
+### 11. Test ortamı hatası, testi kararsız yapar — tek koşum yalan söyler
+`buildAppTheme` testi tek başına geçip tam pakette rastgele düşüyordu: `google_fonts` fontu
+çözemeyip YAKALANMAMIŞ async hata fırlatıyor ve o sırada koşan teste yazılıyor.
+`allowRuntimeFetching = false` yalnız ağ bacağını kapatıyor, asset araması kalıyor.
+Çözüm: ilgisiz async hatayı `runZonedGuarded` ile kendi zone'unda yut, asıl değişmezi ölç.
+**Kural:** kararsızlık şüphesinde paketi arka arkaya en az 4 kez koş; CI `flutter test` çalıştırıyor,
+flake build'i rastgele kırar.
+
+### 12. Moderasyon kapısı satırı korur, BAYTLARI korumaz
+`feed_posts` üzerindeki RLS + trigger kusursuz çalışıyordu ama `post_media_delete_own` politikası
+kullanıcının onaylanmış dosyasını silip AYNI yola yenisini yüklemesine izin veriyordu — veritabanına
+hiç dokunulmadığı için guard tetiklenmiyor, `status` `approved` kalıyordu. Tam bypass.
+**Kural:** bir kapı "veritabanında zorlanıyor" derken, kapının koruduğu şeyin veritabanı DIŞINDA
+bir kopyası var mı diye sor (storage nesnesi, CDN cache, dış URL). Ayrıca yayımlanmış EULA/beyan
+metinlerini koda karşı doğrula: `terms.html` yorumlar için pre-moderasyon vaat ediyordu, `comments`
+tablosunda `status` kolonu bile yoktu.
+
+---
+
+## 2026-08-03 — Faz A (build 4) dersleri
+
+### 13. Onaylanmış bir plan bile "kanıt" değildir — düzeltmeyi de kök nedene karşı sına
+Plan madde 3 için tek satırlık bir düzeltme öneriyordu (`SplashScreen`'de provider doluysa
+tekrar push et). Kök neden ajanı bunun **hiç çalışmayacağını** gösterdi: push edilen ekran bir
+frame sonra provider'ı `clear()` ediyor, splash 2400 ms'de her zaman `null` okuyor. Aynı ajan
+planın iki mekanizma iddiasını daha çürüttü (madde 9'da `.animate().fadeIn()` yakalanan kareyi
+etkilemiyormuş; `endOfFrame` tek başına hiçbir şeyi düzeltmezmiş).
+**Kural:** keşif fazında doğrulanan şey KÖK NEDENDİR, önerilen düzeltme değil. Düzeltmeyi
+uygulamadan önce "bu, zincirin hangi halkasını kesiyor?" sorusunu koda karşı yanıtla. Plan
+"reddedilen alternatifler" listeliyorsa bile, önerilen çözümün kendisi hâlâ sınanmamış bir
+hipotezdir.
+
+### 14. Kırmızıya dönmeyen test yazıldığı gün silinmeli
+Yazdığım dört stüdyo testinden biri ("PNG Kaydet"), düzeltme geri alındığında da GEÇİYORDU —
+çünkü `_export` hatayı yutuyor ve gözlenebilir bir çıktı bırakmıyor. Davranışsal assert
+bulunamayınca testi **yapısal** bir değişmezle değiştirdim: önizleme tuvali `Scrollable`'ın
+DESCENDANT'ı olmamalı. O hâliyle kırmızıya döndü.
+**Kural:** bir yolun tek gözlenebilir sonucu yoksa, o yolun dayandığı yapısal değişmezi
+kilitle. "Assert edecek bir şey yok" testi atlamanın değil, soruyu değiştirmenin işareti.
+
+### 15. `runAsync` google_fonts'un ağ bacağını açar — `allowRuntimeFetching = false` YETMEZ
+Ders 11'in devamı: bayrak yalnız HTTP'yi kapatıyor, asset araması yine YAKALANMAMIŞ async
+hata fırlatıyor ve `runAsync` gerçek zamanı açtığı an o sırada koşan teste yazılıyor.
+Çözüm, test gövdesini `runZonedGuarded` ile sarıp **yalnız** `GoogleFonts` içeren hatayı
+yutmak; `expect` hataları `Completer.completeError` ile aynen yükselmeli, yoksa yeşil test
+yalan söyler (bkz. `test/studio_render_offscreen_test.dart` `_fontSafe`).
+
+### 16. Test yüzeyini büyüterek "çözülen" tembel-liste sorunu, kusuru da gizler
+`studio_video_test.dart` 400×**2600** kullanıyordu ve yorumu tembel `ListView` sorununu zaten
+fark etmişti — ama "butonlar mount olmuyor" diye okuyup yüzeyi büyütmüş. O büyütme, kusuru
+doğuran koşulu (**kaydırma**) da yok etmiş; `rights_gate_test` (2500) ve `ugc_safety_test`
+(3000) aynı kör noktayı paylaşıyor.
+**Kural:** test yüzeyi gerçekçi olmayan bir boyuta çekildiğinde, "bu boyut hangi kullanıcı
+davranışını imkânsız kılıyor?" diye sor. Cevap bir davranışsa, o davranış için ayrı ve
+gerçekçi yüzeyli bir test gerekir.
+
+---
+
+## 2026-08-03 — Faz B/C dersleri
+
+### 17. Arayüz imzası değişince FAKE'ler derleme zamanında patlar — ve tüm paket düşer
+`ISocialRepository.createPost`'a `audioTrackId` eklemek 5 test dosyasını **yükleme
+anında** kırdı (test bile koşmadı, "loading ..." satırında düştü). Tek gerçek
+uygulama güncellenmişti; 4 fake unutulmuştu.
+**Kural:** bir seam arayüzüne parametre eklerken `grep -rn "<son parametre adı>," test/`
+ile TÜM implementasyonları çıkar. Fake'i tek bir `test/support/` dosyasında
+toplamak bu maliyeti bire indirir (bu turda `RecordingSocialRepository` oraya taşındı).
+
+### 18. Widget testinde "A Timer is still pending" ürün hatası DEĞİLDİR — teardown eksiğidir
+Ana Sayfa FAB testleri düştü çünkü `_PrayerStrip` 1 sn'lik `Timer.periodic`
+tutuyor ve `flutter_animate`'in `.animate(delay:)` efektleri gecikmeli timer
+kuruyor. Navigasyon yapan test geçiyordu (ağaç sökülüyor), yalnız assert eden
+testler düşüyordu. Çözüm: önce gecikmeleri boşalt (`pump(3s)`), sonra ağacı sök
+(`pumpWidget(SizedBox)`).
+**Kural:** sonsuz animasyonu olan ekranda `pumpAndSettle` kullanma; sabit süreli
+`pump` + açık teardown kullan.
+
+### 19. Yeni paket eklerken İLK adım kod değil, BUILD
+`pro_image_editor` için plan "pub get → build apk → pin kırıldıysa maddeyi geri
+al" diyordu ve bu doğru sıraydı: paket compileSdk/minSdk dayatsaydı
+`receive_sharing_intent 1.8.1` pini kırılır, tüm entegrasyon çöpe giderdi.
+İki paket de (just_audio_background, pro_image_editor) pin'i kırmadı ve APK
+derlendi — ama bu ancak ÖLÇÜLDÜĞÜ için biliniyor.
+**Kural:** native dokunan paketlerde entegrasyonun ilk adımı derlemedir,
+"sonra bakarız" değil.
+
+### 20. Paket varsayılanları depo sözleşmesiyle çelişebilir
+`pro_image_editor` varsayılan olarak **JPG** üretiyor; `uploadPostMedia` ise
+dosyayı `.png` + `image/png` yazıyor. Hiçbir hata vermez — yalnızca depoda adı
+ve MIME'ı yalan söyleyen dosyalar birikir.
+**Kural:** üçüncü parti bir üretici (encoder/exporter) eklerken çıktı biçimini
+depo/servis sözleşmesine karşı AÇIKÇA doğrula ve bir birim testiyle kilitle;
+varsayılana güvenme.

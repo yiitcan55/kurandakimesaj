@@ -152,7 +152,7 @@ class _LoadingView extends StatelessWidget {
       padding: const EdgeInsets.only(top: 40),
       child: Column(
         children: [
-          const CircularProgressIndicator(color: AppColors.gold),
+          CircularProgressIndicator(color: AppColors.goldInk),
           const SizedBox(height: 16),
           Text(
             video
@@ -189,7 +189,7 @@ class _SourceButton extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
-            child: Icon(icon, color: AppColors.gold),
+            child: Icon(icon, color: AppColors.goldInk),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -290,7 +290,7 @@ class _LinkFieldState extends State<_LinkField> {
                 height: 44,
                 decoration: BoxDecoration(
                     color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
-                child: Icon(Icons.link_rounded, color: AppColors.gold),
+                child: Icon(Icons.link_rounded, color: AppColors.goldInk),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -323,7 +323,7 @@ class _LinkFieldState extends State<_LinkField> {
               labelText: 'Gönderi bağlantısı',
               labelStyle: AppTypography.body(size: 14, color: AppColors.muted),
               floatingLabelStyle:
-                  AppTypography.body(size: 14, color: AppColors.gold),
+                  AppTypography.body(size: 14, color: AppColors.goldInk),
               hintText: 'https://…',
             ),
           ),
@@ -356,7 +356,7 @@ class _LinkFieldState extends State<_LinkField> {
                 key: const Key('ayahLinkPaste'),
                 onPressed: _paste,
                 icon: Icon(Icons.content_paste_rounded,
-                    size: 18, color: AppColors.gold),
+                    size: 18, color: AppColors.goldInk),
                 label: Text('Panodaki bağlantıyı yapıştır',
                     style:
                         AppTypography.body(size: 13.5, color: AppColors.cream)),
@@ -452,7 +452,7 @@ class _RangeHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
-            child: const Icon(Icons.graphic_eq_rounded, color: AppColors.gold),
+            child: Icon(Icons.graphic_eq_rounded, color: AppColors.goldInk),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -503,7 +503,7 @@ class _TimelineCard extends StatelessWidget {
                     child: Text(
                       t.startLabel,
                       // Tabular rakam: saat sütunu kaymasın.
-                      style: AppTypography.body(size: 13.5, color: AppColors.gold)
+                      style: AppTypography.body(size: 13.5, color: AppColors.goldInk)
                           .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ),
@@ -535,7 +535,7 @@ class _MatchCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(match.reference,
-                    style: AppTypography.body(size: 16, weight: FontWeight.w600, color: AppColors.gold)),
+                    style: AppTypography.body(size: 16, weight: FontWeight.w600, color: AppColors.goldInk)),
               ),
               GoldChip(label: '%${(match.confidence * 100).round()} eşleşme'),
             ],
@@ -608,7 +608,10 @@ class _MatchCard extends ConsumerWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => StudioScreen(
-          initialText: '${match.arabic}\n\n${match.meal}',
+          // Arapça ve meal AYRI: stüdyo Arapça'yı RTL/Amiri render eder ve
+          // yayınlarken `feed_posts.arabic` alanına ayrı gönderir.
+          initialArabic: match.arabic,
+          initialText: match.meal,
           initialReference: match.reference,
         ),
       ),
@@ -644,7 +647,7 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 18, color: AppColors.gold),
+      icon: Icon(icon, size: 18, color: AppColors.goldInk),
       label: Text(label, style: AppTypography.body(size: 13.5, color: AppColors.cream)),
       style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.line)),
     );

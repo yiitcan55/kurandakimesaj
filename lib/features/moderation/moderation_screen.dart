@@ -138,7 +138,7 @@ class ModerationScreen extends StatelessWidget {
             children: [
               const AppHeader(title: 'İçerik moderasyonu'),
               TabBar(
-                labelColor: AppColors.gold,
+                labelColor: AppColors.goldInk,
                 unselectedLabelColor: AppColors.muted,
                 indicatorColor: AppColors.gold,
                 tabs: const [
@@ -227,7 +227,7 @@ class _PendingTab extends ConsumerWidget {
                             if (!ok || !context.mounted) return;
                             await _setStatus(context, ref, post.id, 'rejected');
                           },
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close_rounded,
                             size: 18,
                             color: AppColors.accent,
@@ -288,7 +288,7 @@ class _ReportsTab extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.flag_rounded,
                         size: 18,
                         color: AppColors.accent,
@@ -374,7 +374,7 @@ class _ReportsTab extends ConsumerWidget {
                           'rejected',
                         );
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline_rounded,
                         size: 18,
                         color: AppColors.accent,
@@ -396,7 +396,7 @@ class _ReportsTab extends ConsumerWidget {
                   else if (removed)
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.check_circle_outline_rounded,
                           size: 18,
                           color: AppColors.success,
@@ -416,7 +416,7 @@ class _ReportsTab extends ConsumerWidget {
                       key: Key('report-delete-comment-${row['id']}'),
                       onPressed: () =>
                           _deleteComment(context, ref, comment['id'] as String),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline_rounded,
                         size: 18,
                         color: AppColors.accent,
@@ -563,10 +563,10 @@ class BlockedUsersScreen extends ConsumerWidget {
                                 ? NetworkImage(avatar)
                                 : null,
                             child: avatar == null
-                                ? const Icon(
+                                ? Icon(
                                     Icons.person_rounded,
                                     size: 20,
-                                    color: AppColors.gold,
+                                    color: AppColors.goldInk,
                                   )
                                 : null,
                           ),
@@ -588,7 +588,7 @@ class BlockedUsersScreen extends ConsumerWidget {
                             label: const Text('Engeli kaldır'),
                             style: TextButton.styleFrom(
                               minimumSize: const Size(0, 44),
-                              foregroundColor: AppColors.gold,
+                              foregroundColor: AppColors.goldInk,
                             ),
                           ),
                         ],

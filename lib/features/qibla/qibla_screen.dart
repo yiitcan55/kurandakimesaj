@@ -51,48 +51,63 @@ class QiblaScreen extends ConsumerWidget {
                     deviceHeading: deviceHeading ?? 0,
                   );
                   final angleRad = info.angleToQibla * math.pi / 180;
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        info.aligned && hasSensor ? 'Kâbe yönündesiniz' : 'Telefonu yatay tutun',
-                        style: AppTypography.display(
-                          size: 24,
-                          color: info.aligned && hasSensor ? AppColors.success : AppColors.cream,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: 300,
-                        height: 300,
-                        child: CustomPaint(
-                          painter: QiblaDialPainter(
-                            headingToQibla: angleRad,
-                            aligned: info.aligned && hasSensor,
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.mosque_rounded, color: AppColors.gold, size: 30),
-                                Text('${qiblaBearing.toStringAsFixed(0)}°',
-                                    style: AppTypography.display(size: 28, color: AppColors.gold)),
-                              ],
+                  return CenteredScrollBody(
+                    builder: (context, maxHeight) {
+                      final dial =
+                          CenteredScrollBody.dialSize(maxHeight, 300);
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            info.aligned && hasSensor
+                                ? 'Kâbe yönündesiniz'
+                                : 'Telefonu yatay tutun',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.display(
+                              size: 24,
+                              color: info.aligned && hasSensor
+                                  ? AppColors.success
+                                  : AppColors.cream,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      if (!hasSensor)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            'Cihazınızda pusula sensörü algılanamadı. Ok, kuzeye göre Kâbe yönünü (${qiblaBearing.toStringAsFixed(0)}°) gösterir.',
-                            textAlign: TextAlign.center,
-                            style: AppTypography.body(size: 13, color: AppColors.muted),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: dial,
+                            height: dial,
+                            child: CustomPaint(
+                              painter: QiblaDialPainter(
+                                headingToQibla: angleRad,
+                                aligned: info.aligned && hasSensor,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.mosque_rounded,
+                                        color: AppColors.goldInk, size: 30),
+                                    Text('${qiblaBearing.toStringAsFixed(0)}°',
+                                        style: AppTypography.display(
+                                            size: 28, color: AppColors.goldInk)),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                    ],
+                          const SizedBox(height: 28),
+                          if (!hasSensor)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 32),
+                              child: Text(
+                                'Cihazınızda pusula sensörü algılanamadı. Ok, kuzeye göre Kâbe yönünü (${qiblaBearing.toStringAsFixed(0)}°) gösterir.',
+                                textAlign: TextAlign.center,
+                                style: AppTypography.body(
+                                    size: 13, color: AppColors.muted),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),

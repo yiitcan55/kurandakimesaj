@@ -74,7 +74,7 @@ class _KhatmScreenState extends ConsumerState<KhatmScreen> {
                                   style: AppTypography.body(
                                       size: 12,
                                       weight: FontWeight.w700,
-                                      color: AppColors.gold)),
+                                      color: AppColors.goldInk)),
                             ],
                           ),
                         ),
@@ -162,8 +162,8 @@ class _KhatmScreenState extends ConsumerState<KhatmScreen> {
                         }),
                         child: Row(
                           children: [
-                            const Icon(Icons.group_outlined,
-                                color: AppColors.gold, size: 28),
+                            Icon(Icons.group_outlined,
+                                color: AppColors.goldInk, size: 28),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
@@ -283,7 +283,7 @@ class _KhatmScreenState extends ConsumerState<KhatmScreen> {
                                       style: AppTypography.body(
                                           size: 12,
                                           weight: FontWeight.w700,
-                                          color: AppColors.gold)),
+                                          color: AppColors.goldInk)),
                                 ],
                               ),
                             ),

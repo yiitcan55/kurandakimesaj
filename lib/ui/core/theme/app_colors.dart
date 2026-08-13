@@ -20,6 +20,11 @@ abstract class AppColors {
   /// Aktif paleti ayarlar. Material `Brightness`'tan eşlenir.
   static set brightness(Brightness b) =>
       _b = b == Brightness.light ? AppBrightness.light : AppBrightness.dark;
+
+  /// Aktif palet. `buildAppTheme` global'i geçici değiştirip geri yüklemek
+  /// için okur (bkz. app_theme.dart — global mutasyon yarışı düzeltmesi).
+  static Brightness get brightness =>
+      _light ? Brightness.light : Brightness.dark;
   static bool get _light => _b == AppBrightness.light;
 
   static Color _pick(Color dark, Color light) => _light ? light : dark;
@@ -38,7 +43,11 @@ abstract class AppColors {
 
   /// Altın renkli METİN (eyebrow, Arapça, fiyat). Açık temada krem zemine
   /// karşı AA için koyulaşır; koyu temada parlak altın.
-  static Color get goldInk => _pick(const Color(0xFFD4B25B), const Color(0xFF8A6A1F));
+  ///
+  /// Açık ton `#8A6A1F` iken kart zemininde (beyaz) 5.0:1 ama scaffold
+  /// zemininde (`#F4ECDD`) 4.30:1 kalıyordu — altın metin her ikisinin de
+  /// üstünde duruyor, bu yüzden sıkı olana göre `#7E5F14` (5.1:1) seçildi.
+  static Color get goldInk => _pick(const Color(0xFFD4B25B), const Color(0xFF7E5F14));
 
   /// Altın yüzey ÜSTÜNDEKİ metin/ikon (buton, seçili chip, FAB). Her iki
   /// temada da koyu — altın sabit kaldığı için DÖNMEZ.
@@ -47,16 +56,62 @@ abstract class AppColors {
   // ── Metin (DÖNER) ──────────────────────────────────────────────────────
   static Color get cream => _pick(const Color(0xFFF3EADB), const Color(0xFF16271F)); // birincil
   static Color get cream2 => _pick(const Color(0xFFE6DCC8), const Color(0xFF2A4034)); // gövde
+  /// İkincil metin. Alfa değerleri her iki temada da zemine karşı ≥4.5:1
+  /// (WCAG AA) ölçülerek seçildi: koyu 0.62 → 6.2:1, açık 0.74 → 5.8:1.
   static Color get muted =>
-      _pick(const Color(0xFFF3EADB), const Color(0xFF16271F)).withValues(alpha: _light ? 0.60 : 0.62);
-  // %40 küçük metinde 4.5:1 kontrastın altındaydı (WCAG AA); %55 ~4.9:1 sağlar.
-  static Color get muted2 =>
-      _pick(const Color(0xFFF3EADB), const Color(0xFF16271F)).withValues(alpha: _light ? 0.62 : 0.55);
+      _pick(const Color(0xFFF3EADB), const Color(0xFF16271F)).withValues(alpha: _light ? 0.74 : 0.62);
 
-  // ── Durum (SABİT) ──────────────────────────────────────────────────────
-  static const Color success = Color(0xFF5ED27D);
-  static const Color accent = Color(0xFFC9856A);
-  static const Color info = Color(0xFF5AA9D6);
+  /// Üçüncül metin — [muted]'tan DAHA SOLUK olmalı (her iki temada).
+  /// Koyu 0.55 → 5.1:1, açık 0.66 → 4.8:1.
+  static Color get muted2 =>
+      _pick(const Color(0xFFF3EADB), const Color(0xFF16271F)).withValues(alpha: _light ? 0.66 : 0.55);
+
+  // ── Medya üstü metin (SABİT) ───────────────────────────────────────────
+  /// Daima koyu kalan yüzeylerin (Reels videosu, stüdyo önizlemesi) üstündeki
+  /// metin. Tema DÖNMEZ — yoksa açık temada koyu üstüne koyu yazılır.
+  static const Color onMedia = Color(0xFFF3EADB);
+  static final Color onMediaMuted = onMedia.withValues(alpha: 0.72);
+
+  /// Medya letterbox / video arkası dolgu. Tema dönmez.
+  static const Color mediaLetterbox = Color(0xFF08201A);
+
+  // ── Durum ──────────────────────────────────────────────────────────────
+  //
+  // Bunlar METİN/İKON (ön plan) rolleridir ve `gold` ile AYNI tuzağa
+  // düşmüşlerdi: sabit parlak tonlar açık temada krem zeminde AA'nın çok
+  // altında kalıyordu (success 1.63:1, accent 2.54:1, info 2.21:1). Artık
+  // brightness'a göre dönüyorlar — tüm çağrı yerleri değişmeden düzeliyor.
+  //
+  // ZEMİN olarak kullanma. Dolgulu buton gerekiyorsa `*Surface` + `on*` çifti.
+
+  /// Olumlu durum METNİ/İKONU (onaylandı, tamamlandı). Koyu 8.9:1, açık 5.6:1.
+  static Color get success => _pick(const Color(0xFF5ED27D), const Color(0xFF186B33));
+
+  /// Vurgu / ikincil eylem METNİ/İKONU (sil, reddet, uyarı ipucu).
+  /// Koyu 5.7:1, açık 5.7:1.
+  static Color get accent => _pick(const Color(0xFFC9856A), const Color(0xFF8C4A2F));
+
+  /// Bilgi METNİ/İKONU. Koyu 6.4:1, açık 6.0:1.
+  static Color get info => _pick(const Color(0xFF5AA9D6), const Color(0xFF1A5F82));
+
+  /// Yıkıcı eylem (silme, hata) METNİ/İKONU. Koyu 6.4:1, açık 6.5:1.
+  static Color get danger => _pick(const Color(0xFFE8836F), const Color(0xFFA02216));
+
+  /// Uyarı (dikkat, bekleme) METNİ/İKONU. Koyu 9.0:1, açık 5.1:1.
+  static Color get warning => _pick(const Color(0xFFE8B54A), const Color(0xFF8A5A00));
+
+  /// Quiz geri bildirimi — [success]/[danger] ile aynı, çağrı yerinde okunur olsun diye.
+  static Color get correct => success;
+  static Color get incorrect => danger;
+
+  // ── Durum ZEMİNLERİ (SABİT) + üstlerindeki metin ───────────────────────
+  // Dolgulu butonlar için. Zemin tema DÖNMEZ; üstündeki metin sabit eşidir.
+  static const Color successSurface = Color(0xFF5ED27D);
+  static const Color onSuccess = Color(0xFF08201A); // 8.9:1
+  static const Color accentSurface = Color(0xFFC9856A);
+  static const Color onAccent = Color(0xFF08201A); // 5.7:1
+  static const Color dangerSurface = Color(0xFFA02216);
+  static const Color onDanger = Color(0xFFFFF5F3); // 7.2:1
 
   // ── Hairline / kenarlık (DÖNER) ────────────────────────────────────────
   static Color get line => gold.withValues(alpha: _light ? 0.32 : 0.18);

@@ -70,11 +70,15 @@ struct PrayerWidgetView: View {
                 Text(entry.hijri).font(.caption2).bold().foregroundColor(gold)
             }
             Text("SIRADAKİ VAKİT").font(.system(size: 9)).tracking(1).foregroundColor(muted)
+            // .systemSmall'da iki .title2 metni büyük Dynamic Type'ta (AX5 ≈3.1×)
+            // yan yana sığmıyordu ve vakit saati kesiliyordu. Küçültmeye izin ver.
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.nextName).font(.title2).bold().foregroundColor(cream)
-                Spacer()
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 4)
                 Text(entry.nextTime).font(.title2).bold().foregroundColor(gold)
                     .monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
             if !entry.location.isEmpty {
                 Text(entry.location).font(.caption2).foregroundColor(muted).lineLimit(1)

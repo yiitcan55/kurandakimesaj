@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pro_image_editor/pro_image_editor.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../data/backend_repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
@@ -39,18 +41,58 @@ const List<VideoTemplate> kTemplates = [
   VideoTemplate('teal', 'Okyanus', [Color(0xFF0A2E32), Color(0xFF05171A)], 'Ferah'),
 ];
 
+/// Gelişmiş görsel editörün yapılandırması.
+///
+/// Sınıf dışında ve `@visibleForTesting`: iki ayarı da testten doğrulanabilir
+/// olmalı, çünkü ikisi de sessizce kırılıp geç fark edilecek türden.
+@visibleForTesting
+const ProImageEditorConfigs kStudioEditorConfigs = ProImageEditorConfigs(
+  // KRİTİK: paket varsayılanı JPG. `uploadPostMedia` dosyayı `.png` adıyla ve
+  // `image/png` content-type'ıyla yazıyor — varsayılan bırakılsaydı hem dosya
+  // adı hem MIME yalan söylerdi.
+  imageGeneration: ImageGenerationConfigs(outputFormat: OutputFormat.png),
+  // sticker/emoji/audio BİLEREK YOK:
+  // * sticker + emoji → moderasyondan geçmeyen YENİ bir UGC yüzeyi açar
+  //   (Guideline 1.2); kapı `feed_posts` satırını korur, kullanıcının kartın
+  //   üstüne yapıştırdığı rastgele görseli değil.
+  // * audio → madde 5'in küratörlü (FK ile kilitli) müzik kütüphanesiyle
+  //   çakışır; iki ses kaynağı olursa telif güvencesi anlamını yitirir.
+  mainEditor: MainEditorConfigs(
+    tools: [
+      SubEditorMode.paint,
+      SubEditorMode.text,
+      SubEditorMode.cropRotate,
+      SubEditorMode.tune,
+      SubEditorMode.filter,
+      SubEditorMode.blur,
+    ],
+  ),
+);
+
 // ── Canva benzeri görsel editör ─────────────────────────────────────────────
 
 /// Metin konumu
 enum _TextPosition { top, center, bottom }
 
 /// StudioScreen — Canva benzeri gerçek editör.
-/// Arka plan seç → Ayet/Metin yaz → Özelleştir → Önizle → Paylaş/Yükle.
+/// Arka plan seç (şablon / görsel / video) → Ayet/Metin yaz → Özelleştir →
+/// Önizle → PNG paylaş veya Reels'e yayınla.
 class StudioScreen extends ConsumerStatefulWidget {
-  const StudioScreen({super.key, this.template, this.initialText, this.initialReference});
+  const StudioScreen({
+    super.key,
+    this.template,
+    this.initialArabic,
+    this.initialText,
+    this.initialReference,
+  });
   final VideoTemplate? template;
 
-  /// Ayet Bulucu "Videoya Aktar" ile gelindiğinde önyüklenen ayet metni (Arapça+meal).
+  /// Ayet Bulucu ile gelindiğinde önyüklenen Arapça metin. Düzenlenemez:
+  /// yayınlanan kartın `feed_posts.arabic` alanına AYRI gider (Reels oynatıcısı
+  /// RTL bloğu buradan çizer) ve önizlemede Amiri Quran ile RTL render edilir.
+  final String? initialArabic;
+
+  /// Önyüklenen ayetin meali — düzenlenebilir metin alanına düşer.
   final String? initialText;
 
   /// Önyüklenen ayetin referansı (ör. "Yasin, 58") — paylaşım altyazısı ve
@@ -65,9 +107,17 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
   // Preview alanı
   final GlobalKey _previewKey = GlobalKey();
 
-  // Arka plan
+  // Arka plan: şablon gradyanı (varsayılan) VEYA galeriden seçilen tek bir
+  // dosya. Dosya görsel de video da olabilir; hangisi olduğunu [_bgIsVideo]
+  // söyler (iki ayrı alan tutmak "ikisi de dolu" gibi imkânsız bir durumu
+  // temsil edilebilir kılardı).
   late int _selectedTemplate;
-  File? _bgImage;
+  File? _bgFile;
+  bool _bgIsVideo = false;
+
+  /// Video arka planın önizleme oynatıcısı — yalnız [_bgIsVideo] iken canlı.
+  /// Yeni seçimde ve `dispose`ta MUTLAKA bırakılır (decoder sızıntısı).
+  VideoPlayerController? _bgVideo;
 
   // Metin
   String _overlayText = '';
@@ -77,6 +127,16 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
 
   // Boyut modu: true = Story (9:16), false = Kare (1:1)
   bool _storyMode = true;
+
+  /// Seçili küratörlü müzik parçası (`feed_audio_tracks.id`). Kullanıcı keyfi
+  /// bir ses URL'i veremez — yalnız kütüphaneden seçebilir; telif güvencesi
+  /// yabancı anahtarda durur.
+  String? _audioTrackId;
+
+  /// "Gelişmiş Düzenle" sonrası dönen görsel. Doluysa yayınlanan/paylaşılan
+  /// şey ARTIK marka bestecisinin çıktısı değil, kullanıcının düzenlediği
+  /// bayttır. `null` → normal akış.
+  Uint8List? _editedBytes;
 
   // Dışa aktarım / yayınlama
   bool _exporting = false;
@@ -94,6 +154,10 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
   /// Ayet künyesi — "Videoya Aktar" ile gelindiyse dolu, aksi hâlde boş.
   String get _reference => widget.initialReference?.trim() ?? '';
 
+  /// Ayetin Arapça metni — "Videoya Aktar" ile gelindiyse dolu, aksi hâlde boş
+  /// (kullanıcının kendi yazdığı serbest metinde Arapça blok yoktur).
+  String get _arabic => widget.initialArabic?.trim() ?? '';
+
   /// Paylaşım altyazısı: künye varsa onu kullan, yoksa genel metin.
   String get _shareText => _reference.isEmpty ? "Kur'an'dan bir mesaj" : _reference;
 
@@ -104,7 +168,7 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
     _selectedTemplate = tpl != null
         ? kTemplates.indexWhere((t) => t.id == tpl.id).clamp(0, kTemplates.length - 1)
         : 0;
-    // "Videoya Aktar" ile gelen ayet metnini önyükle.
+    // "Videoya Aktar" ile gelen ayet mealini önyükle.
     final text = widget.initialText;
     if (text != null && text.isNotEmpty) {
       _overlayText = text;
@@ -115,33 +179,88 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _bgVideo?.dispose();
     super.dispose();
   }
 
   // ── Galeri'den arka plan seç ──────────────────────────────────────────────
 
+  /// Video önizleyiciyi bırak — yeni arka plan seçilince ve şablona dönünce.
+  void _releaseVideo() {
+    _bgVideo?.dispose();
+    _bgVideo = null;
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: ImageSource.gallery);
-    if (file != null) {
-      setState(() {
-        _bgImage = File(file.path);
-      });
+    if (file == null || !mounted) return;
+    setState(() {
+      _releaseVideo();
+      _bgFile = File(file.path);
+      _bgIsVideo = false;
+    });
+  }
+
+  /// Galeriden video arka planı seç. Boyut kapısı `CreatePostSheet._pickVideo`
+  /// ile AYNI: `_publish` videoyu `readAsBytes()` ile tamamen belleğe alır,
+  /// sınırsız bırakılırsa büyük bir galeri videosu düşük RAM'li cihazda OOM
+  /// yapar. İki yayın yolu farklı sınır uygularsa biri anlamsızlaşır.
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final file = await picker.pickVideo(source: ImageSource.gallery);
+    if (file == null || !mounted) return;
+    final picked = File(file.path);
+    if (picked.lengthSync() > kAyahVideoMaxBytes) {
+      _snack('Video çok büyük (en fazla 20 MB). Daha kısa bir video seç.');
+      return;
+    }
+    // Seçim ÖNCE kesinleşir. Yayınlanan şey dosyanın kendisidir, önizleme
+    // değil — oynatıcı kurulamazsa (codec/platform) kullanıcının seçimini
+    // sessizce çöpe atmak yanlış olurdu; sabit bir yer tutucu gösteririz.
+    setState(() {
+      _releaseVideo();
+      _bgFile = picked;
+      _bgIsVideo = true;
+    });
+    final controller = VideoPlayerController.file(picked);
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.setVolume(0); // önizleme sessiz başlar
+      // Bu arada başka bir arka plan seçilmiş olabilir → kendi kaynağımızı
+      // bırak (aksi hâlde controller sahipsiz kalır, decoder sızar).
+      if (!mounted || _bgFile != picked) return await controller.dispose();
+      await controller.play();
+      setState(() => _bgVideo = controller);
+    } catch (_) {
+      await controller.dispose();
     }
   }
 
   // ── PNG dışa aktarım → paylaş ────────────────────────────────────────────
 
+  /// Önizlemeyi PNG baytlarına çevirir. Video arka planda çağrılmaz —
+  /// tek kareye indirgemek kullanıcıyı yanıltır (bkz. "PNG Kaydet" gizleme).
+  Future<Uint8List?> _renderPng() async {
+    // Çağıranlar (`_export`, `_publish`) hemen öncesinde `setState` yapıyor;
+    // `setState` yalnız kare PLANLAR. Bekleyen kare koşmadan `toImage()`
+    // çağrılırsa boundary hâlâ `needsPaint` olur → assert / bayat kare.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return null;
+    final boundary =
+        _previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return null;
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData?.buffer.asUint8List();
+  }
+
   Future<void> _export() async {
     setState(() => _exporting = true);
     try {
-      final boundary =
-          _previewKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final bytes = byteData.buffer.asUint8List();
+      final bytes = await _bytesToPublish();
+      if (bytes == null) return;
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/ayet_${DateTime.now().millisecondsSinceEpoch}.png');
       await file.writeAsBytes(bytes);
@@ -155,16 +274,54 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
     }
   }
 
-  // ── Reels'e yayınla ('still' reel) ────────────────────────────────────────
-
-  /// Stüdyo çıktısını onay kuyruğuna gönderir (`kind: 'still'`).
+  /// Yayınlanacak/paylaşılacak baytlar — tek kaynak.
   ///
-  /// ponytail: PNG'nin kendisi YÜKLENMİYOR — yayınlanan kart, şablon + metinden
-  /// Reels tarafında yeniden kurulur. Depolamaya yükleyip URL dönen bir
-  /// repository metodu yok (ör. `ISocialRepository.uploadPostMedia`) ve ekran
-  /// mimari kural gereği doğrudan `client.storage` çağıramaz. O metot
-  /// eklendiğinde `_previewKey` baytları yüklenip buraya `mediaUrl:` geçilecek;
-  /// `FeedPost.thumbnailUrl` zaten `media_url`'e düşüyor.
+  /// Kullanıcı gelişmiş editörden geçtiyse ONUN çıktısı gider; aksi hâlde
+  /// marka kartı canlı render edilir. İki yayın yolunun (`_export`,
+  /// `_publish`) ayrışmaması için tek fonksiyondan geçiyorlar.
+  Future<Uint8List?> _bytesToPublish() async =>
+      _editedBytes ?? await _renderPng();
+
+  /// Gelişmiş görsel editör. Marka bestecisi BİRİNCİL kalır: editör mevcut
+  /// kartın PNG'siyle AÇILIR, yani zümrüt/altın kimlik ve RTL Arapça dizgi
+  /// korunur; kullanıcı onun üstünde çalışır.
+  Future<void> _openEditor() async {
+    final bytes = await _bytesToPublish();
+    if (!mounted) return;
+    if (bytes == null) {
+      _snack('Önizleme hazırlanamadı. Tekrar dene.');
+      return;
+    }
+    final navigator = Navigator.of(context);
+    final edited = await navigator.push<Uint8List>(
+      MaterialPageRoute<Uint8List>(
+        builder: (_) => ProImageEditor.memory(
+          bytes,
+          configs: kStudioEditorConfigs,
+          callbacks: ProImageEditorCallbacks(
+            onImageEditingComplete: (result) async => navigator.pop(result),
+          ),
+        ),
+      ),
+    );
+    if (edited != null && mounted) {
+      setState(() => _editedBytes = edited);
+    }
+  }
+
+  // ── Reels'e yayınla ───────────────────────────────────────────────────────
+
+  /// Stüdyo çıktısını onay kuyruğuna gönderir (sunucuda `status='pending'`).
+  ///
+  /// Medya GERÇEKTEN yüklenir ([ISocialRepository.uploadPostMedia] — iki yayın
+  /// yolunun ortak yolu):
+  /// * video arka plan → mp4 yüklenir, `kind: 'video'`, `videoUrl`
+  /// * şablon/görsel  → önizlemenin PNG'si yüklenir, `kind: 'still'`, `mediaUrl`
+  ///
+  /// Arapça / meal / künye AYRI alanlar olarak gider: Reels oynatıcısı metni
+  /// arka planın ÜSTÜNE kendi çizer (`_ReelComposition` RTL Arapça bloğu +
+  /// `_ReelOverlay` meal/künye), bu yüzden hepsini `meal` içine gömmek
+  /// oynatıcının Arapça bloğunu boş bırakırdı.
   Future<void> _publish() async {
     final text = _overlayText.trim();
     if (text.isEmpty) {
@@ -183,14 +340,27 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
     }
     setState(() => _publishing = true);
     try {
-      await ref.read(socialRepositoryProvider).createPost(
-            reference: _reference,
-            arabic: '',
-            meal: text,
-            caption: text,
-            kind: 'still',
-            templateId: kTemplates[_selectedTemplate].id,
-          );
+      final repo = ref.read(socialRepositoryProvider);
+      final video = _bgIsVideo ? _bgFile : null;
+      final bytes =
+          video != null ? await video.readAsBytes() : await _bytesToPublish();
+      if (bytes == null) {
+        _snack('Önizleme hazırlanamadı. Tekrar dene.');
+        return;
+      }
+      final url = await repo.uploadPostMedia(bytes, isVideo: video != null);
+      await repo.createPost(
+        reference: _reference,
+        arabic: _arabic,
+        meal: text,
+        caption: text,
+        kind: video != null ? 'video' : 'still',
+        // 'still' → poster/görsel; 'video' → oynatılabilir mp4.
+        mediaUrl: video != null ? null : url,
+        videoUrl: video != null ? url : null,
+        templateId: kTemplates[_selectedTemplate].id,
+        audioTrackId: _audioTrackId,
+      );
       ref.invalidate(cloudReelsProvider);
       if (mounted) {
         _snack("İçeriğin incelemeye alındı. Onaylandığında Reels'te yayınlanacak.");
@@ -217,10 +387,36 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
       _TextPosition.bottom => Alignment.bottomCenter,
     };
 
+    final video = _bgVideo;
     Widget backgroundWidget;
-    if (_bgImage != null) {
+    if (_bgIsVideo && video != null && video.value.isInitialized) {
+      // FittedBox+SizedBox = BoxFit.cover'ın video karşılığı: dikey kartta
+      // videonun kendi en-boyu korunur, taşan kısım kırpılır.
+      backgroundWidget = FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: video.value.size.width,
+          height: video.value.size.height,
+          child: VideoPlayer(video),
+        ),
+      );
+    } else if (_bgIsVideo) {
+      // Oynatıcı henüz hazır değil ya da kurulamadı — seçim yine de geçerli.
+      backgroundWidget = ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Icon(
+            Icons.videocam_rounded,
+            size: 44,
+            color: AppColors.gold,
+            semanticLabel: 'Seçili video arka planı',
+          ),
+        ),
+      );
+    } else if (_bgFile != null) {
       backgroundWidget = Image.file(
-        _bgImage!,
+        _bgFile!,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
@@ -253,35 +449,66 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
             ),
           );
 
-    return RepaintBoundary(
-      key: _previewKey,
-      child: AspectRatio(
-        aspectRatio: _storyMode ? 9 / 16 : 1,
+    // Düzenlenen görselde metin ZATEN var; marka katmanını üstüne yeniden
+    // çizmek metni ÇİFT gösterirdi.
+    if (_editedBytes != null) {
+      return RepaintBoundary(
+        key: _previewKey,
         child: ClipRRect(
           borderRadius: AppRadii.lgAll,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              backgroundWidget,
-              // Hafif karartma katmanı — metin okunabilirliği
-              Container(color: Colors.black.withValues(alpha: 0.25)),
-              // Altın kenarlık
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: AppRadii.lgAll,
-                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+          child: Image.memory(_editedBytes!, fit: BoxFit.cover),
+        ),
+      );
+    }
+
+    // Boyutu artık çağıran veriyor (sabit 360×640 / 360×360 tuval), bu yüzden
+    // buradaki `AspectRatio` kaldırıldı — çıktı çözünürlüğü deterministik.
+    return RepaintBoundary(
+      key: _previewKey,
+      child: ClipRRect(
+        borderRadius: AppRadii.lgAll,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            backgroundWidget,
+            // Hafif karartma katmanı — metin okunabilirliği
+            Container(color: Colors.black.withValues(alpha: 0.25)),
+            // Altın kenarlık
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.lgAll,
+                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+              ),
+            ),
+            // Metin katmanı — Arapça varsa üstte, RTL + Amiri Quran
+            // (domain kuralı 2). Meal düzenlenebilir metin alanından gelir.
+            Align(
+              alignment: textAlignment,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_arabic.isNotEmpty) ...[
+                      Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Text(
+                          _arabic,
+                          textAlign: TextAlign.center,
+                          style: arabicStyle(
+                            size: _fontSize * 1.35,
+                            color: _textColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    textWidget,
+                  ],
                 ),
               ),
-              // Metin katmanı
-              Align(
-                alignment: textAlignment,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  child: textWidget,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -291,11 +518,13 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
 
   Widget _buildTemplateThumbnail(int index) {
     final t = kTemplates[index];
-    final selected = index == _selectedTemplate && _bgImage == null;
+    final selected = index == _selectedTemplate && _bgFile == null;
     return GestureDetector(
       onTap: () => setState(() {
         _selectedTemplate = index;
-        _bgImage = null;
+        _releaseVideo();
+        _bgFile = null;
+        _bgIsVideo = false;
       }),
       child: AnimatedContainer(
         duration: AppDurations.fast,
@@ -324,6 +553,36 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AppHeader(title: 'Görsel Editör'),
+
+            // ── Önizleme — KAYDIRILAN LİSTENİN DIŞINDA ───────────────────
+            // Daha önce `ListView`in ilk çocuğuydu. `ListView` tembeldir:
+            // kullanıcı "Reels'e Yayınla"ya ulaşmak için kaydırınca önizleme
+            // görünür alanı terk eder, `RenderSliverMultiBoxAdaptor` onu
+            // layout eder ama BOYAMAZ → `_previewKey`in RepaintBoundary'si
+            // `needsPaint` kalır ve `toImage()` `!debugNeedsPaint` assert'iyle
+            // patlar (release'de `layer! as OffsetLayer` cast'i / bayat kare).
+            //
+            // Sabit 360×640 tuval + `FittedBox`: tuval boyutu ekrandan
+            // BAĞIMSIZ olduğu için `pixelRatio: 3.0` her cihazda tam
+            // 1080×1920 (Story) / 1080×1080 (Kare) üretir — önceden çıktı
+            // ekran genişliğine göre değişiyordu. `FittedBox` yalnız gösterimi
+            // ölçekler; boundary katmanı 360×640'ta kaydedilir.
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: FittedBox(
+                  child: SizedBox(
+                    // Test bu anahtarla "önizleme kaydırılan listenin İÇİNDE
+                    // değil" değişmezini kilitliyor.
+                    key: const Key('studio_preview_canvas'),
+                    width: 360,
+                    height: _storyMode ? 640 : 360,
+                    child: _buildPreview(),
+                  ),
+                ),
+              ),
+            ),
+
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
@@ -350,52 +609,100 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ── 1. Önizleme ──────────────────────────────────────────
-                  Center(child: _buildPreview())
-                      .animate()
-                      .fadeIn(duration: AppDurations.normal),
-                  const SizedBox(height: 20),
-
-                  // ── 2. Arka plan seçici ──────────────────────────────────
-                  const SectionLabel(title: 'Arka Plan', eyebrow: 'Tema / Galeri'),
+                  // ── 1. Arka plan seçici ──────────────────────────────────
+                  const SectionLabel(
+                    title: 'Arka Plan',
+                    eyebrow: 'Tema / Görsel / Video',
+                  ),
                   const SizedBox(height: 10),
                   SizedBox(
                     height: 52,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
+                        // Galeri düğmeleri ŞERİDİN BAŞINDA: sonda dursalardı
+                        // dar telefonlarda (ve testte) altı şablonun ardında
+                        // görünmez kalıp kaydırmadan bulunamazlardı.
+                        _MediaPickButton(
+                          key: const Key('studio_pick_image'),
+                          icon: Icons.image_rounded,
+                          tooltip: 'Galeriden görsel seç',
+                          selected: _bgFile != null && !_bgIsVideo,
+                          onTap: _pickImage,
+                        ),
+                        const SizedBox(width: 8),
+                        // Video arka plan: oynatıcı üstüne ayet metnini çizer.
+                        _MediaPickButton(
+                          key: const Key('studio_pick_video'),
+                          icon: Icons.videocam_rounded,
+                          tooltip: 'Galeriden video seç',
+                          selected: _bgIsVideo,
+                          onTap: _pickVideo,
+                        ),
+                        const SizedBox(width: 12),
                         for (int i = 0; i < kTemplates.length; i++)
                           _buildTemplateThumbnail(i),
-                        // Galeri butonu
-                        GestureDetector(
-                          onTap: _pickImage,
-                          child: AnimatedContainer(
-                            duration: AppDurations.fast,
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: _bgImage != null
-                                  ? AppColors.gold.withValues(alpha: 0.2)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _bgImage != null ? AppColors.gold : AppColors.line,
-                                width: _bgImage != null ? 2.5 : 1,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.image_rounded,
-                              color: _bgImage != null ? AppColors.gold : AppColors.muted,
-                              size: 22,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
 
                   // ── 3. Metin girişi ──────────────────────────────────────
+                  // ── Müzik (küratörlü) ───────────────────────────────────
+                  // Kütüphane boşsa ya da göç uygulanmamışsa şerit HİÇ
+                  // görünmez: kullanıcıya çalışmayan bir kontrol göstermeyiz.
+                  ref
+                      .watch(reelAudioTracksProvider)
+                      .maybeWhen(
+                        data: (tracks) => tracks.isEmpty
+                            ? const SizedBox.shrink()
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const SectionLabel(
+                                    title: 'Müzik',
+                                    eyebrow: 'Küratörlü Kütüphane',
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    height: 52,
+                                    child: ListView.separated(
+                                      key: const Key('studio_music_rail'),
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: tracks.length + 1,
+                                      separatorBuilder: (_, _) =>
+                                          const SizedBox(width: 8),
+                                      itemBuilder: (context, i) {
+                                        if (i == 0) {
+                                          return ChoiceChip(
+                                            label: const Text('Sessiz'),
+                                            selected: _audioTrackId == null,
+                                            onSelected: (_) => setState(
+                                              () => _audioTrackId = null,
+                                            ),
+                                          );
+                                        }
+                                        final t = tracks[i - 1];
+                                        return ChoiceChip(
+                                          label: Text(
+                                            t.artist.isEmpty
+                                                ? t.title
+                                                : '${t.title} · ${t.artist}',
+                                          ),
+                                          selected: _audioTrackId == t.id,
+                                          onSelected: (_) => setState(
+                                            () => _audioTrackId = t.id,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+
                   const SectionLabel(title: 'Metin', eyebrow: 'Ayet Meali / Özel Metin'),
                   const SizedBox(height: 10),
                   TextField(
@@ -417,7 +724,7 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
                       const SizedBox(width: 8),
                       Text(
                         _fontSize.round().toString(),
-                        style: AppTypography.body(size: 13, color: AppColors.gold),
+                        style: AppTypography.body(size: 13, color: AppColors.goldInk),
                       ),
                     ],
                   ),
@@ -550,28 +857,58 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
                       ),
                     ),
                   Text(
-                    'Yayınlanan kartta şablon ve metin kullanılır; galeri arka planı '
-                    'ile metin biçimi yalnızca PNG çıktısına işlenir.',
+                    _bgIsVideo
+                        ? 'Videon arka plan olarak yüklenir; ayet metnini Reels '
+                              'oynatıcısı üstüne çizer.'
+                        : 'Gördüğün kartın kendisi yüklenir; yayına yönetici '
+                              'onayından sonra girer.',
                     style: AppTypography.body(size: 12, color: AppColors.muted),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _exporting || _publishing ? null : _export,
-                    icon: _exporting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('PNG Kaydet'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.goldInk,
-                      side: BorderSide(color: AppColors.line),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: const RoundedRectangleBorder(borderRadius: AppRadii.smAll),
+                  // Gelişmiş editör yalnız durağan kartta anlamlı: video arka
+                  // planda yayınlanan şey mp4'ün kendisidir, tek kare değil.
+                  if (!_bgIsVideo) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('studio_advanced_edit'),
+                      icon: const Icon(Icons.tune_rounded, size: 18),
+                      label: const Text('Gelişmiş Düzenle'),
+                      onPressed: _exporting || _publishing ? null : _openEditor,
                     ),
-                  ),
+                    if (_editedBytes != null)
+                      TextButton.icon(
+                        key: const Key('studio_revert_edit'),
+                        icon: const Icon(Icons.undo_rounded, size: 18),
+                        label: const Text('Düzenlemeyi geri al'),
+                        // Kullanıcı kapana kısılmasın: düzenleme sonrası marka
+                        // kartına dönebilmeli.
+                        onPressed: () => setState(() => _editedBytes = null),
+                      ),
+                  ],
+                  // Video arka planda PNG çıktısı YOK: hareketli içeriği tek
+                  // kareye indirip "kaydettin" demek kullanıcıyı yanıltır.
+                  if (!_bgIsVideo) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('studio_export_png'),
+                      onPressed: _exporting || _publishing ? null : _export,
+                      icon: _exporting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('PNG Kaydet'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.goldInk,
+                        side: BorderSide(color: AppColors.line),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: AppRadii.smAll,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -583,6 +920,53 @@ class _StudioScreenState extends ConsumerState<StudioScreen> {
 }
 
 // ── Yardımcı widget'lar ──────────────────────────────────────────────────────
+
+/// Arka plan seçici şeridindeki galeri düğmesi (görsel / video).
+class _MediaPickButton extends StatelessWidget {
+  const _MediaPickButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.gold.withValues(alpha: 0.2)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? AppColors.gold : AppColors.line,
+              width: selected ? 2.5 : 1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: selected ? AppColors.goldInk : AppColors.muted,
+            size: 22,
+            semanticLabel: tooltip,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ColorCircle extends StatelessWidget {
   const _ColorCircle({
@@ -652,13 +1036,13 @@ class _PositionButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: selected ? AppColors.gold : AppColors.muted, size: 20),
+            Icon(icon, color: selected ? AppColors.goldInk : AppColors.muted, size: 20),
             const SizedBox(height: 4),
             Text(
               label,
               style: AppTypography.body(
                 size: 12,
-                color: selected ? AppColors.gold : AppColors.muted,
+                color: selected ? AppColors.goldInk : AppColors.muted,
               ),
             ),
           ],

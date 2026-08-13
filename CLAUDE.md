@@ -66,7 +66,13 @@ Kullanılan paketler (`pubspec.yaml`): `flutter_riverpod`, `go_router`, `freezed
 
 ## Modüller
 
-24 özellik, 4 modül: **İbadet & Günlük** (namaz vakti, zikirmatik, tesbihat, dua, Esmaü'l-Hüsna, oruç/imsakiye, dini günler, kıble) · **Kur'an & Öğrenme** (okuma, günlük ayet, konuya göre ayet, mucizeler, sure ezberi, cüz/hizb takip, kıssalar, tecvid) · **İçerik & Topluluk** (Video Edit+Meal, AI asistan, akış, hatim halkaları, koleksiyonlar) · **Araçlar** (zekât hesaplama, cami bul, bağış, rüya tabiri).
+**26 özellik**, 4 modül — tek kaynak `lib/app/feature_catalog.dart`, sayı ihtilafında **kod kazanır**:
+**İbadet & Günlük (8)** namaz vakti, zikirmatik, tesbihat, dua, Esmaü'l-Hüsna, oruç/imsakiye, dini günler, kıble ·
+**Kur'an & Öğrenme (10)** okuma, günlük ayet, konuya göre ayet, mucizeler, sure ezberi, cüz/hizb takip, kıssalar, tecvid, sure quiz, istatistikler ·
+**İçerik & Topluluk (4)** ayet kartı stüdyosu, hatim halkaları, koleksiyonlar, Ayet Bul (AI) ·
+**Araçlar (4)** zekât hesaplama, cami bul, bağış, rüya tabiri.
+
+> Reels akışı ve Mesajlar katalog kaydı değil, alt-sekmedir — bu yüzden 26'ya dahil değiller.
 
 Önerilen lansman sırası: Faz 1 Temel (onboarding, okuma, namaz vakti, zikir, günün ayeti) → Faz 2 Stüdyo (video edit, AI, akış) → Faz 3 Öğrenme & Topluluk → Faz 4 Araçlar & Gelir.
 

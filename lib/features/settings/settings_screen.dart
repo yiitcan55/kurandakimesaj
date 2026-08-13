@@ -117,19 +117,19 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: () => _confirmDeleteAccount(context, ref),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_forever_rounded,
-                        color: Color(0xFFE26A6A),
+                        color: AppColors.danger,
                       ),
                       label: Text(
                         'Hesabı sil',
                         style: AppTypography.body(
                           size: 15,
-                          color: const Color(0xFFE26A6A),
+                          color: AppColors.danger,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0x55E26A6A)),
+                        side: BorderSide(color: AppColors.line),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
@@ -180,7 +180,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE26A6A),
+              backgroundColor: AppColors.dangerSurface,
+              foregroundColor: AppColors.onDanger,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Evet, sil'),
@@ -254,7 +255,7 @@ class _NotificationSetting extends ConsumerWidget {
     return AppCard(
       child: Row(
         children: [
-          const Icon(Icons.notifications_active_rounded, color: AppColors.gold),
+          Icon(Icons.notifications_active_rounded, color: AppColors.goldInk),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -438,7 +439,7 @@ class _LegalRow extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, color: AppColors.gold, size: 20),
+          Icon(icon, color: AppColors.goldInk, size: 20),
           const SizedBox(width: 14),
           Expanded(
             child: Text(

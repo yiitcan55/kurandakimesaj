@@ -88,5 +88,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Tilavetin ekran kapalıyken/uygulama arka plandayken sürmesi ve
+	     kilit ekranı medya kontrollerinin çalışması için (just_audio_background). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

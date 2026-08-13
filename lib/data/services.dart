@@ -493,6 +493,13 @@ class FavoritesService {
 
 /// Türkçe metin okuma servisi — flutter_tts sarmalayıcısı.
 class TtsService {
+  TtsService({this.onSpeakStart});
+
+  /// Konuşma başlamadan hemen önce çağrılır — tilaveti duraklatmak için.
+  /// Tilavet artık ekran dışında da çalabildiği için üst üste binme olasılığı
+  /// eskisinden çok yüksek; iki ses aynı anda çalarsa ikisi de anlaşılmaz.
+  final Future<void> Function()? onSpeakStart;
+
   final FlutterTts _tts = FlutterTts();
   bool _speaking = false;
 
@@ -504,6 +511,7 @@ class TtsService {
   }
 
   Future<void> speak(String text) async {
+    await onSpeakStart?.call();
     if (_speaking) await stop();
     _speaking = true;
     await _tts.speak(text);

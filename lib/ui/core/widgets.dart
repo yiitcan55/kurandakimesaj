@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,11 +9,29 @@ import 'theme/app_theme.dart';
 
 /// Geri butonlu üst başlık + opsiyonel sağ aksiyon.
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key, required this.title, this.trailing, this.onBack});
+  const AppHeader({
+    super.key,
+    required this.title,
+    this.trailing,
+    this.onBack,
+    this.foreground,
+    this.iconColor,
+  });
 
   final String title;
   final Widget? trailing;
   final VoidCallback? onBack;
+
+  /// Başlık rengi. `null` → temanın krem başlığı (bugünkü davranış).
+  ///
+  /// KENDİ sabit zeminini kuran ekranlar (Kur'an okuyucusunun sepya modu gibi)
+  /// bunu geçmek ZORUNDA: global tema o zemini bilmez, koyu temada `cream`
+  /// `#F3EADB`'ye döner ve sepya zemininin (`#F3EADB`) üstünde kaybolur.
+  final Color? foreground;
+
+  /// Geri butonu rengi. `null` → `AppColors.goldInk`. [trailing] kendi rengini
+  /// kendi vermeli (M3 `IconButton` ambient `IconTheme`'i okumaz).
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +42,12 @@ class AppHeader extends StatelessWidget {
           IconButton(
             onPressed: onBack ?? () => context.pop(),
             icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-            color: AppColors.gold,
+            color: iconColor ?? AppColors.goldInk,
           ),
           Expanded(
             child: Text(
               title,
-              style: AppTypography.display(size: 24),
+              style: AppTypography.display(size: 24, color: foreground),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -181,7 +201,13 @@ class _GoldChipState extends State<GoldChip> {
         child: AnimatedContainer(
           duration: AppDurations.fast,
           curve: AppDurations.easeOut,
-          // vertical:10 + 13.5px metin ≈ 40px chip yüksekliği; SizedBox(56) ile fit.
+          // vertical:10 + 13.5px metin ≈ 40.3px doğal yükseklik. Dokunma hedefi
+          // ≥44px kuralını ÇAĞRI YERİ değil chip'in kendisi garanti eder: eskiden
+          // her şerit `SizedBox(height: 48)` ile dıştan sabitliyordu ve sistem
+          // yazı ölçeği büyüyünce chip 48'i aşıp taşıyordu. minHeight taban
+          // sağlar, tavan yoktur — metin büyürse chip birlikte büyür.
+          constraints: const BoxConstraints(minHeight: 44),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: selected ? AppColors.gold : Colors.transparent,
@@ -413,7 +439,7 @@ class _ReflectionSheetState extends State<_ReflectionSheet> {
           const SizedBox(height: 4),
           Text(
             widget.reference,
-            style: AppTypography.body(size: 13, color: AppColors.gold),
+            style: AppTypography.body(size: 13, color: AppColors.goldInk),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -458,35 +484,9 @@ class _ReflectionSheetState extends State<_ReflectionSheet> {
   }
 }
 
-/// Rakam + etiket istatistik kutusu (tabular figürler).
-class StatBox extends StatelessWidget {
-  const StatBox({super.key, required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: AppTypography.display(
-            size: 28,
-            color: AppColors.gold,
-          ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: AppTypography.body(size: 12.5, color: AppColors.muted),
-        ),
-      ],
-    );
-  }
-}
+// `StatBox` (rakam + etiket kutusu) SİLİNDİ: hiçbir çağrı yeri yoktu. Aynı işi
+// ana sayfanın `_StreakCard`'ı zaten yapıyor ve ondan fazlası var (dokunulabilir
+// kart + `AnimatedCounter`), yani indirgemek işlev kaybı olurdu.
 
 /// Eyebrow + başlık satırı (bölüm etiketi).
 class SectionLabel extends StatelessWidget {
@@ -531,11 +531,20 @@ class EmptyState extends StatelessWidget {
     required this.icon,
     required this.message,
     this.action,
+    this.color,
+    this.iconColor,
   });
 
   final IconData icon;
   final String message;
   final Widget? action;
+
+  /// Mesaj rengi. `null` → tema `muted`'ı (bugünkü davranış). [AppHeader.foreground]
+  /// ile aynı gerekçe: kendi sabit zeminini kuran ekranlar geçmek zorunda.
+  final Color? color;
+
+  /// Filigran ikon rengi. `null` → `AppColors.goldFaint`.
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -543,12 +552,12 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 54, color: AppColors.goldFaint),
+          Icon(icon, size: 54, color: iconColor ?? AppColors.goldFaint),
           const SizedBox(height: 16),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTypography.body(color: AppColors.muted),
+            style: AppTypography.body(color: color ?? AppColors.muted),
           ),
           if (action != null) ...[const SizedBox(height: 18), action!],
         ],
@@ -572,7 +581,8 @@ class AnimatedCounter extends StatelessWidget {
       curve: AppDurations.easeOut,
       builder: (_, v, _) => Text(
         v.round().toString(),
-        style: (style ?? AppTypography.display(size: 48, color: AppColors.gold))
+        style:
+            (style ?? AppTypography.display(size: 48, color: AppColors.goldInk))
             .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
       ),
     );
@@ -634,7 +644,7 @@ class FeaturePlaceholder extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 64, color: AppColors.gold)
+                    Icon(icon, size: 64, color: AppColors.goldInk)
                         .animate()
                         .fadeIn(duration: AppDurations.slow)
                         .scale(begin: const Offset(0.8, 0.8)),
@@ -664,4 +674,35 @@ class FeaturePlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Dikey ortalanmış ama SIĞMAZSA kaydırılabilen gövde.
+///
+/// Zikirmatik / tesbihat / kıble ekranlarının üçü de `Expanded > Column(center)`
+/// idi ve `SingleChildScrollView` yoktu: sabit boyutlu daire (280/200/300px) +
+/// metin, 640dp yükseklikte zaten sınırdaydı, sistem yazı ölçeği büyüyünce
+/// kesin taşıyordu. Ölçek kelepçesi (`app.dart`, maks 1.3×) tek başına yetmez —
+/// yatay yönde ve küçük ekranda 1.0×'te bile taşan yerler var.
+///
+/// [builder] kullanılabilir yüksekliği alır; sabit daire boyutlarını buna göre
+/// sınırlamak için kullan (bkz. [dialSize]).
+class CenteredScrollBody extends StatelessWidget {
+  const CenteredScrollBody({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, double maxHeight) builder;
+
+  /// Sabit daire boyutunu kullanılabilir yüksekliğe göre kırpar.
+  /// Yükseklik sonsuzsa (test/kaydırma bağlamı) [preferred] aynen döner.
+  static double dialSize(double maxHeight, double preferred) =>
+      maxHeight.isFinite ? math.min(preferred, maxHeight * 0.45) : preferred;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, c) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: c.maxHeight),
+            child: builder(context, c.maxHeight),
+          ),
+        ),
+      );
 }

@@ -93,7 +93,7 @@ class DailyAyahScreen extends ConsumerWidget {
                               },
                             ),
                             const SizedBox(height: 2),
-                            Text(ref0, style: AppTypography.body(size: 13, color: AppColors.gold)),
+                            Text(ref0, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
                             const SizedBox(height: 12),
                             AyetActionBar(
                               onUnderstand: () => _showTafsir(context, ayah, ref0),
@@ -189,7 +189,7 @@ class DailyAyahScreen extends ConsumerWidget {
             children: [
               Text('ANLA · TEFSİR', style: AppTypography.eyebrow()),
               const SizedBox(height: 8),
-              Text(ref0, style: AppTypography.body(size: 13, color: AppColors.gold)),
+              Text(ref0, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
               const SizedBox(height: 12),
               Text(t, style: AppTypography.body(size: 15, color: AppColors.cream)),
             ],
