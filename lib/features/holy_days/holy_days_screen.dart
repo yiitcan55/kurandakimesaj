@@ -160,7 +160,7 @@ class _HolyDaysScreenState extends ConsumerState<HolyDaysScreen> {
                             style: AppTypography.body(size: 15, color: AppColors.cream)),
                         Text(
                             '$daysToNext gün kaldı · ${DateFormat('d MMMM yyyy', 'tr').format(next.date)}',
-                            style: AppTypography.body(size: 13, color: AppColors.gold)),
+                            style: AppTypography.body(size: 13, color: AppColors.goldInk)),
                       ],
                     ),
                   ).animate().fadeIn(duration: AppDurations.normal),
@@ -194,7 +194,7 @@ class _HolyDaysScreenState extends ConsumerState<HolyDaysScreen> {
                                 children: [
                                   Text(DateFormat('d').format(d.date),
                                       style: AppTypography.display(
-                                          size: 22, color: AppColors.gold)),
+                                          size: 22, color: AppColors.goldInk)),
                                   Text(DateFormat('MMM', 'tr').format(d.date),
                                       style:
                                           AppTypography.body(size: 11, color: AppColors.muted)),

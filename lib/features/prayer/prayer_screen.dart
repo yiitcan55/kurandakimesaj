@@ -71,7 +71,7 @@ class PrayerScreen extends ConsumerWidget {
             AppHeader(
               title: 'Namaz Vakitleri',
               trailing: IconButton(
-                icon: const Icon(Icons.my_location_rounded, color: AppColors.gold),
+                icon: Icon(Icons.my_location_rounded, color: AppColors.goldInk),
                 onPressed: () => ref.read(prayerControllerProvider.notifier).refresh(),
               ),
             ),
@@ -197,7 +197,7 @@ class _PrayerBodyState extends ConsumerState<_PrayerBody> {
                     checkmarkColor: AppColors.gold,
                     labelStyle: AppTypography.body(
                       size: 14,
-                      color: isDone ? AppColors.gold : AppColors.cream2,
+                      color: isDone ? AppColors.goldInk : AppColors.cream2,
                       weight: isDone ? FontWeight.w600 : FontWeight.w400,
                     ),
                     side: BorderSide(
@@ -212,7 +212,7 @@ class _PrayerBodyState extends ConsumerState<_PrayerBody> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.bar_chart_rounded, size: 16, color: AppColors.gold),
+                  Icon(Icons.bar_chart_rounded, size: 16, color: AppColors.goldInk),
                   const SizedBox(width: 6),
                   Text(
                     'Bu hafta: $_weeklyCount/35 namaz',
@@ -271,7 +271,7 @@ class _NextPrayerCountdownState extends State<_NextPrayerCountdown> {
       children: [
         Text(next.name, style: AppTypography.display(size: 32)),
         Text(hhmmss,
-            style: AppTypography.body(size: 22, weight: FontWeight.w700, color: AppColors.gold)
+            style: AppTypography.body(size: 22, weight: FontWeight.w700, color: AppColors.goldInk)
                 .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
       ],
     );
@@ -296,7 +296,7 @@ class _PrayerRow extends StatelessWidget {
           children: [
             Icon(
               slot.isPrayer ? Icons.mosque_rounded : Icons.wb_twilight_rounded,
-              color: isNext ? AppColors.goldBright : AppColors.gold,
+              color: isNext ? AppColors.goldBright : AppColors.goldInk,
               size: 20,
             ),
             const SizedBox(width: 14),
@@ -306,7 +306,7 @@ class _PrayerRow extends StatelessWidget {
                 style: AppTypography.body(
                   size: 16,
                   weight: isNext ? FontWeight.w700 : FontWeight.w500,
-                  color: isNext ? AppColors.gold : AppColors.cream,
+                  color: isNext ? AppColors.goldInk : AppColors.cream,
                 ),
               ),
             ),

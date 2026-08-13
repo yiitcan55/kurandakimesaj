@@ -104,7 +104,7 @@ class DhikrScreen extends ConsumerWidget {
             AppHeader(
               title: 'Zikirmatik',
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: AppColors.gold),
+                icon: Icon(Icons.refresh_rounded, color: AppColors.goldInk),
                 onPressed: ctrl.reset,
               ),
             ),
@@ -112,56 +112,71 @@ class DhikrScreen extends ConsumerWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: ctrl.increment,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: Text(s.preset.arabic, style: arabicStyle(size: 34)),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(s.preset.label,
-                        style: AppTypography.body(size: 15, color: AppColors.cream2)),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: 280,
-                      height: 280,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(280, 280),
-                            painter: TasbihPainter(s.inCycle),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
+                child: CenteredScrollBody(
+                  builder: (context, maxHeight) {
+                    final dial = CenteredScrollBody.dialSize(maxHeight, 280);
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Directionality(
+                          textDirection: TextDirection.rtl,
+                          child:
+                              Text(s.preset.arabic, style: arabicStyle(size: 34)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(s.preset.label,
+                            style: AppTypography.body(
+                                size: 15, color: AppColors.cream2)),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: dial,
+                          height: dial,
+                          child: Stack(
+                            alignment: Alignment.center,
                             children: [
-                              AnimatedCounter(
-                                value: s.inCycle,
-                                style: AppTypography.display(size: 64, color: AppColors.gold),
+                              CustomPaint(
+                                size: Size(dial, dial),
+                                painter: TasbihPainter(s.inCycle),
                               ),
-                              Text('/ ${s.preset.target}',
-                                  style: AppTypography.body(size: 14, color: AppColors.muted)),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AnimatedCounter(
+                                    value: s.inCycle,
+                                    style: AppTypography.display(
+                                        size: 64, color: AppColors.goldInk),
+                                  ),
+                                  Text('/ ${s.preset.target}',
+                                      style: AppTypography.body(
+                                          size: 14, color: AppColors.muted)),
+                                ],
+                              ),
                             ],
                           ),
-                        ],
-                      ),
-                    ).animate().scale(duration: AppDurations.normal, curve: AppDurations.spring),
-                    const SizedBox(height: 14),
-                    Text('Tur: ${s.cycle}  ·  Bugün toplam: $total',
-                        style: AppTypography.body(size: 14, color: AppColors.muted)),
-                    const SizedBox(height: 6),
-                    Text('Saymak için ekrana dokun',
-                        style: AppTypography.body(size: 12.5, color: AppColors.muted2)),
-                  ],
+                        ).animate().scale(
+                            duration: AppDurations.normal,
+                            curve: AppDurations.spring),
+                        const SizedBox(height: 14),
+                        Text('Tur: ${s.cycle}  ·  Bugün toplam: $total',
+                            style: AppTypography.body(
+                                size: 14, color: AppColors.muted)),
+                        const SizedBox(height: 6),
+                        Text('Saymak için ekrana dokun',
+                            style: AppTypography.body(
+                                size: 12.5, color: AppColors.muted2)),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
-            SizedBox(
-              height: 48,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+            // Sabit `SizedBox(height: 48)` yoktu: chip doğal yüksekliği 40.3px,
+            // sistem yazı ölçeği ~1.4'te 48'i aşıp taşıyordu. Şerit artık
+            // içeriğe göre yükseliyor; dokunma hedefini GoldChip garanti ediyor.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
                 children: [
                   for (final p in kDhikrPresets)
                     Padding(
@@ -242,7 +257,7 @@ class _TasbihatScreenState extends State<TasbihatScreen> {
             AppHeader(
               title: 'Tesbihat',
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: AppColors.gold),
+                icon: Icon(Icons.refresh_rounded, color: AppColors.goldInk),
                 onPressed: _restart,
               ),
             ),
@@ -274,41 +289,51 @@ class _TasbihatScreenState extends State<TasbihatScreen> {
                   : GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: _tap,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('${_phase + 1} / ${_kTesbihat.length}',
-                              style: AppTypography.eyebrow()),
-                          const SizedBox(height: 16),
-                          Directionality(
-                            textDirection: TextDirection.rtl,
-                            child: Text(p.arabic, style: arabicStyle(size: 40)),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(p.label, style: AppTypography.display(size: 26)),
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                CustomPaint(
-                                  size: const Size(200, 200),
-                                  painter: CircularProgressPainter(
-                                    progress: _count / p.target,
-                                    strokeWidth: 10,
-                                  ),
+                      child: CenteredScrollBody(
+                        builder: (context, maxHeight) {
+                          final dial =
+                              CenteredScrollBody.dialSize(maxHeight, 200);
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('${_phase + 1} / ${_kTesbihat.length}',
+                                  style: AppTypography.eyebrow()),
+                              const SizedBox(height: 16),
+                              Directionality(
+                                textDirection: TextDirection.rtl,
+                                child:
+                                    Text(p.arabic, style: arabicStyle(size: 40)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(p.label,
+                                  style: AppTypography.display(size: 26)),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: dial,
+                                height: dial,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CustomPaint(
+                                      size: Size(dial, dial),
+                                      painter: CircularProgressPainter(
+                                        progress: _count / p.target,
+                                        strokeWidth: 10,
+                                      ),
+                                    ),
+                                    Text('$_count',
+                                        style: AppTypography.display(
+                                            size: 56, color: AppColors.goldInk)),
+                                  ],
                                 ),
-                                Text('$_count',
-                                    style: AppTypography.display(size: 56, color: AppColors.gold)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text('Devam etmek için dokun',
-                              style: AppTypography.body(size: 13, color: AppColors.muted2)),
-                        ],
+                              ),
+                              const SizedBox(height: 24),
+                              Text('Devam etmek için dokun',
+                                  style: AppTypography.body(
+                                      size: 13, color: AppColors.muted2)),
+                            ],
+                          );
+                        },
                       ),
                     ),
             ),

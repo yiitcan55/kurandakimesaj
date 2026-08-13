@@ -151,11 +151,11 @@ class _DuaScreenState extends ConsumerState<DuaScreen> {
                           ],
                         ),
                       ),
-                      // Kategori filtresi
-                      SizedBox(
-                        height: 48,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
+                      // Kategori filtresi — sabit yükseklik YOK, chip'in doğal
+                      // yüksekliği (≥44px dokunma hedefi GoldChip'te) belirler.
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
@@ -194,8 +194,8 @@ class _DuaScreenState extends ConsumerState<DuaScreen> {
                                     color: AppColors.goldFaint,
                                     borderRadius: AppRadii.smAll,
                                   ),
-                                  child: const Icon(Icons.volunteer_activism_rounded,
-                                      color: AppColors.gold, size: 20),
+                                  child: Icon(Icons.volunteer_activism_rounded,
+                                      color: AppColors.goldInk, size: 20),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
@@ -245,7 +245,7 @@ class _DuaScreenState extends ConsumerState<DuaScreen> {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           children: [
             Text(d.title, style: AppTypography.display(size: 24)),
-            Text(d.category, style: AppTypography.body(size: 13, color: AppColors.gold)),
+            Text(d.category, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
             const SizedBox(height: 18),
             AyetFrame(arabic: d.arabic, fontSize: 26),
             if (d.latin.isNotEmpty) ...[

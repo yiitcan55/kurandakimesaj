@@ -41,10 +41,6 @@ class WidgetSyncService {
     await HomeWidget.saveWidgetData<String>(
         'prayer_next_time', next != null ? fmt.format(next.time) : '--:--');
     await HomeWidget.saveWidgetData<String>('prayer_location', day.locationLabel);
-    await HomeWidget.saveWidgetData<String>(
-      'prayer_times',
-      day.slots.map((s) => '${s.name} ${fmt.format(s.time)}').join('  ·  '),
-    );
     await HomeWidget.saveWidgetData<String>('hijri_date', hijriToday());
     await HomeWidget.updateWidget(
       qualifiedAndroidName: _prayerAndroid,
@@ -53,9 +49,13 @@ class WidgetSyncService {
   }
 
   /// Günün ayeti widget'ını günceller.
+  ///
+  /// Arapça metin BİLİNÇLİ olarak gönderilmiyor: domain kuralı #2 gereği mushaf
+  /// hattı yalnız Amiri Quran ile render edilir, o font da ne RemoteViews'a ne
+  /// de WidgetKit extension'ına paketli. Eskiden yazılan `ayah_arabic` anahtarını
+  /// hiçbir platform okumuyordu — kaldırıldı.
   Future<void> syncAyah(Ayah ayah, Surah? surah) async {
     await _ensureGroup();
-    await HomeWidget.saveWidgetData<String>('ayah_arabic', ayah.arabic);
     await HomeWidget.saveWidgetData<String>('ayah_meal', ayah.meal);
     await HomeWidget.saveWidgetData<String>(
         'ayah_ref', '${surah?.nameTr ?? 'Sure'}, ${ayah.numberInSurah}');

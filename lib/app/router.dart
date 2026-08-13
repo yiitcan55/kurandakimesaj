@@ -14,6 +14,7 @@ import '../features/holy_days/holy_days_screen.dart';
 import '../features/home/home_screens.dart';
 import '../features/khatm/khatm_screen.dart';
 import '../features/learning/learning_screens.dart';
+import '../features/moderation/moderation_screen.dart';
 import '../features/onboarding/onboarding_screens.dart';
 import '../features/prayer/prayer_screen.dart';
 import '../features/progress/progress_screens.dart';
@@ -94,9 +95,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             key: state.pageKey, child: const SettingsScreen()),
       ),
       GoRoute(
-        path: '/my-videos',
-        pageBuilder: (_, state) =>
-            AppPageTransitions.sharedAxis(key: state.pageKey, child: const MyVideosScreen()),
+        path: '/blocked-users',
+        pageBuilder: (_, state) => AppPageTransitions.sharedAxis(
+            key: state.pageKey, child: const BlockedUsersScreen()),
+      ),
+      GoRoute(
+        path: '/moderation',
+        pageBuilder: (_, state) => AppPageTransitions.sharedAxis(
+            key: state.pageKey, child: const ModerationScreen()),
       ),
       // 5 sekmeli kabuk — her sekme kendi navigasyon yığınını korur.
       StatefulShellRoute.indexedStack(

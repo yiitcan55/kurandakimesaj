@@ -1,5 +1,119 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## FAZ A — Build 4 (2026-08-03)
+Plan: `g-rev-bir-implantation-glimmering-dream.md` · Skill/ajan eşlemesi: `SKILL.md`
+Kapsam: **yalnız** madde 9 + 8 + 3 + 7-kısmi. Sıfır migration / sıfır native / sıfır yeni paket.
+
+- [x] 9.1 `studio_screens.dart` — önizlemeyi `ListView`'den sabit `FittedBox` tuvale taşı
+- [x] 9.2 `.animate().fadeIn()` sil (+ `flutter_animate` importu artık kullanılmıyor)
+- [x] 9.3 `_renderPng()` başına `await WidgetsBinding.instance.endOfFrame`
+- [x] 9.4 `RecordingSocialRepository.lastBytes` ekle (fake `test/support/`'a taşındı — iki dosya kullanıyor)
+- [x] 9.5 `test/studio_render_offscreen_test.dart` — 3 test, **kırmızı olduğu görüldü**
+- [x] 8.1 `getUserPosts` → `select('*')` + `FeedPost.fromMap`, try/catch kaldırıldı
+- [x] 8.2 `_UserProfileScreenState._load` hata durumu + "Tekrar dene"
+- [x] 8.3 "İncelemede" rozeti (`post.isPending`)
+- [x] 8.4 `test/profile_posts_test.dart` (4 assert)
+- [x] 3.1 `SplashScreen._go` push + **`_onShared` `/splash`teyken push etmiyor** (plandan sapma, aşağıda)
+- [x] 3.2 `test/share_cold_start_test.dart` — kırmızı olduğu görüldü
+- [x] 7.1 Mesajlar boş-durum metni + ölü kod silme
+- [x] A.V `dart analyze` 0 + **136/136 test** (4 ardışık koşum) · cihaz QA **BEKLİYOR**
+- [x] A.M `PROJECT_MEMORY.md` güncellendi (sliver-paint · `go` yığın silme · heroTag çakışması)
+
+### Review (2026-08-03 — Faz A)
+
+**Plandan tek sapma — madde 3.** Planın önerdiği düzeltme (yalnız `SplashScreen._go`'ya
+`if (ref.read(sharedAyahInputProvider) != null) context.push(...)` eklemek) tek başına
+**çalışmıyordu**: `_onShared` t≈0'da `/ayah-finder`'ı push ediyor, o ekran bir frame sonra
+provider'ı `clear()` ediyor → splash 2400 ms'de her zaman `null` okuyordu. Kök neden
+doğrulaması bunu yakaladı. Düzeltme iki parçalı yapıldı: `_onShared` **hâlâ `/splash`teyken
+push etmiyor** (`router.state.uri.path` kontrolü, 2 satır), rotayı splash üstleniyor.
+Yavaş cihazda `getInitialMedia` geç dönerse konum `/home` olduğu için normal push çalışır —
+iki sıralama da kapalı. Yeni global durum eklenmedi.
+
+**Kırmızı-önce kanıtı (ders #10).** Üç yeni test de düzeltme geçici geri alınarak koşuldu:
+- `studio_render_offscreen_test` → 3/3 düştü (`uploads: []`, tuval ağaçta yok)
+- `share_cold_start_test` → paylaşımlı vaka düştü (`stub_ayah_finder` bulunamadı)
+- İlk yazdığım "PNG Kaydet" testi düzeltmesiz de GEÇİYORDU (hiçbir şey kilitlemiyordu) →
+  yapısal bir değişmezle değiştirildi: önizleme tuvali `Scrollable`'ın içinde OLMAMALI.
+
+**Kapsam dışı bırakılanlar:** `StudioScreen` → Notifier refactor'ü (madde 6'ya ertelendi),
+madde 1/4/2 (Faz B), madde 7-tam/6/5 (Faz C). Moderasyon kapısı, RLS, `BottomBar`
+`heightFactor: 1` ve `receive_sharing_intent` pinine dokunulmadı.
+
+**Kalan tek A kalemi: cihaz QA (Samsung SM S731B), 5 senaryo** — Stüdyo kaydır+yayınla ·
+Stüdyo kaydır+PNG Kaydet · Profil ızgarasında görseller · uygulama KAPALIYKEN Instagram
+paylaşımı · Mesajlar boş durumu.
+
+**Değişmeyen sınırlar:** `feed_posts_moderation_guard` · `feed_select_visible` / `feed_select_admin` ·
+`is_own_post_media` · `revoke update on profiles` · `BottomBar` `heightFactor: 1` ·
+`receive_sharing_intent` 1.8.1 pini · `test/bottom_bar_height_test.dart`
+
+---
+
+## FAZ B + FAZ C (2026-08-03, kullanıcı isteğiyle onay beklemeden)
+
+> Plan bu iki fazı **Apple onayından sonraya** koymuştu (madde 2 yeni arka plan
+> yeteneği, madde 6/7-tam/5 yeni UGC yüzeyi). Kullanıcı "bütün fazları bitir"
+> dediği için uygulandı. **Gönderim önerisi: Faz A'yı ayrı commit/branch olarak
+> build 4'e gönder**, B+C'yi 1.0.2'ye bırak — aksi hâlde inceleme yüzeyi büyür.
+
+### Faz B — 1.0.2
+- [x] 2.1 `just_audio_background` 0.0.1-beta.17 (**tam sürüme pinlendi**)
+- [x] 2.2 `JustAudioBackground.init` (bootstrap, `runApp` öncesi)
+- [x] 2.3 `AudioService.playUrl(url, {required title})` → `setAudioSource` + `MediaItem`
+- [x] 2.4 `AudioService.mediaTitleFor()` + `test/media_title_test.dart`
+- [x] 2.5 `quran_screens.dart` `dispose`taki `_player.stop()` **silindi** (+ gerekçe)
+- [x] 2.6 TTS ses odağı: `TtsService(onSpeakStart:)` → `audioService.pause()`
+- [x] 2.7 Manifest (`xmlns:tools`, 3 izin, `AudioService` service, `MediaButtonReceiver`)
+- [x] 2.8 `MainActivity : AudioServiceActivity()` — manifest'teki activity ADI korundu
+- [x] 2.9 iOS `Info.plist` → `UIBackgroundModes: [audio]`
+- [x] 1.1 `HomeScreen` kendi `Scaffold`'una FAB + `startFloat` + **`heroTag`**
+- [x] 1.2 `ListView` alt padding 24 → 96
+- [x] 1.3 `test/home_ai_fab_test.dart` (3 test) · `bottom_bar_height_test` hâlâ yeşil
+- [x] 4.1 `FeedPost.caption` + `_Reel.caption` + mapping
+- [x] 4.2 `ReelCaption` genişletme affordance'ı (taşmıyorsa "devamı" GÖSTERİLMEZ)
+- [x] 4.3 `_ReelComposition` latent `meal` taşması → `maxLines: 10`
+- [x] 4.4 `test/reel_caption_test.dart`
+
+### Faz C — 1.0.2 geç / 1.0.3
+- [x] 7.1 `openDirectConversation` (RPC YOK — iki insert, sıra zorunlu, id istemcide)
+- [x] 7.2 `myConversations` → 1:1'de başlık karşı tarafın adı
+- [x] 7.3 Profilde "Mesaj Gönder" + `ChatScreen`de "Kullanıcıyı engelle"
+- [x] 7.4 `20260803120200_dm_block_gate.sql` — **security definer** `blocks_between`
+- [x] 7.5 `test/direct_conversation_test.dart` (5 test)
+- [x] 6.1 `pro_image_editor` 13.3.0 — **build kapısı geçildi**, pin bozulmadı
+- [x] 6.2 `_editedBytes` + `_bytesToPublish()` + "Gelişmiş Düzenle" / "geri al"
+- [x] 6.3 `kStudioEditorConfigs`: `OutputFormat.png` + sticker/emoji/audio YOK
+- [x] 6.4 `test/studio_editor_configs_test.dart`
+- [x] 5.1 `20260803120000_reel_audio.sql` (FK kürasyon kapısı, yazma politikası YOK)
+- [x] 5.2 `20260803120100_reel_audio_bucket.sql` (8 MB, yalnız select)
+- [x] 5.3 `createPost(audioTrackId:)` · `fetchReels` embed · `FeedPost.audioUrl`
+- [x] 5.4 İkinci `AudioService` (`reelAudioServiceProvider`) + ses çakışması
+- [x] 5.5 Stüdyoda "Müzik" şeridi (kütüphane boşsa hiç görünmez)
+
+### Uygulanmayanlar (gerekçeli)
+- [ ] **6.x `StudioScreen` → Notifier refactor.** Planda madde 6'ya ertelenmişti.
+      Yapılmadı: `pro_image_editor` entegrasyonu tek bir `Uint8List?` alanıyla
+      çözülüyor; 900 satırlık ekranı Notifier'a taşımak kullanıcıya görünür
+      hiçbir şey kazandırmadan, madde 9'un 4 regresyon testinin kilitlediği
+      ekranda büyük diff üretirdi. Ayrı bir turda, kendi testleriyle yapılmalı.
+- [ ] **SQL doğrulamaları.** Üç migration da YAZILDI ama **uygulanmadı/koşulmadı**
+      (Supabase erişimi yok). Gönderim öncesi zorunlu: (a) engelleme çift yönlü
+      testi — ters yön security definer olmasaydı YANLIŞLIKLA geçerdi;
+      (b) rastgele `audio_track_id` insert'i **23503** ile reddedilmeli.
+- [ ] **iOS build.** `flutter build ios --no-codesign` macOS gerektirir; bu
+      makine Windows. Codemagic'te doğrulanmalı.
+- [ ] **Cihaz QA.** Faz A'nın 5 senaryosu + arka plan sesi (geri tuşu, bildirim,
+      kilit ekranı) + FAB + gelişmiş editör + müzik şeridi.
+
+---
+
+## ECC skill görünürlüğü (2026-07-22)
+- [x] Codex plugin kaydı, cache manifesti ve gerçek cache içeriğini karşılaştır
+- [ ] ECC'nin resmi `sync-ecc-to-codex.sh` akışını çalıştır
+- [ ] Aktif Codex skill dizininde ECC skill'lerini doğrula
+- [ ] Review: kök neden, düzeltme ve yeniden başlatma gereksinimini kaydet
+
 ## App Store Connect + Codemagic yayın hazırlığı (2026-07-21)
 - [x] STORE_SUBMISSION, gerçek özellikler ve App Store gereksinimlerini çapraz denetle
 - [x] Privacy/Support URL, ikon, screenshot, UGC moderasyon, Apple Sign-In ve backend blockerlarını doğrula
@@ -166,3 +280,122 @@ Kalan P2/P3 tasarım borçları temizlendi. Doğrulama: `dart analyze lib` temiz
 - [ ] pg_cron daily-content + RevenueCat webhook secret (opsiyonel)
 - [ ] render-trigger/status Edge + `renders` tablosu deploy → render kuyruğu + retry UI'sini canlandırır
 - [ ] Gerçek video oynatma: render hattı `video_url` doldurunca canlanır (o ana dek dürüst "Video hazırlanıyor")
+
+---
+
+## Sürüm 1.0.1 (build 3) — Apple Guideline 1.2 yanıtı · 2026-07-25
+
+Kaynak plan: `update1.0.1update.md`. Temel dal `b210eb3`.
+
+**Kapı sonuçları:** `flutter analyze` 0 sorun · `flutter test` **90/90** (başlangıç 33) · `deno test` 27/27
+(link_resolver 9, matcher 8, segments 10).
+
+### Yapılanlar
+- **Faz 0** — ~450 satır ölü render kodu silindi, `/templates` crash fix.
+- **Faz 1** — Auth reaktivite kök nedeni, `AuthException`→Türkçe eşleme, form validator,
+  `emailRedirectTo` derin link, Sign in with Apple, Google guard, sürüm `1.0.1+3`.
+- **Faz 2** — `terms.html`, kayıt öncesi EULA kapısı, moderasyon kuyruğu migration'ı,
+  `/moderation` ve `/blocked-users` ekranları.
+- **Faz 3** — Gönderi sistemi kaldırıldı, `kind: 'video'|'still'`, Reels yeniden tasarımı,
+  `CreatePostSheet` + telif kapısı, stüdyo katman kuralı.
+- **Faz 4** — `link_resolver.ts` SSRF sertleştirmesi, URL alanı, "Reels'te Paylaş" köprüsü,
+  `_ErrorView` tam Türkçe eşleme, boyut kapıları.
+- **Faz 5** — Bütünsel denetim + bulunan kusurların kapatılması, `docs/APP_REVIEW_RESPONSE.md`.
+
+### Denetimlerin yakaladığı, ilk uygulamada KAÇMIŞ kusurlar
+Hiçbiri `flutter analyze` veya testlerle görünmüyordu:
+
+1. `index.ts` içinde korumasız ikinci `fetch` — yerel iki sunucuyla **ampirik olarak** metadata sızdırıldı.
+2. Moderasyon kapısı iki yoldan atlatılabiliyordu: `insert ... status:'approved'` ve `feed_update_own`
+   politikasının `feed_update_admin` ile OR'lanması.
+3. Yöneticiye `UPDATE` verilmiş ama `SELECT` verilmemişti → kuyruk her zaman boş görünecekti.
+4. **Onay sonrası içerik değiştirilebiliyordu** (bait-and-switch) — guard yalnız `status`/`is_hidden`'ı koruyordu.
+5. `media_url` serbest metindi; saldırgan kendi sunucusunu gösterip onay sonrası dosyayı değiştirebilirdi.
+6. Yorumlar moderasyonun tamamen dışındaydı; `_ReportsTab` yorum şikâyetinde kaldırma butonu sunmuyordu.
+7. Gemini API anahtarı query string'deydi → her `fetch` hata metnine gömülüp istemciye dönüyordu.
+8. Stüdyo'nun ikinci yayın yolu telif onayını hiç uygulamıyordu (Guideline 5.2.3).
+9. Video controller yarışı — gecikmiş `_initVideo` devamı canlı controller'ın tek referansını siliyordu.
+10. `Content-Length` erken elemesi gerçek Instagram/TikTok sayfalarını `too_large` ile öldürüyordu.
+11. Reels video yükleme yolunda boyut sınırı yoktu (`readAsBytes` → OOM).
+
+### Planın düzeltilen hataları
+- `RenderStatus` başka dosyada tanımlıydı; `MyVideosScreen`'in görünür bir çağıranı vardı — körlemesine
+  silinseydi derleme kırılırdı.
+- `kind` kısıtı değişirken **varsayılanın** da değişmesi gerekiyordu; plan bunu atlamıştı
+  (`default 'ayah'` + yeni kısıt = `kind` göndermeyen her insert patlar).
+- "Mevcut kayıtlar onaylı sayılsın" risk azaltması **yanlıştı**: uygulama UGC gerekçesiyle reddedildi,
+  canlı içerik hiç moderasyondan geçmemişti. Toplu onaylama kaldırıldı.
+
+### Kalan işler (kod dışı, kullanıcıda)
+`docs/APP_REVIEW_RESPONSE.md` bölüm 4'teki 10 manuel adım. Sıra kritik:
+migration push + build birlikte gitmeli, `is_admin` verilmeli, bekleyen kuyruk gözden geçirilmeli.
+
+### Bilinçli bırakılanlar
+- DNS rebinding TOCTOU (kör SSRF + `image/*` kapısıyla kısılı) — tam kapatma elle HTTP istemcisi gerektirir.
+- `render-trigger`/`render-status` Edge Function'ları artık çağrılmıyor (Dart tarafı Faz 0'da silindi);
+  kaynak duruyor çünkü fonksiyonlar hâlâ deploy edilmiş durumda — ayrı bir temizlik işi.
+- Diğer 4 Edge Function'da `String(e)` ile iç ayrıntı ifşası; gönderim öncesi ödeme/hesap-silme kodunu
+  incelemesiz değiştirmek daha riskli görüldü.
+
+---
+
+# 1.0.1 build 4 — 5 Maddelik Bakım (tamamlandı)
+
+Kaynak plan: `humble-coalescing-knuth.md`. Sıra plandaki sürümlemeye uyuldu: **2 → 1 → 4 → 5 → belgeler**.
+Madde 3 (AI yeniden kurgu) **1.0.2'ye ayrıldı** — beyan değişikliği gerektiriyor, 1.0.1 onaylanmadan başlanmaz.
+
+## Yapılanlar
+
+- [x] **Madde 2 — Tema kontrastı.** `gold` → `goldInk` 186 çağrı yerinde rol kuralıyla ayrıştırıldı.
+      Planın ötesinde: `success`/`accent`/`info` de aynı tuzaktaydı (açık temada 1.63 / 2.54 / 2.21:1)
+      → tema dönen getter'lara çevrildi. `muted`/`muted2` ters ternary + ikisi de AA altındaydı
+      → hesaplanmış alfalar. `buildAppTheme` saflaştırıldı. Yeni roller: `onMedia`, `mediaLetterbox`,
+      `danger`, `warning`, `*Surface`/`on*`. Sepya × tema çakışması tek palete bağlandı.
+- [x] **Madde 1 — Boyut.** `withClampedTextScaling(1.0–1.3)`; 3 ekran → ortak `CenteredScrollBody`;
+      GoldChip dokunma hedefi çağrı yerinden chip'e taşındı; Android widget XML + iOS Dynamic Type;
+      ölü `prayer_times`/`ayah_arabic` senkron alanları silindi.
+- [x] **Madde 4 — Stüdyoya video.** Ortak `uploadPostMedia()` repository'ye çıkarıldı; `_publish()`
+      medyayı GERÇEKTEN yüklüyor; `arabic`/`meal`/`reference` ayrı alanlar; `_pickFromStudio` dolambacı
+      silindi; telif kapısı iki yolda da kilitli.
+- [x] **Madde 5 — Ana sayfa.** İkon ızgarası ve `_QuickAction` silindi; 4 mükerrer kısayol kaldırıldı;
+      Bugün / Günün Ayeti / Keşfet bölümlemesi; `FeatureDef.description` ilk kez ekranda; `/ayah-finder`
+      tek belirgin giriş; `_ReadingGoalCard` shimmer; `AyetFrame`; ölü `StatBox` silindi.
+- [x] **Belgeler.** `CLAUDE.md` · `AGENTS.md` · `PROJECT_MEMORY.md` 24→26 özellik; `DESIGN.md` renk
+      bölümü zemin/ön plan/medya olarak yeniden yazıldı; `feature_catalog.dart` sayıları düzeltildi.
+- [x] **Güvenlik (plan dışı, denetimde çıktı).** `20260730120000_storage_hardening.sql`:
+      K1 moderasyon bypass'ı (sil-yeniden yükle), Y1 bucket enumeration, O1 host sabitleme.
+      `terms.html` yorum moderasyonu iddiası gerçeğe hizalandı.
+- [x] Sürüm `1.0.1+4`.
+
+## Doğrulama
+
+| Kapı | Sonuç |
+|---|---|
+| `flutter analyze` | 0 sorun |
+| `flutter test` | 127/127 — arka arkaya 4 tur kararlı |
+| `deno test` (matcher + segments) | 18/18 |
+| Android res XML biçim | 9/9 geçerli |
+| Apple beyanı (`APP_REVIEW_RESPONSE.md`) | DEĞİŞMEDİ — doğrulandı |
+
+Yeni regresyon testleri (üçü de geri alınca düştüğü **kanıtlanarak**):
+`theme_contrast_test` (19) · `text_scale_overflow_test` (6) · `quran_sepia_test` (5) · `studio_video_test` (5)
+
+## Yol boyunca çıkan, planda olmayan gerçek hatalar
+
+1. `SurahReaderScreen.dispose()` `ref.read` kullanıyordu → `StateError` dispose'u yarıda kesiyor →
+   okuma istatistiği kaydedilmiyor **ve tilavet ekrandan çıkınca arka planda çalmaya devam ediyordu**.
+2. `_ReadingGoalCard` 1.3× ölçekte 288px kartı 135px yatayda taşırıyordu.
+3. `_ReelComposition` Arapçası açık temada koyu gradyan üstünde ~2.6:1.
+4. Stüdyo önizlemesi Arapçayı LTR gövde fontuyla çiziyordu (domain kuralı #2 ihlali).
+5. `QiblaDialPainter.shouldRepaint` tema dönen rengi karşılaştırmıyordu.
+
+## Devredilen (sürüm sonrası ilk iş)
+
+Güvenlik denetiminin kalan bulguları — hiçbiri build 4'ü bloklamıyor:
+- **Y3** `conversation_members` insert politikası: kullanıcı kendini herhangi bir sohbete ekleyebiliyor
+  (sohbet UUID'si bilinirse). Bugün UUID hiçbir yerden sızmıyor, ama kırık yetkilendirme.
+- **Y4** `link_resolver.ts` DNS ön-kontrolü fail-open. Kör SSRF; sızma dar ama oracle var.
+- **O2** Reddedilen gönderi yazarının akışında rozetsiz görünüyor — App Review senaryosunda kafa karıştırır.
+- **O3** `donations.status` istemciden yazılabilir; `donation-verify` sağlayıcı doğrulaması TODO.
+- `post-media` bucket'ı `public=true` olduğu için Y1 yalnız KEŞFİ kapatıyor; tam kapatma private
+  bucket + imzalı URL gerektirir (ayrı iş kalemi).

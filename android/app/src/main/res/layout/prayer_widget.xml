@@ -11,8 +11,10 @@
 
     <TextView
         android:id="@+id/tv_hijri"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:text=""
         android:textColor="#D9B26A"
         android:textSize="12sp"
@@ -22,15 +24,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:ellipsize="end"
         android:letterSpacing="0.08"
+        android:maxLines="1"
         android:text="SIRADAKİ VAKİT"
         android:textColor="#9CB3A8"
         android:textSize="10sp" />
 
+    <!-- Esnek çocuk: yükseklik sıkıştığında (küçük hücre, büyük sistem yazı
+         ölçeği) fazlalığı bu satır yutar; konum satırı kırpılmadan kalır.
+         RemoteViews yazı ölçeğini kelepçeleyemez, tek koruma budur. -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:layout_marginTop="2dp"
+        android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -39,6 +47,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="—"
             android:textColor="#F3E9D2"
             android:textSize="22sp"
@@ -48,6 +58,8 @@
             android:id="@+id/tv_next_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
             android:text="--:--"
             android:textColor="#D9B26A"
             android:textSize="22sp"

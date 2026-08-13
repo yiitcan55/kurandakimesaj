@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repositories.dart';
 import '../../domain/models.dart';
+import '../home/home_screens.dart' show myProfileProvider;
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
@@ -17,6 +18,9 @@ class SettingsScreen extends ConsumerWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(
     'https://yiitcan55.github.io/kurandakimesaj-legal/privacy.html',
+  );
+  static final Uri _termsUri = Uri.parse(
+    'https://yiitcan55.github.io/kurandakimesaj-legal/terms.html',
   );
   static final Uri _supportUri = Uri.parse(
     'https://yiitcan55.github.io/kurandakimesaj-legal/support.html',
@@ -65,10 +69,38 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _LegalRow(
+                    icon: Icons.gavel_rounded,
+                    label: 'Kullanım Koşulları',
+                    onTap: () => _openExternalUrl(context, _termsUri),
+                  ),
+                  const SizedBox(height: 8),
+                  _LegalRow(
                     icon: Icons.mail_rounded,
                     label: 'İletişim & Destek',
                     onTap: () => _openExternalUrl(context, _supportUri),
                   ),
+
+                  const SizedBox(height: 28),
+                  // ── Güvenlik & Moderasyon ─────────────────────────────
+                  SectionLabel(eyebrow: 'Topluluk', title: 'Güvenlik'),
+                  const SizedBox(height: 12),
+                  _LegalRow(
+                    icon: Icons.person_off_rounded,
+                    label: 'Engellenen kullanıcılar',
+                    onTap: () => context.push('/blocked-users'),
+                  ),
+                  // Moderasyon kuyruğu yalnız yöneticiye görünür; RLS zaten
+                  // yetkisiz güncellemeyi reddediyor, bu sadece görünürlük.
+                  if (ref.watch(myProfileProvider).value?['is_admin']
+                          as bool? ??
+                      false) ...[
+                    const SizedBox(height: 8),
+                    _LegalRow(
+                      icon: Icons.shield_moon_rounded,
+                      label: 'İçerik moderasyonu',
+                      onTap: () => context.push('/moderation'),
+                    ),
+                  ],
 
                   const SizedBox(height: 28),
                   // ── Hesap ─────────────────────────────────────────────
@@ -85,19 +117,19 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: () => _confirmDeleteAccount(context, ref),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_forever_rounded,
-                        color: Color(0xFFE26A6A),
+                        color: AppColors.danger,
                       ),
                       label: Text(
                         'Hesabı sil',
                         style: AppTypography.body(
                           size: 15,
-                          color: const Color(0xFFE26A6A),
+                          color: AppColors.danger,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0x55E26A6A)),
+                        side: BorderSide(color: AppColors.line),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
@@ -148,7 +180,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE26A6A),
+              backgroundColor: AppColors.dangerSurface,
+              foregroundColor: AppColors.onDanger,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Evet, sil'),
@@ -222,7 +255,7 @@ class _NotificationSetting extends ConsumerWidget {
     return AppCard(
       child: Row(
         children: [
-          const Icon(Icons.notifications_active_rounded, color: AppColors.gold),
+          Icon(Icons.notifications_active_rounded, color: AppColors.goldInk),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -406,7 +439,7 @@ class _LegalRow extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, color: AppColors.gold, size: 20),
+          Icon(icon, color: AppColors.goldInk, size: 20),
           const SizedBox(width: 14),
           Expanded(
             child: Text(

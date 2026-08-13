@@ -17,6 +17,17 @@
 				<string>homeWidget</string>
 			</array>
 		</dict>
+		<!-- Supabase e-posta doğrulama / OAuth dönüşü: io.kurandakimesaj://login-callback -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.kurandakimesaj.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>io.kurandakimesaj</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Kur'an'da ki Mesaj</string>
@@ -76,6 +87,12 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<!-- Tilavetin ekran kapalıyken/uygulama arka plandayken sürmesi ve
+	     kilit ekranı medya kontrollerinin çalışması için (just_audio_background). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
 	</array>
 </dict>
 </plist>

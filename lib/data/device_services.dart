@@ -3,6 +3,9 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:just_audio/just_audio.dart';
+// Yalnız `MediaItem`: paket `JustAudioBackground` dışında sembol export ederse
+// bu dosyadaki KENDİ `AudioService` sınıfımızla sessizce çakışmasın.
+import 'package:just_audio_background/just_audio_background.dart' show MediaItem;
 import 'package:share_plus/share_plus.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -280,14 +283,29 @@ class NotificationService {
 }
 
 /// Sesli okuma (tilavet) — just_audio sarmalayıcısı. Tek bir oynatıcı örneği.
+///
+/// `just_audio_background` bu tek oynatıcıyı dinler; bildirim/kilit ekranı
+/// metadata'sının kaynağı `AudioSource.tag`tır, bu yüzden `setUrl` YETMEZ —
+/// `setAudioSource(AudioSource.uri(..., tag: MediaItem(...)))` şart.
 class AudioService {
   final AudioPlayer player = AudioPlayer();
 
-  Future<void> playUrl(String url) async {
+  /// Bildirimde/kilit ekranında görünecek başlık. Ayrı fonksiyon olması testten
+  /// doğrulanabilmesi içindir (bkz. `test/media_title_test.dart`).
+  static String mediaTitleFor(String surahName, int ayah) =>
+      '$surahName, $ayah. ayet';
+
+  Future<void> playUrl(String url, {required String title}) async {
     try {
       if (player.audioSource == null ||
           (player.audioSource as UriAudioSource?)?.uri.toString() != url) {
-        await player.setUrl(url);
+        await player.setAudioSource(
+          AudioSource.uri(
+            Uri.parse(url),
+            // `id` benzersiz olmalı: URL zaten ayet başına tekil.
+            tag: MediaItem(id: url, title: title, album: "Kur'an-ı Kerim"),
+          ),
+        );
       }
       await player.play();
     } catch (_) {}

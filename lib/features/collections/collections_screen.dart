@@ -54,7 +54,7 @@ class CollectionsScreen extends ConsumerWidget {
                                 color: AppColors.accent.withValues(alpha: 0.2),
                                 borderRadius: AppRadii.mdAll,
                               ),
-                              child: const Icon(Icons.delete_outline_rounded, color: AppColors.accent),
+                              child: Icon(Icons.delete_outline_rounded, color: AppColors.accent),
                             ),
                             onDismissed: (_) => repo.delete(c.id),
                             child: AppCard(
@@ -73,11 +73,11 @@ class CollectionsScreen extends ConsumerWidget {
                                     children: [
                                       Expanded(
                                         child: Text(c.reference,
-                                            style: AppTypography.body(size: 13, color: AppColors.gold)),
+                                            style: AppTypography.body(size: 13, color: AppColors.goldInk)),
                                       ),
                                       IconButton(
                                         visualDensity: VisualDensity.compact,
-                                        icon: const Icon(Icons.share_rounded, color: AppColors.gold, size: 20),
+                                        icon: Icon(Icons.share_rounded, color: AppColors.goldInk, size: 20),
                                         onPressed: () => ref
                                             .read(shareServiceProvider)
                                             .shareText('${c.meal}\n(${c.reference})'),

@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Gerçek içerik yüksekliği ≈111dp (konum + sonraki vakit + saat satırı).
+     targetCellHeight Android 12+'ta VARSAYILAN yerleşim boyutudur; "1" iken
+     widget eklenir eklenmez konum ve saat satırları kırpılıyordu → "2".
+     minResize* olmadan kullanıcı içeriğin altına küçültebiliyor ve
+     RemoteViews sessizce kırpıyor. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/prayer_widget"
-    android:minHeight="70dp"
+    android:minHeight="110dp"
+    android:minResizeHeight="110dp"
+    android:minResizeWidth="180dp"
     android:minWidth="180dp"
     android:previewLayout="@layout/prayer_widget"
     android:resizeMode="horizontal|vertical"
-    android:targetCellHeight="1"
+    android:targetCellHeight="2"
     android:targetCellWidth="3"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

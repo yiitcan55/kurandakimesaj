@@ -25,7 +25,7 @@ class _Disclaimer extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppColors.accent, size: 20),
+          Icon(Icons.info_outline_rounded, color: AppColors.accent, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(text, style: AppTypography.body(size: 12.5, color: AppColors.cream2)),
@@ -174,7 +174,7 @@ class _ZakatScreenState extends ConsumerState<ZakatScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '${fmt(zakat)} ₺',
-                          style: AppTypography.display(size: 40, color: AppColors.gold),
+                          style: AppTypography.display(size: 40, color: AppColors.goldInk),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -332,7 +332,7 @@ class _MezhepButton extends StatelessWidget {
               style: AppTypography.body(
                 size: 13.5,
                 weight: FontWeight.w600,
-                color: selected ? AppColors.gold : AppColors.cream,
+                color: selected ? AppColors.goldInk : AppColors.cream,
               ),
             ),
             const SizedBox(height: 3),
@@ -381,7 +381,7 @@ class MosqueScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.mosque_rounded, color: AppColors.gold, size: 32),
+                        Icon(Icons.mosque_rounded, color: AppColors.goldInk, size: 32),
                         const SizedBox(height: 12),
                         Text('Yakındaki Camiler', style: AppTypography.display(size: 24)),
                         const SizedBox(height: 6),
@@ -446,7 +446,7 @@ class DonateScreen extends ConsumerWidget {
                   AppCard(
                     child: Row(
                       children: [
-                        const Icon(Icons.notifications_active_rounded, color: AppColors.gold),
+                        Icon(Icons.notifications_active_rounded, color: AppColors.goldInk),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text('Günlük sadaka hatırlatıcısı',
@@ -486,7 +486,7 @@ class DonateScreen extends ConsumerWidget {
                                 color: AppColors.goldFaint,
                                 borderRadius: AppRadii.smAll,
                               ),
-                              child: const Icon(Icons.favorite_rounded, color: AppColors.gold),
+                              child: Icon(Icons.favorite_rounded, color: AppColors.goldInk),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -500,7 +500,7 @@ class DonateScreen extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            const Icon(Icons.open_in_new_rounded, color: AppColors.gold, size: 18),
+                            Icon(Icons.open_in_new_rounded, color: AppColors.goldInk, size: 18),
                           ],
                         ),
                       ),
@@ -548,9 +548,9 @@ class _DreamScreenState extends ConsumerState<DreamScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: TextField(
                 onChanged: (v) => setState(() => _query = v),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Sembol ara (su, yılan, ev…)',
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.gold),
+                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.goldInk),
                 ),
               ),
             ),
@@ -584,14 +584,14 @@ class _DreamScreenState extends ConsumerState<DreamScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.bedtime_rounded, color: AppColors.gold, size: 20),
+                                    Icon(Icons.bedtime_rounded, color: AppColors.goldInk, size: 20),
                                     const SizedBox(width: 10),
                                     Text(s.term,
                                         style: AppTypography.body(
                                             size: 16, weight: FontWeight.w700, color: AppColors.cream)),
                                     const Spacer(),
                                     Text(s.category,
-                                        style: AppTypography.body(size: 12, color: AppColors.gold)),
+                                        style: AppTypography.body(size: 12, color: AppColors.goldInk)),
                                   ],
                                 ),
                                 const SizedBox(height: 8),

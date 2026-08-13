@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../app/app_config.dart';
@@ -137,16 +141,36 @@ class SupabaseService {
   Stream<AuthState> get authChanges =>
       _client?.auth.onAuthStateChange ?? const Stream<AuthState>.empty();
 
+  /// E-posta doğrulama ve parola sıfırlama bağlantılarının uygulamaya geri
+  /// döneceği derin link. iOS `CFBundleURLTypes` ve Android intent-filter ile
+  /// birebir eşleşir; Supabase panelinde Redirect URLs'e ekli olmalıdır.
+  static const _redirectTo = 'io.kurandakimesaj://login-callback';
+
   Future<void> signInWithEmail(String email, String password) async {
     final c = _client;
     if (c == null) throw StateError('Supabase yapılandırılmamış.');
     await c.auth.signInWithPassword(email: email, password: password);
   }
 
-  Future<void> signUpWithEmail(String email, String password) async {
+  /// Kayıt sonucunu AYNEN döndürür. E-posta doğrulaması açıkken Supabase
+  /// oturum vermez (`res.session == null`); çağıran taraf bunu "giriş yapıldı"
+  /// sanmamalı, kullanıcıya "e-postanı doğrula" demeli.
+  Future<AuthResponse> signUpWithEmail(String email, String password) async {
     final c = _client;
     if (c == null) throw StateError('Supabase yapılandırılmamış.');
-    await c.auth.signUp(email: email, password: password);
+    return c.auth.signUp(
+      email: email,
+      password: password,
+      emailRedirectTo: _redirectTo,
+    );
+  }
+
+  /// Parola sıfırlama e-postası gönderir. Supabase güvenlik gereği kayıtlı
+  /// olmayan adres için de hata vermez — UI "e-posta gönderildi" demeli.
+  Future<void> resetPasswordForEmail(String email) async {
+    final c = _client;
+    if (c == null) throw StateError('Supabase yapılandırılmamış.');
+    await c.auth.resetPasswordForEmail(email, redirectTo: _redirectTo);
   }
 
   /// `GoogleSignIn.instance.initialize()` süreç başına yalnızca bir kez
@@ -195,6 +219,45 @@ class SupabaseService {
       provider: OAuthProvider.google,
       idToken: idToken,
       accessToken: authorization.accessToken,
+    );
+  }
+
+  /// Native "Apple ile Giriş" (iOS 13+). Google akışının kalıbını izler:
+  /// yerel hesap seçici → idToken → Supabase `signInWithIdToken`.
+  ///
+  /// NONCE YÖNÜ KRİTİK: Apple'a **sha256(rawNonce)** (hash'lenmiş), Supabase'e
+  /// **rawNonce** (ham) gider. Apple hash'i idToken'a claim olarak gömer,
+  /// Supabase ham nonce'u kendi hash'leyip karşılaştırır. Yön ters çevrilirse
+  /// "Invalid nonce" hatası alınır. `generateRawNonce()` `Random.secure()`
+  /// kullanır (supabase_flutter), kendi üreticimizi yazmıyoruz.
+  ///
+  /// Kullanıcı sayfayı kapatırsa `SignInWithAppleAuthorizationException`
+  /// (code: `AuthorizationErrorCode.canceled`) fırlar; çağıran taraf bunu
+  /// sessizce yutmalıdır (Google'daki `canceled` kalıbının aynısı).
+  Future<void> signInWithApple() async {
+    final c = _client;
+    if (c == null) throw StateError('Supabase yapılandırılmamış.');
+
+    final rawNonce = c.auth.generateRawNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: const [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: hashedNonce,
+    );
+
+    final idToken = credential.identityToken;
+    if (idToken == null) {
+      throw const AuthException('Apple kimlik anahtarı (ID token) alınamadı.');
+    }
+
+    await c.auth.signInWithIdToken(
+      provider: OAuthProvider.apple,
+      idToken: idToken,
+      nonce: rawNonce,
     );
   }
 
@@ -430,6 +493,13 @@ class FavoritesService {
 
 /// Türkçe metin okuma servisi — flutter_tts sarmalayıcısı.
 class TtsService {
+  TtsService({this.onSpeakStart});
+
+  /// Konuşma başlamadan hemen önce çağrılır — tilaveti duraklatmak için.
+  /// Tilavet artık ekran dışında da çalabildiği için üst üste binme olasılığı
+  /// eskisinden çok yüksek; iki ses aynı anda çalarsa ikisi de anlaşılmaz.
+  final Future<void> Function()? onSpeakStart;
+
   final FlutterTts _tts = FlutterTts();
   bool _speaking = false;
 
@@ -441,6 +511,7 @@ class TtsService {
   }
 
   Future<void> speak(String text) async {
+    await onSpeakStart?.call();
     if (_speaking) await stop();
     _speaking = true;
     await _tts.speak(text);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories.dart';
@@ -52,8 +53,9 @@ class _AyahFinderScreenState extends ConsumerState<AyahFinderScreen> {
         notifier.fromSharedImage(shared.imagePath!);
         return;
       }
-      // Paylaş menüsünden metin/URL (X, blog, haber — og:image yayınlayan siteler):
-      // manuel URL alanı kaldırıldı ama paylaş-intent yolu korunur.
+      // Paylaş menüsünden metin/URL (X, blog, haber — og:image yayınlayan siteler).
+      // Aynı yol ekrandaki "Bağlantı Yapıştır" alanıyla ortaktır; doğrulama
+      // controller'daki `normalizeAyahUrl` ile tek yerde yapılır.
       if (shared.url != null && shared.url!.isNotEmpty) {
         notifier.fromUrl(shared.url!);
         return;
@@ -96,8 +98,8 @@ class _AyahFinderScreenState extends ConsumerState<AyahFinderScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                 children: [
                   Text(
-                    'Elindeki tilavet videosunu ya da bir gönderinin ekran görüntüsünü '
-                    'seç; okunan ayetleri ve mealini bulalım.',
+                    'Elindeki tilavet videosunu, bir gönderinin ekran görüntüsünü '
+                    'ya da bağlantısını ver; okunan ayetleri ve mealini bulalım.',
                     style: AppTypography.body(size: 14, color: AppColors.muted),
                   ),
                   const SizedBox(height: 18),
@@ -114,10 +116,18 @@ class _AyahFinderScreenState extends ConsumerState<AyahFinderScreen> {
                     subtitle: 'Ekran görüntüsü / görsel',
                     onTap: () => _search(notifier.fromGallery),
                   ),
+                  const SizedBox(height: 12),
+                  _LinkField(
+                    key: const Key('ayahLinkCard'),
+                    onSubmit: (url) => _search(() => notifier.fromUrl(url)),
+                  ),
                   const SizedBox(height: 22),
                   result.when(
                     loading: () => _LoadingView(video: _videoPending),
-                    error: (_, _) => _ErrorView(code: 'network'),
+                    // Repo tüm hataları sonuç nesnesine çevirir; buraya düşen
+                    // istisna beklenmedik olandır (ör. dosya okunamadı) — kodla
+                    // birlikte istisnanın kendisi de loglansın (Faz 1 dersi).
+                    error: (e, _) => _ErrorView(code: 'unexpected', detail: '$e'),
                     data: (r) => r == null
                         ? const SizedBox.shrink()
                         : _ResultView(result: r),
@@ -142,7 +152,7 @@ class _LoadingView extends StatelessWidget {
       padding: const EdgeInsets.only(top: 40),
       child: Column(
         children: [
-          const CircularProgressIndicator(color: AppColors.gold),
+          CircularProgressIndicator(color: AppColors.goldInk),
           const SizedBox(height: 16),
           Text(
             video
@@ -179,7 +189,7 @@ class _SourceButton extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
-            child: Icon(icon, color: AppColors.gold),
+            child: Icon(icon, color: AppColors.goldInk),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -194,6 +204,176 @@ class _SourceButton extends StatelessWidget {
             ),
           ),
           Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Bağlantı Yapıştır" kartı — gönderi bağlantısından ayet bulma girişi.
+///
+/// Pano SESSİZCE OKUNMAZ: açılışta yalnız `Clipboard.hasStrings()` sorulur
+/// (içeriği vermez, iOS'ta yapıştır uyarısı çıkarmaz) ve panoda metin varsa
+/// bir ÖNERİ butonu gösterilir. Gerçek okuma kullanıcı o butona dokununca olur.
+class _LinkField extends StatefulWidget {
+  const _LinkField({super.key, required this.onSubmit});
+
+  /// Doğrulanmış (normalize edilmiş) bağlantı ile çağrılır.
+  final ValueChanged<String> onSubmit;
+
+  @override
+  State<_LinkField> createState() => _LinkFieldState();
+}
+
+class _LinkFieldState extends State<_LinkField> {
+  final _controller = TextEditingController();
+  String? _error;
+  bool _clipboardHasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkClipboard();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkClipboard() async {
+    final has = await Clipboard.hasStrings();
+    if (!mounted || !has) return;
+    setState(() => _clipboardHasText = true);
+  }
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
+    final url = normalizeAyahUrl(data?.text ?? '');
+    setState(() {
+      if (url == null) {
+        _error = 'Panoda bir bağlantı bulunamadı. Gönderinin bağlantısını '
+            'kopyalayıp tekrar dene.';
+      } else {
+        _controller.text = url;
+        _error = null;
+      }
+    });
+  }
+
+  void _submit() {
+    final url = normalizeAyahUrl(_controller.text);
+    if (url == null) {
+      setState(() => _error = _controller.text.trim().isEmpty
+          ? 'Önce bir gönderi bağlantısı yapıştır.'
+          : 'Bu bir bağlantı gibi görünmüyor. "https://" ile başlayan bir '
+              'gönderi bağlantısı yapıştır.');
+      return;
+    }
+    setState(() => _error = null);
+    FocusScope.of(context).unfocus();
+    widget.onSubmit(url);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
+                child: Icon(Icons.link_rounded, color: AppColors.goldInk),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Bağlantı Yapıştır',
+                        style: AppTypography.body(
+                            size: 16,
+                            weight: FontWeight.w600,
+                            color: AppColors.cream)),
+                    Text('Gönderi bağlantısındaki görselden ayeti bul',
+                        style:
+                            AppTypography.body(size: 13, color: AppColors.muted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            key: const Key('ayahLinkInput'),
+            controller: _controller,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.search,
+            autocorrect: false,
+            onSubmitted: (_) => _submit(),
+            style: AppTypography.body(size: 15, color: AppColors.cream),
+            decoration: InputDecoration(
+              labelText: 'Gönderi bağlantısı',
+              labelStyle: AppTypography.body(size: 14, color: AppColors.muted),
+              floatingLabelStyle:
+                  AppTypography.body(size: 14, color: AppColors.goldInk),
+              hintText: 'https://…',
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            // Uyarı yalnız renkle değil, ikon + metinle de ayrışır.
+            Semantics(
+              key: const Key('ayahLinkError'),
+              liveRegion: true,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline_rounded,
+                      size: 18, color: AppColors.accent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_error!,
+                        style: AppTypography.body(
+                            size: 13, color: AppColors.accent)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (_clipboardHasText) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('ayahLinkPaste'),
+                onPressed: _paste,
+                icon: Icon(Icons.content_paste_rounded,
+                    size: 18, color: AppColors.goldInk),
+                label: Text('Panodaki bağlantıyı yapıştır',
+                    style:
+                        AppTypography.body(size: 13.5, color: AppColors.cream)),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const Key('ayahLinkSubmit'),
+            onPressed: _submit,
+            icon: const Icon(Icons.search_rounded, size: 20),
+            label: const Text('Bağlantıdan Ayet Bul'),
+          ),
         ],
       ),
     );
@@ -272,7 +452,7 @@ class _RangeHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(color: AppColors.goldFaint, borderRadius: AppRadii.smAll),
-            child: const Icon(Icons.graphic_eq_rounded, color: AppColors.gold),
+            child: Icon(Icons.graphic_eq_rounded, color: AppColors.goldInk),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -323,7 +503,7 @@ class _TimelineCard extends StatelessWidget {
                     child: Text(
                       t.startLabel,
                       // Tabular rakam: saat sütunu kaymasın.
-                      style: AppTypography.body(size: 13.5, color: AppColors.gold)
+                      style: AppTypography.body(size: 13.5, color: AppColors.goldInk)
                           .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ),
@@ -355,7 +535,7 @@ class _MatchCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(match.reference,
-                    style: AppTypography.body(size: 16, weight: FontWeight.w600, color: AppColors.gold)),
+                    style: AppTypography.body(size: 16, weight: FontWeight.w600, color: AppColors.goldInk)),
               ),
               GoldChip(label: '%${(match.confidence * 100).round()} eşleşme'),
             ],
@@ -399,20 +579,41 @@ class _MatchCard extends ConsumerWidget {
                 onTap: () => _openInReader(context, ref),
               ),
               _ActionButton(
+                key: const Key('ayahStudioButton'),
                 icon: Icons.movie_creation_rounded,
                 label: 'Videoya Aktar',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StudioScreen(
-                      initialText: '${match.arabic}\n\n${match.meal}',
-                      initialReference: match.reference,
-                    ),
-                  ),
-                ),
+                onTap: () => _openStudio(context),
+              ),
+              _ActionButton(
+                key: const Key('ayahReelsButton'),
+                icon: Icons.auto_awesome_motion_rounded,
+                label: "Reels'te Paylaş",
+                onTap: () => _openStudio(context),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Stüdyoyu ayet önyüklü açar; kullanıcı arka planı seçip yayınlar
+  /// (`createPost(kind: 'still')`, moderasyon için `status: 'pending'`).
+  ///
+  /// ÜÇÜNCÜ TARAF VİDEOSU KOPYALANMAZ: paylaşılan şey bizim ürettiğimiz
+  /// ayet kartıdır, kaynak gönderinin videosu/görseli değil (App Store 5.2.3).
+  /// "Videoya Aktar" ile aynı kapı — ikisi de aynı stüdyo akışına girer,
+  /// tek fark kullanıcının niyetini karşılayan etikettir.
+  void _openStudio(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => StudioScreen(
+          // Arapça ve meal AYRI: stüdyo Arapça'yı RTL/Amiri render eder ve
+          // yayınlarken `feed_posts.arabic` alanına ayrı gönderir.
+          initialArabic: match.arabic,
+          initialText: match.meal,
+          initialReference: match.reference,
+        ),
       ),
     );
   }
@@ -432,7 +633,12 @@ class _MatchCard extends ConsumerWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.label, required this.onTap});
+  const _ActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -441,25 +647,60 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 18, color: AppColors.gold),
+      icon: Icon(icon, size: 18, color: AppColors.goldInk),
       label: Text(label, style: AppTypography.body(size: 13.5, color: AppColors.cream)),
       style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.line)),
     );
   }
 }
 
+/// Hata kodunu eyleme dönük Türkçe mesaja çevirir.
+///
+/// Kod listesi sözleşmenin bir parçası: `ayah-finder` + `ayah-finder-audio`
+/// Edge Function'ları ve `AyahFinderRepository` bu kodları üretir. Yeni kod
+/// eklenirse burası da güncellenmeli — ele alınmayan kod `debugPrint` ile
+/// loglanır ki hata bilgisi hiçbir yerde kaybolmasın.
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({this.code});
+  const _ErrorView({this.code, this.detail});
   final String? code;
+
+  /// Yalnız log için: AsyncError'un asıl istisna metni.
+  final String? detail;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, message) = switch (code) {
+    final known = _messageFor(code);
+    if (known == null) {
+      debugPrint('AyahFinder hata: kod="$code" detay=${detail ?? '-'}');
+    }
+    final (icon, message) = known ??
+        (
+          Icons.help_outline_rounded,
+          'Beklenmedik bir hata oluştu. Tekrar dene; sorun sürerse '
+              'uygulamayı kapatıp yeniden açmayı dene.'
+        );
+    return EmptyState(icon: icon, message: message);
+  }
+
+  static (IconData, String)? _messageFor(String? code) {
+    return switch (code) {
       'link_unresolved' => (
           Icons.link_off_rounded,
           'Bu bağlantıdan görsel alınamadı (ör. Instagram giriş duvarı).\n'
               'Gönderinin ekran görüntüsünü alıp "Galeriden Seç" ile ya da '
               'videoyu cihazına kaydedip "Video Seç" ile dene.'
+        ),
+      'blocked_host' => (
+          Icons.shield_outlined,
+          'Bu bağlantı güvenlik nedeniyle açılamıyor.\n'
+              'Gönderinin herkese açık bağlantısını kullan ya da ekran '
+              'görüntüsünü alıp "Galeriden Seç" ile dene.'
+        ),
+      'invalid_url' => (
+          Icons.edit_note_rounded,
+          'Bu bir bağlantı gibi görünmüyor.\n'
+              '"https://" ile başlayan bir gönderi bağlantısı yapıştırıp '
+              'tekrar dene.'
         ),
       'file_too_large' => (
           Icons.video_settings_rounded,
@@ -469,6 +710,16 @@ class _ErrorView extends StatelessWidget {
       'video_missing' => (
           Icons.videocam_off_rounded,
           'Video okunamadı. Dosyayı tekrar seçip dene.'
+        ),
+      'no_video' => (
+          Icons.upload_file_rounded,
+          'Video isteği eksik gönderildi.\n'
+              'Videoyu yeniden seçip tekrar dene.'
+        ),
+      'no_image' => (
+          Icons.image_not_supported_rounded,
+          'Bu içerikte okunabilecek bir görsel bulunamadı.\n'
+              'Ayetin net göründüğü bir ekran görüntüsü seçip tekrar dene.'
         ),
       'upload_failed' => (
           Icons.cloud_upload_outlined,
@@ -493,13 +744,25 @@ class _ErrorView extends StatelessWidget {
         ),
       'no_api_key' => (
           Icons.cloud_off_rounded,
-          'Ayet bulma servisi şu an yapılandırılmamış.'
+          'Ayet bulma servisi şu an yapılandırılmamış.\n'
+              'Bu bizden kaynaklı; kısa süre içinde tekrar dene.'
         ),
-      _ => (
+      'network' => (
           Icons.wifi_off_rounded,
-          'Bağlantı sorunu oluştu. İnternetini kontrol edip tekrar dene.'
+          'İnternete ulaşılamadı.\n'
+              'Wi-Fi ya da mobil veri bağlantını kontrol edip tekrar dene.'
         ),
+      'server_error' => (
+          Icons.warning_amber_rounded,
+          'Sunucuda beklenmedik bir sorun oluştu.\n'
+              'Birkaç dakika sonra tekrar dene.'
+        ),
+      'bad_response' => (
+          Icons.sync_problem_rounded,
+          'Sunucudan anlaşılmayan bir yanıt geldi.\n'
+              'Uygulamanın güncel olduğundan emin olup tekrar dene.'
+        ),
+      _ => null,
     };
-    return EmptyState(icon: icon, message: message);
   }
 }

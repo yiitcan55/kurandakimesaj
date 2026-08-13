@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- updatePeriodMillis=0: günde bir değişir, uygulama açılınca push edilir. -->
+<!-- updatePeriodMillis=0: günde bir değişir, uygulama açılınca push edilir.
+     Gerçek içerik yüksekliği ≈143dp (meal 3 satır + künye) → targetCellHeight
+     "2" iken varsayılan boyutta meal kırpılıyordu → "3", minHeight 110→140dp.
+     minResize* kullanıcının içeriğin altına küçültmesini engeller. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/ayah_widget"
-    android:minHeight="110dp"
+    android:minHeight="140dp"
+    android:minResizeHeight="140dp"
+    android:minResizeWidth="250dp"
     android:minWidth="250dp"
     android:previewLayout="@layout/ayah_widget"
     android:resizeMode="horizontal|vertical"
-    android:targetCellHeight="2"
+    android:targetCellHeight="3"
     android:targetCellWidth="4"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
