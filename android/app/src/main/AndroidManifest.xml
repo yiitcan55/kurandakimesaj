@@ -5,8 +5,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Tam alarm izinleri BİLEREK YOK. USE_EXACT_ALARM yalnız "çalar saat"/"takvim"
+         temel işlevine sahip uygulamalara açıktır (Play beyanı başka seçenek sunmuyor);
+         bu uygulama Kur'an/ibadet uygulaması olduğu için uygun değil. Bu yüzden tüm
+         bildirimler inexact planlanır — bkz. device_services.dart. Tam zamanlama
+         gerekirse SCHEDULE_EXACT_ALARM eklenip runtime izin İSTENMELİ, aksi halde
+         zonedSchedule sessizce başarısız olur. -->
     <!-- Tilavetin arka planda sürmesi (just_audio_background → audio_service).
          FOREGROUND_SERVICE_MEDIA_PLAYBACK targetSdk 34+ için ZORUNLU: tipsiz
          foreground service Android 14'te SecurityException ile reddedilir. -->

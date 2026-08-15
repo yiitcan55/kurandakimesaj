@@ -70,3 +70,9 @@ env.json
 
 # Accidental local home-directory mirrors must never enter the app repository.
 ~/
+
+# Play yukleme anahtari parolalari - asla commit edilmez
+android/key.properties
+
+# Play paketleri (92 MB) - repoya girmemeli
+*.aab
