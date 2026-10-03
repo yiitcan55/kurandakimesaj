@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/local/app_database.dart';
+import '../data/meal_video_store.dart';
 import '../data/seed/seed_service.dart';
 import '../data/repositories.dart';
 import '../data/widget_background.dart';
@@ -81,13 +82,16 @@ class _KuranAppState extends ConsumerState<KuranApp> {
     // Uygulama widget tıklamasıyla soğuk başlatıldıysa.
     HomeWidget.initiallyLaunchedFromHomeWidget().then(_onWidgetClick);
 
-    // Paylaş menüsünden gelen görsel/bağlantı → Ayet Bul (Faz 3).
+    // Paylaş menüsünden gelen görsel → Ayet Bul; video/bağlantı → Meal Düzenle.
     _shareSub =
         ReceiveSharingIntent.instance.getMediaStream().listen(_onShared);
     ReceiveSharingIntent.instance.getInitialMedia().then((files) {
       _onShared(files);
       ReceiveSharingIntent.instance.reset();
-    });
+      // Önceki oturumdan kalan yetim video silinir; yeni paylaşılana dokunulmaz.
+      return ref.read(mealVideoStoreProvider).sweepOrphan(
+          except: files.isEmpty ? null : files.first.path);
+    }).catchError((Object e) => debugPrint('Yetim video temizliği: $e'));
   }
 
   /// homeWidget://prayer → /prayer, homeWidget://ayah → /daily-ayah.
@@ -97,7 +101,8 @@ class _KuranAppState extends ConsumerState<KuranApp> {
     ref.read(routerProvider).go(route);
   }
 
-  /// Paylaşılan ilk görsel/video/metni Ayet Bul ekranına aktar.
+  /// Paylaşılan ilk görsel/video/metni ilgili ekrana aktar: görsel → Ayet Bul,
+  /// video ve bağlantı → Meal Düzenle.
   ///
   /// Video: kullanıcının kendi cihazındaki dosya (WhatsApp/Telegram'dan gelen
   /// tilavet videosu, galeriye kaydedilmiş klip, ekran kaydı). Uygulama hiçbir
@@ -122,9 +127,13 @@ class _KuranAppState extends ConsumerState<KuranApp> {
     // Üstelik push edilen AyahFinderScreen bir frame sonra provider'ı
     // `clear()` ettiği için silinen rotayla birlikte paylaşım da kaybolurdu.
     // Splash'teysek rotayı ona bırakıyoruz: provider dolu kalır, splash
-    // `/home`'a geçtikten sonra `/ayah-finder`'ı kendisi push eder.
-    if (router.state.uri.path == '/splash') return;
-    router.push('/ayah-finder');
+    // `/home`'a geçtikten sonra paylaşım rotasını kendisi push eder.
+    // Hedef ekran zaten açıksa push ETME: açık ekran provider'ı dinleyip yeni
+    // girdiyi kendisi tüketir; yoksa üst üste iki ekran yığılırdı.
+    final route = sharedRouteFor(input);
+    final path = router.state.uri.path;
+    if (path == '/splash' || path == route) return;
+    router.push(route);
   }
 
   @override

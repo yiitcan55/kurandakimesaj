@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kurandakimesaj/data/backend_repositories.dart';
+import 'package:kurandakimesaj/domain/meal_cues.dart';
+
 
 /// Test seam kanıtı: provider-override ile sahte bir ISocialRepository
 /// enjekte edilip metotların çağrılabildiğini doğrular. Bu, arayüz seam'inin
@@ -37,6 +39,8 @@ class _FakeSocialRepository implements ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   }) async {
     createdPosts.add(reference);
   }
@@ -92,6 +96,37 @@ class _FakeSocialRepository implements ISocialRepository {
 }
 
 void main() {
+  test('buildFeedPostPayload cue varsa meal_cues ve stil adını yazar', () {
+    const cue = MealCue(startSec: 0, endSec: 2, surah: 1, ayah: 1);
+    final p = buildFeedPostPayload(
+      uid: 'u',
+      kind: 'video',
+      reference: 'Fâtiha, 1',
+      arabic: 'x',
+      meal: 'y',
+      mealCues: const [cue],
+      mealCueStyle: MealCueStyle.large,
+    );
+    expect(p['meal_cues'], [cue.toJson()]);
+    expect(p['meal_cue_style'], MealCueStyle.large.db);
+  });
+
+  test('buildFeedPostPayload cue yoksa veya boşsa kolonları eklemez', () {
+    for (final cues in <List<MealCue>?>[null, const []]) {
+      final p = buildFeedPostPayload(
+        uid: 'u',
+        kind: 'video',
+        reference: 'r',
+        arabic: 'x',
+        meal: 'y',
+        mealCues: cues,
+        mealCueStyle: MealCueStyle.large,
+      );
+      expect(p.containsKey('meal_cues'), isFalse);
+      expect(p.containsKey('meal_cue_style'), isFalse);
+    }
+  });
+
   test(
     'ISocialRepository seam: createPost fake üzerinden çağrılabilir',
     () async {

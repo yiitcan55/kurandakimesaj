@@ -25,7 +25,7 @@ class FeatureDef {
   final FeatureCategory category;
 }
 
-/// 26 özelliğin tam kataloğu. Bölüm başlıklarındaki sayılar kayıt sayısıyla
+/// 27 özelliğin tam kataloğu. Bölüm başlıklarındaki sayılar kayıt sayısıyla
 /// BİREBİR eşleşir — eşleşmezse ya sayı ya kayıt yanlıştır (eskiden başlık 24,
 /// gerçek 26; Kur'an 8 yazıp 10 tutuyordu).
 const List<FeatureDef> kFeatures = [
@@ -54,11 +54,12 @@ const List<FeatureDef> kFeatures = [
   // hayalet başlık, kategori sayılarının tutmamasının sebebiydi.
   FeatureDef(route: '/progress', title: 'İstatistiklerim', description: 'Ömür boyu okuma istatistikleri, haftalık ayet grafiği.', icon: Icons.bar_chart_rounded, category: FeatureCategory.kuran),
 
-  // ── İçerik & Topluluk (4) ──
+  // ── İçerik & Topluluk (5) ──
   FeatureDef(route: '/studio', title: 'Ayet Kartı Stüdyosu', description: 'Şablon + arka plan + metin ile paylaşılabilir ayet kartı.', icon: Icons.photo_filter_rounded, category: FeatureCategory.icerik),
   FeatureDef(route: '/khatm', title: 'Hatim Halkaları', description: 'Grupça hatim, cüz dağıtımı, ortak ilerleme.', icon: Icons.groups_rounded, category: FeatureCategory.icerik),
   FeatureDef(route: '/collections', title: 'Koleksiyonlar', description: 'Ayetleri kaydet, listele, not al.', icon: Icons.bookmark_rounded, category: FeatureCategory.icerik),
-  FeatureDef(route: '/ayah-finder', title: 'Ayet Bul', description: 'Görselden/bağlantıdan hangi ayet olduğunu bul (AI).', icon: Icons.image_search_rounded, category: FeatureCategory.icerik),
+  FeatureDef(route: '/ayah-finder', title: 'Ayet Bul', description: 'Görselden hangi ayet olduğunu bul (AI).', icon: Icons.image_search_rounded, category: FeatureCategory.icerik),
+  FeatureDef(route: '/meal-edit', title: 'Meal Düzenle', description: 'Videodaki tilaveti tanı, mealini zaman kodlu altyazı olarak izle ve Reels\'te paylaş.', icon: Icons.subtitles_rounded, category: FeatureCategory.icerik),
 
   // ── Araçlar (4) ──
   FeatureDef(route: '/zakat', title: 'Zekât Hesaplama', description: 'Nisab eşiği, altın/gümüş/nakit girişleri, %2,5 sonucu (canlı).', icon: Icons.calculate_rounded, category: FeatureCategory.araclar),
@@ -69,7 +70,7 @@ const List<FeatureDef> kFeatures = [
 
 /// Ana sayfanın "Keşfet" bölümündeki metin öncelikli kısayol satırları.
 ///
-/// Seçim ölçütü (26 özellikten neden bu 4'ü): **sayfanın üstüyle mükerrer
+/// Seçim ölçütü (27 özellikten neden bu 4'ü): **sayfanın üstüyle mükerrer
 /// olmayanlar**. Eski 8'li ızgara `/prayer`, `/dhikr`, `/qibla`, `/daily-ayah`'ı
 /// da içeriyordu; oysa aynı dört hedef sayfanın en üstünde zaten namaz şeridi,
 /// istatistik kartı, Kıble/Cami satırı ve Günün Ayeti hero'su olarak duruyor —
@@ -79,7 +80,7 @@ const List<FeatureDef> kFeatures = [
 ///  • /quran        → "Anla" adımının ana girişi (Kur'an & Öğrenme)
 ///  • /esma, /dua   → kısa, sık açılan referans ekranları (İbadet & Günlük)
 ///  • /zakat        → tek "Araçlar" temsilcisi (yüksek niyet, mevsimsel)
-/// Geri kalan 22 özelliğe "Tüm Özellikler" kataloğundan erişilir.
+/// Geri kalan 23 özelliğe "Tüm Özellikler" kataloğundan erişilir.
 ///
 /// Sunum artık ikon-kutusu ızgarası DEĞİL, [FeatureDef.description] gösteren
 /// metin öncelikli satırlardır (DESIGN.md: "ikon-daire ızgarası yok"). Sabit

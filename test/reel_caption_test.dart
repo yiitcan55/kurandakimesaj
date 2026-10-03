@@ -90,4 +90,17 @@ void main() {
       expect(find.text('…devamı'), findsNothing);
     });
   });
+
+  group('reelCaptionText', () {
+    test('cue varken boş açıklama meale düşmez', () {
+      expect(reelCaptionText(caption: '', meal: 'Meal', hasCues: true), '');
+    });
+    test('cue varken dolu açıklama korunur', () {
+      expect(reelCaptionText(caption: 'Not', meal: 'Meal', hasCues: true), 'Not');
+    });
+    test('cue yokken boş açıklama meale düşer (eski davranış)', () {
+      expect(reelCaptionText(caption: '', meal: 'Meal', hasCues: false), 'Meal');
+      expect(reelCaptionText(caption: 'Not', meal: 'Meal', hasCues: false), 'Not');
+    });
+  });
 }

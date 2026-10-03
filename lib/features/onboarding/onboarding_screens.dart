@@ -30,14 +30,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!mounted) return;
     final settings = ref.read(settingsProvider);
     context.go(settings.onboardingComplete ? '/home' : '/setup');
-    // `go` navigasyon yığınını TAMAMEN değiştirir → `_onShared`'ın t≈0'da
-    // (initState, `getInitialMedia`) push ettiği `/ayah-finder` bu satırda
-    // silinmiş olur; soğuk başlatmada paylaşım sessizce kayboluyordu.
-    // Provider hâlâ dolu olduğu için rotayı burada geri koyuyoruz.
+    // `go` navigasyon yığınını TAMAMEN değiştirir → paylaşım rotası (Ayet Bul /
+    // Meal Düzenle) bu satırda silinmiş olur; soğuk başlatmada paylaşım
+    // sessizce kayboluyordu. Provider hâlâ dolu olduğu için rotayı burada
+    // geri koyuyoruz.
     // `push`: geri tuşu ana sayfaya döner — `go` olsaydı uygulamadan çıkardı.
-    if (ref.read(sharedAyahInputProvider) != null) {
-      context.push('/ayah-finder');
-    }
+    final shared = ref.read(sharedAyahInputProvider);
+    if (shared != null) context.push(sharedRouteFor(shared));
   }
 
   @override

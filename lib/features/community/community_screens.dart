@@ -10,9 +10,11 @@ import 'package:video_player/video_player.dart';
 import '../../data/backend_repositories.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories.dart';
+import '../../domain/meal_cues.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
+import '../meal_edit/meal_subtitle_overlay.dart';
 import '../quran/quran_screens.dart';
 import '../studio/studio_screens.dart';
 
@@ -279,6 +281,8 @@ class _Reel {
     this.canModerate = false,
     this.isOwn = false,
     this.isPending = false,
+    this.mealCues = const [],
+    this.mealCueStyle = MealCueStyle.standard,
   });
 
   final String id;
@@ -314,6 +318,10 @@ class _Reel {
 
   /// Yönetici onayı bekliyor mu? Yalnız yazarına görünür → "Onay bekliyor" rozeti.
   final bool isPending;
+
+  /// Zaman kodlu meal altyazısı (boşsa altyazı yok, eski davranış).
+  final List<MealCue> mealCues;
+  final MealCueStyle mealCueStyle;
 
   /// Şablon kimliğinden kTemplates gradyanını çöz (yoksa ilk şablon).
   static VideoTemplate templateFor(String? id) =>
@@ -377,6 +385,8 @@ class _ReelsViewState extends ConsumerState<_ReelsView> {
                   canModerate: p.authorId != myId,
                   isOwn: myId != null && p.authorId == myId,
                   isPending: p.isPending,
+                  mealCues: p.mealCues,
+                  mealCueStyle: p.mealCueStyle,
                 );
               })
               .toList(growable: false);
@@ -852,6 +862,14 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
             muted: muted,
             onToggleMute: () => ref.read(reelsMutedProvider.notifier).toggle(),
             showPlayIcon: _hasVideo && _initialized && _userPaused,
+            subtitle:
+                reel.mealCues.isNotEmpty && _hasVideo && _initialized && _video != null
+                ? MealSubtitleOverlay(
+                    position: _video!,
+                    cues: reel.mealCues,
+                    style: reel.mealCueStyle,
+                  )
+                : null,
           ),
         ],
       ),
@@ -1149,6 +1167,15 @@ class _BottomScrim extends StatelessWidget {
   }
 }
 
+/// Reel açıklama metni: boşsa meal'e düşer — ama cue'lu reel'de altyazı zaten
+/// meali gösterir, sabit meal ikinci kez basılmaz.
+@visibleForTesting
+String reelCaptionText({
+  required String caption,
+  required String meal,
+  required bool hasCues,
+}) => caption.isNotEmpty ? caption : (hasCues ? '' : meal);
+
 /// Reel üstündeki bilgi + aksiyon katmanı (sol-alt + sağ dikey).
 class _ReelOverlay extends StatelessWidget {
   const _ReelOverlay({
@@ -1163,6 +1190,7 @@ class _ReelOverlay extends StatelessWidget {
     this.muted = true,
     this.onToggleMute,
     this.showPlayIcon = false,
+    this.subtitle,
   });
 
   final _Reel reel;
@@ -1180,8 +1208,16 @@ class _ReelOverlay extends StatelessWidget {
   final VoidCallback? onToggleMute;
   final bool showPlayIcon;
 
+  /// Zaman kodlu altyazı; doluysa sol-alt sütunun ilk çocuğu.
+  final Widget? subtitle;
+
   @override
   Widget build(BuildContext context) {
+    final captionText = reelCaptionText(
+      caption: reel.caption,
+      meal: reel.meal,
+      hasCues: reel.mealCues.isNotEmpty,
+    );
     return Stack(
       children: [
         // Duraklatıldı işareti (ortada).
@@ -1291,6 +1327,7 @@ class _ReelOverlay extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (subtitle != null) ...[subtitle!, const SizedBox(height: 10)],
               Row(
                 children: [
                   CircleAvatar(
@@ -1328,11 +1365,9 @@ class _ReelOverlay extends StatelessWidget {
                   ),
                 ],
               ),
-              if (reel.caption.isNotEmpty || reel.meal.isNotEmpty) ...[
+              if (captionText.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                ReelCaption(
-                  text: reel.caption.isEmpty ? reel.meal : reel.caption,
-                ),
+                ReelCaption(text: captionText),
               ],
               // Bu katmanın TAMAMI daima koyu bir yüzeyin (video / koyu şablon
               // gradyanı + `_BottomScrim`) üstünde durur, dolayısıyla tema DÖNEN

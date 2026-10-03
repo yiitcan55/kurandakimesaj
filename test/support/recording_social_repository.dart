@@ -1,16 +1,22 @@
 import 'dart:typed_data';
 
 import 'package:kurandakimesaj/data/backend_repositories.dart';
+import 'package:kurandakimesaj/domain/meal_cues.dart';
 
 /// `createPost`/`uploadPostMedia` çağrılarını kaydeden sahte repository.
 class RecordingSocialRepository implements ISocialRepository {
   final List<bool> uploads = []; // isVideo değerleri
   Map<String, Object?>? lastPost;
+  List<MealCue>? lastMealCues;
+  MealCueStyle? lastMealCueStyle;
 
   /// Son yüklenen baytlar. Yalnız `isVideo` kaydetmek PNG'nin BOŞ, şeffaf veya
   /// yanlış çözünürlükte olmasını testten kaçırıyordu — imza ve IHDR
   /// genişliğini doğrulayabilmek için baytları da tutuyoruz.
   Uint8List? lastBytes;
+
+  /// Doluysa `createPost` bunu fırlatır (hata yolu testleri).
+  Object? createError;
 
   @override
   bool get available => true;
@@ -37,7 +43,12 @@ class RecordingSocialRepository implements ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   }) async {
+    if (createError != null) throw createError!;
+    lastMealCues = mealCues;
+    lastMealCueStyle = mealCueStyle;
     lastPost = {
       'reference': reference,
       'arabic': arabic,

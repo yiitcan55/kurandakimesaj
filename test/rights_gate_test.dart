@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:kurandakimesaj/features/community/community_screens.dart';
+import 'package:kurandakimesaj/features/meal_edit/meal_publish_sheet.dart';
 import 'package:kurandakimesaj/features/studio/studio_screens.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
@@ -164,6 +165,45 @@ void main() {
             .onPressed,
         isNull,
       );
+    },
+  );
+
+  testWidgets(
+    'MealPublishSheet: telif onayı işaretsizken Reels\'e Yayınla devre dışı, '
+    'işaretlenince etkin (üçüncü yayın yolu, AYNI kural)',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                key: const Key('open_meal_sheet'),
+                onPressed: () =>
+                    showMealPublishSheet(context, onPublish: (_) async {}),
+                child: const Text('aç'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('open_meal_sheet')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      FilledButton publishButton() => tester.widget<FilledButton>(
+        find.byKey(const Key('meal_publish_button')),
+      );
+
+      expect(publishButton().onPressed, isNull);
+      expect(find.byKey(const Key('meal_rights_hint')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('meal_rights_checkbox')));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(publishButton().onPressed, isNotNull);
+      expect(find.byKey(const Key('meal_rights_hint')), findsNothing);
     },
   );
 }

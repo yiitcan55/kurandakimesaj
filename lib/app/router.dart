@@ -14,6 +14,7 @@ import '../features/holy_days/holy_days_screen.dart';
 import '../features/home/home_screens.dart';
 import '../features/khatm/khatm_screen.dart';
 import '../features/learning/learning_screens.dart';
+import '../features/meal_edit/meal_edit_screen.dart';
 import '../features/moderation/moderation_screen.dart';
 import '../features/onboarding/onboarding_screens.dart';
 import '../features/prayer/prayer_screen.dart';
@@ -55,6 +56,7 @@ final Map<String, WidgetBuilder> _featureBuilders = {
   '/khatm': (_) => const KhatmScreen(),
   '/collections': (_) => const CollectionsScreen(),
   '/ayah-finder': (_) => const AyahFinderScreen(),
+  '/meal-edit': (_) => const MealEditScreen(),
   '/zakat': (_) => const ZakatScreen(),
   '/mosque': (_) => const MosqueScreen(),
   '/donate': (_) => const DonateScreen(),

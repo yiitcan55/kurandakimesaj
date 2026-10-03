@@ -221,3 +221,48 @@ ve MIME'ı yalan söyleyen dosyalar birikir.
 **Kural:** üçüncü parti bir üretici (encoder/exporter) eklerken çıktı biçimini
 depo/servis sözleşmesine karşı AÇIKÇA doğrula ve bir birim testiyle kilitle;
 varsayılana güvenme.
+
+---
+
+## 2026-10-03 — Meal Düzenle dersleri
+
+### 21. Yeşil testler + "bulgu yok" diyen inceleme ≠ cihazda çalışıyor
+253 yeşil test ve 6 boyutlu ajan incelemesi (9 bulgu düzeltildi) şunları
+GÖREMEDİ: gerçek paylaşımdaki native çökme, "Page Not Found", altyazının
+altında kalan oynat düğmesi, Ayet Bul'da düşen görsel paylaşımı. Dördünü de
+emülatör buldu.
+**Kural:** arayüz ve platform (intent, izin, dosya) işi cihazda/emülatörde
+GÖRÜLMEDEN bitmiş sayılmaz; ekran görüntüsünü aç ve bak.
+
+### 22. Paylaşım akışı gerçek paylaş menüsünden test edilir
+`adb shell am start -a SEND` sistem paylaş sayfasının yaptığını yapmaz:
+`NEW_DOCUMENT|MULTIPLE_TASK` bayrakları, veri URI'si ve ExternalStorage belge
+URI'si yoktur. `-d` eklersen Flutter onu derin bağlantı sanıp yapay "Page Not
+Found" üretir; eklemezsen URI izni gelmez.
+**Kural:** emülatörde Dosyalar uygulamasını aç, dosyaya uzun bas, Paylaş →
+uygulama. Niyetin gerçek hâli `logcat | grep "ActivityTaskManager: START"`.
+
+### 23. "Açık ekran tüketir" diyen bir kısayol, TÜM hedeflerin sözleşmesidir
+Yönlendirmeye "zaten o rotadaysa push etme" eklendi; yalnız yeni ekran girdiyi
+dinliyordu, eski ekran (Ayet Bul) dinlemiyordu → paylaşım sessizce düştü.
+**Kural:** ortak bir yönlendirme kuralı değişince o kuralın gittiği HER ekran
+için "ekran açıkken girdi gelirse tüketilir" testi yaz (ders 7'nin genellemesi).
+
+### 24. Aynı widget testinde ikinci `pumpWidget` override'ları yenilemez
+Üç durumu tek testte art arda `_pump` ettim; `ProviderScope` yeniden
+kullanıldığı için durum değişmedi ve assert yanlış ekrana baktı. İlk "kırmızı"
+da bu yüzden yanlış nedenle kırmızıydı.
+**Kural:** her durum ayrı `testWidgets`. Kırmızıyı gördüğünde assert mesajını
+oku: beklediğin nedenle mi kırmızı? Sonra düzeltmeyi geri alıp tekrar kırmızıya
+döndüğünü gör (ders 10).
+
+### 25. Emülatör otomasyonu (Windows + Git Bash) tuzakları
+- `uiautomator dump` Flutter semantik ağacını verir (metne göre dokunmak için
+  yeter) ama BAYAT kalabilir (oynatma konumu, sekme değişimi). Doğrulamada
+  ekran görüntüsü esastır.
+- `adb shell a b c` argümanları birleştirir: `run-as PKG sh -c '...'` bozulur.
+  Komutun TAMAMINI tek dize ver: `adb shell "run-as PKG sh -c '...'"`.
+- `MSYS_NO_PATHCONV=1` `/sdcard/...` yollarını korur ama yerel exe'lere
+  (ffmpeg, node) `/c/...` yerine `C:/...` vermek gerekir.
+- Geçiş animasyonu sırasında atılan dokunuş kaybolabilir; "iki kez geri"
+  gibi bir gözlemi kusur saymadan önce temiz durumdan yeniden üret.
