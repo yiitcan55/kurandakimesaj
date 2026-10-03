@@ -60,7 +60,7 @@ Kapsam: yeni Meal Düzenle ekranı + paylaşım yönlendirme + Reels'te zaman ko
 
 **Plandan sapmalar.** Plan "sıfır native" diyordu; P.1 `MainActivity.kt`'ye ~50 satır ekledi (manifest ve eklenti sürümü değişmedi). Ayrıntı `meal-duzenle-implementation.md` sonunda.
 
-**Kalan.** Commit ve sürüm (istenmedi) · gerçek cihazda tekrar · iOS hiç çalıştırılmadı · isabet yalnız tek temiz kayıtla ölçüldü; gürültülü gerçek videolarla ölçülmeli · `post-media`'da 0,8 MB test videosu yetim (istemci silemez; test gönderisi silindi).
+**Kalan.** Push, PR ve sürüm (istenmedi; kod `ac0af00` ile commit edildi) · gerçek cihazda tekrar · iOS hiç çalıştırılmadı · isabet yalnız tek temiz kayıtla ölçüldü; gürültülü gerçek videolarla ölçülmeli · `post-media`'da 0,8 MB test videosu yetim (istemci silemez; test gönderisi silindi).
 
 **Değişmeyen sınırlar.** `feed_posts_moderation_guard` · `feed_select_visible` / `feed_select_admin` · `is_own_post_media` · `revoke update on profiles` · `BottomBar` `heightFactor: 1` · `receive_sharing_intent` 1.8.1 · `bottom_bar_height_test.dart` · `launchMode="singleTop"` · `supabase/functions/**`.
 
