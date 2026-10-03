@@ -104,6 +104,21 @@ void main() {
     }
   });
 
+  test('Paketli meal verisinde bilinen bozuk kalıplar yok (2:156, 27:62, "herşey")', () {
+    final bad = <String>[];
+    _quran.byKey.forEach((k, v) {
+      final meal = v.$2;
+      final id = '${k.$1}:${k.$2}';
+      if (meal.contains("Allah'ınız")) bad.add("$id Allah'ınız");
+      if (RegExp(r'\b[Hh]erşey').hasMatch(meal)) bad.add('$id herşey');
+      if (RegExp(r'\w*[aıouAIOU] m[iü]\?').hasMatch(meal)) {
+        bad.add('$id mi/mü? ünlü uyumu');
+      }
+    });
+    expect(bad, isEmpty, reason: bad.join(', '));
+    expect(_quran.byKey[(2, 156)]!.$2, contains("Allah'a aitiz"));
+  });
+
   test('Konuya göre ayet: atıf çözülür, Arapça ve meal Kur\'an verisiyle aynı', () {
     final errors = <String>[];
     final seen = <String>{};

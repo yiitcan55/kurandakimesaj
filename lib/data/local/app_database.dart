@@ -181,7 +181,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'kuran_db'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// Kullanıcının asla geri gelmeyen verisi — şema yükseltmede KORUNUR.
   /// (Seed dini içerikten ayrı tutulur; içerik güncellemesi ezber/koleksiyon

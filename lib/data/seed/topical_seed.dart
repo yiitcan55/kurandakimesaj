@@ -52,7 +52,7 @@ const List<(String, String, String, String)> kTopicalSeed = [
   ('Dua', 'A\'râf, 55', 'ٱدْعُوا۟ رَبَّكُمْ تَضَرُّعًۭا وَخُفْيَةً ۚ إِنَّهُۥ لَا يُحِبُّ ٱلْمُعْتَدِينَ',
       'Rabbinize gönülden ve gizlice yalvarın. Doğrusu O aşırı gidenleri sevmez.'),
   ('Dua', 'Neml, 62', 'أَمَّن يُجِيبُ ٱلْمُضْطَرَّ إِذَا دَعَاهُ وَيَكْشِفُ ٱلسُّوٓءَ وَيَجْعَلُكُمْ خُلَفَآءَ ٱلْأَرْضِ ۗ أَءِلَٰهٌۭ مَّعَ ٱللَّهِ ۚ قَلِيلًۭا مَّا تَذَكَّرُونَ',
-      'Yoksa, darda kalana, kendisine yakardığı zaman karşılık veren, başındaki sıkıntıyı gideren ve sizi yeryüzünün sahipleri yapan mı? Allah\'ın yanında başka bir tanrı mi? Pek kıt düşünüyorsunuz.'),
+      'Yoksa, darda kalana, kendisine yakardığı zaman karşılık veren, başındaki sıkıntıyı gideren ve sizi yeryüzünün sahipleri yapan mı? Allah\'ın yanında başka bir tanrı mı? Pek kıt düşünüyorsunuz.'),
   ('Korku & Kaygı', 'Âl-i İmrân, 173', 'ٱلَّذِينَ قَالَ لَهُمُ ٱلنَّاسُ إِنَّ ٱلنَّاسَ قَدْ جَمَعُوا۟ لَكُمْ فَٱخْشَوْهُمْ فَزَادَهُمْ إِيمَٰنًۭا وَقَالُوا۟ حَسْبُنَا ٱللَّهُ وَنِعْمَ ٱلْوَكِيلُ',
       'İnsanlar onlara: "Düşmanınız olan insanlar size karşı bir ordu topladılar, onlardan korkun" dediler. Bu, onların imanını artırdı da: "Allah bize yeter. O ne güzel Vekil\'dir" dediler.'),
   ('Korku & Kaygı', 'Fussilet, 30', 'إِنَّ ٱلَّذِينَ قَالُوا۟ رَبُّنَا ٱللَّهُ ثُمَّ ٱسْتَقَٰمُوا۟ تَتَنَزَّلُ عَلَيْهِمُ ٱلْمَلَٰٓئِكَةُ أَلَّا تَخَافُوا۟ وَلَا تَحْزَنُوا۟ وَأَبْشِرُوا۟ بِٱلْجَنَّةِ ٱلَّتِى كُنتُمْ تُوعَدُونَ',
