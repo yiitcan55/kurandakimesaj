@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/backend_repositories.dart';
+import '../../domain/meal_cues.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/widgets.dart';
@@ -20,6 +21,33 @@ String _errorText(Object e) =>
 Map<String, dynamic>? _embedded(Map<String, dynamic> row, String key) {
   final value = row[key];
   return value is Map ? value.cast<String, dynamic>() : null;
+}
+
+/// Yönetici "görülen ile gösterilen"i karşılaştırabilsin diye cue özeti:
+/// ayet sayısı · sure:ayet(ler) · süre aralığı. Ardışık ayetler aralık, değilse
+/// virgüllü liste. ponytail: ardışıklık yalnız ilk cue'nun suresine göre bakılır;
+/// karışık sure listesi `s:a` çiftleriyle yazılır.
+String _cueSummary(List<MealCue> cues) {
+  String clock(double sec) {
+    final s = sec.round();
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
+
+  final surah = cues.first.surah;
+  final sameSurah = cues.every((c) => c.surah == surah);
+  final ayahs = [for (final c in cues) c.ayah];
+  final consecutive = [
+    for (var i = 1; i < ayahs.length; i++) ayahs[i] == ayahs[i - 1] + 1,
+  ].every((b) => b);
+  final verses = !sameSurah
+      ? [for (final c in cues) '${c.surah}:${c.ayah}'].join(',')
+      : ayahs.length == 1
+      ? '$surah:${ayahs.first}'
+      : consecutive
+      ? '$surah:${ayahs.first}–${ayahs.last}'
+      : '$surah:${ayahs.join(',')}';
+  return 'Zaman kodlu altyazı: ${cues.length} ayet · $verses · '
+      '${clock(cues.first.startSec)}–${clock(cues.last.endSec)}';
 }
 
 /// Yıkıcı işlem onayı — yanlışlıkla dokunmayı engeller.
@@ -194,6 +222,17 @@ class _PendingTab extends ConsumerWidget {
                         : (post.isVideo ? 'Video gönderisi' : 'Görsel reel'),
                     body: post.meal,
                   ),
+                  if (post.mealCues.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _cueSummary(post.mealCues),
+                      key: const Key('moderation_cue_summary'),
+                      style: AppTypography.body(
+                        size: 13,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   Row(
                     children: [

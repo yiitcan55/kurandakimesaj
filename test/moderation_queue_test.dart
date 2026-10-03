@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kurandakimesaj/app/app_config.dart';
 import 'package:kurandakimesaj/data/backend_repositories.dart';
+import 'package:kurandakimesaj/domain/meal_cues.dart';
 import 'package:kurandakimesaj/features/community/community_screens.dart';
 import 'package:kurandakimesaj/features/home/home_screens.dart';
 import 'package:kurandakimesaj/features/moderation/moderation_screen.dart';
@@ -67,6 +68,8 @@ class _FakeSocialRepository implements ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   }) async {}
 
   @override
@@ -337,4 +340,72 @@ void main() {
       );
     },
   );
+
+  group('Moderasyon kartı — zaman kodlu altyazı özeti', () {
+    Future<void> pumpQueue(WidgetTester tester, List<MealCue> cues) async {
+      final fake = _FakeSocialRepository(
+        pendingPosts: [
+          FeedPost(
+            id: 'cue-1',
+            authorId: 'author-1',
+            authorName: 'Yazar',
+            reference: 'Bakara, 1',
+            arabic: '',
+            meal: 'Kuyruktaki içerik',
+            topic: '',
+            likeCount: 0,
+            likedByMe: false,
+            status: 'pending',
+            mealCues: cues,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            supabaseGatewayProvider.overrideWithValue(
+              _FakeGateway()..signedIn = true,
+            ),
+            socialRepositoryProvider.overrideWithValue(fake),
+          ],
+          child: const MaterialApp(home: ModerationScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('ardışık cue: ayet sayısı, aralık ve süre görünür', (
+      tester,
+    ) async {
+      await pumpQueue(tester, const [
+        MealCue(startSec: 0, endSec: 30, surah: 2, ayah: 255),
+        MealCue(startSec: 30, endSec: 60, surah: 2, ayah: 256),
+        MealCue(startSec: 60, endSec: 84, surah: 2, ayah: 257),
+      ]);
+      expect(
+        find.text('Zaman kodlu altyazı: 3 ayet · 2:255–257 · 0:00–1:24'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('moderation_cue_summary')), findsOneWidget);
+    });
+
+    testWidgets('ardışık olmayan cue: ayet numaraları virgülle listelenir', (
+      tester,
+    ) async {
+      await pumpQueue(tester, const [
+        MealCue(startSec: 0, endSec: 5, surah: 2, ayah: 1),
+        MealCue(startSec: 5, endSec: 9, surah: 2, ayah: 3),
+      ]);
+      expect(
+        find.text('Zaman kodlu altyazı: 2 ayet · 2:1,3 · 0:00–0:09'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('cue yoksa özet satırı çizilmez', (tester) async {
+      await pumpQueue(tester, const []);
+      expect(find.text('Kuyruktaki içerik'), findsWidgets);
+      expect(find.byKey(const Key('moderation_cue_summary')), findsNothing);
+    });
+  });
 }

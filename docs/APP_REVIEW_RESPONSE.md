@@ -2,6 +2,8 @@
 
 > Reddedilen gönderim: `cf08e6a4-b956-46b3-9064-2ecc40fa5742` · 24 Tem 2026 · **Guideline 1.2**
 > Bu belge: ASC'ye yazılacak metin + App Review Notes + ekran kaydı senaryosu + gönderim öncesi manuel adımlar.
+>
+> **2026-10-03 notu:** Bu belge 1.0.1 gönderimindeki durumu anlatır ve tarihsel kayıt olarak DEĞİŞTİRİLMEDİ. Sonraki sürümde (`feat/meal-duzenle`) "Bağlantı Yapıştır" alanı ve istemcideki bağlantı çözümleme kaldırıldı: paylaşılan bağlantı için uygulama hiçbir şey indirmez ya da çözmez, yalnız "videoyu kaydet, galeriden seç" yönlendirmesi gösterir. Aşağıda bağlantıdan söz eden cümleler ("pastes a social media link", "Bağlantı Yapıştır") yeni sürüm için geçersizdir; bir sonraki gönderim metni yazılırken çıkarılmalı.
 
 ---
 

@@ -1,5 +1,79 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## Meal Düzenle — videodan zaman kodlu meal altyazısı (2026-10-03)
+Plan: `meal-duzenle-implementation.md` · Dal: `feat/meal-duzenle` · Skill/ajan eşlemesi: plan içinde (kaynak `SKILL.md` kısa listesi)
+Kapsam: yeni Meal Düzenle ekranı + paylaşım yönlendirme + Reels'te zaman kodlu altyazı. **Tek migration / sıfır native / sıfır yeni paket / Edge Function diff'i yok.**
+
+### Adım 0 — Hazırlık
+- [x] 0.1 Dal `feat/meal-duzenle` (`release/1.0.1`'den)
+- [x] 0.2 `meal-duzenle-implementation.md` proje köküne yazıldı
+- [x] 0.3 `tasks/lessons.md` okundu (dart PATH, `dart analyze`, ders 6/10/11/17/18)
+
+### Dalga 1 — paralel
+- [x] T1 `lib/domain/meal_cues.dart` + `backend_repositories.dart` — `MealCue`, `buildCues`, `cueAt`, `splitMealPages`, `FeedPost.mealCues`, `createPost(mealCues, mealCueStyle)`, 4 fake güncellendi
+- [x] T2 `supabase/migrations/20261003120000_meal_cues.sql` — iki kolon + `is_valid_meal_cues` CHECK + `feed_posts_meal_cues_lock` trigger'ı (guard'a dokunulmadı)
+- [x] T3 `lib/data/meal_video_store.dart` — `isOwned` / `discard` / `markPending` / `sweepOrphan`
+- [x] T4 Ayet Bul sadeleştirme — `_LinkField`, `fromUrl`, `normalizeAyahUrl`, video yolu silindi; `sharedRouteFor`, `ayahErrorMessage`
+- [x] T5 `lib/features/meal_edit/ayah_range_sheet.dart` — elle sure + ayet aralığı seçici
+- [x] T6 `lib/features/meal_edit/meal_publish_sheet.dart` — yayın sayfası + telif kapısı (`rights_gate_test` üçüncü yol)
+- [x] D1.V Dalga 1 kapısı: `dart analyze` 0 + ilgili testler
+
+### Dalga 2 — paralel
+- [x] T7 `meal_edit_controller.dart` — `autoDispose` Notifier, nesil sayacı, `ref.onDispose` içinde silme
+- [x] T8 `meal_subtitle_overlay.dart` — zaman kodlu altyazı (üç stil, sayfalama, RTL)
+- [x] T9 `meal_timeline.dart` — kaydırıcı + dekoratif dalga formu, cue bölgeleri vurgulu
+- [x] T10 Paylaşım yönlendirme + katalog — `app.dart`, `onboarding_screens.dart`, `feature_catalog.dart`, `home_screens.dart`
+- [x] T11 Moderasyon kartında cue özeti
+- [x] D2.V Dalga 2 kapısı
+
+### Dalga 3 — paralel
+- [x] T12 `meal_edit_screen.dart` + `/meal-edit` rotası — maketteki ekran
+- [x] T13 Reels'te zaman kodlu altyazı (`community_screens.dart`)
+- [x] T14 `findFromUrl` kaldırma (istemci)
+- [x] D3.V Dalga 3 kapısı
+
+### İnceleme ve doğrulama
+- [x] R.1 Çok boyutlu inceleme (flutter / güvenlik / veritabanı / sessiz hata / test ayırt ediciliği) + çürütme doğrulaması
+- [x] R.2 Doğrulanan bulgular düzeltildi
+- [x] V.1 `dart analyze` 0 · `flutter test` art arda 4 kez yeşil · `flutter build apk --debug`
+- [x] V.2 Dokunulmaz dosyalarda ve `supabase/functions` altında `git diff` boş
+- [x] M.1 Migration üretime uygulandı (`db push`) + SQL sondaları
+- [x] E.1 Android emülatör S1–S10 (ekran görüntüleriyle)
+- [x] T15 Belgeler — `PROJECT_MEMORY.md`, `CLAUDE.md`, `STORE_SUBMISSION.md`, `docs/APP_REVIEW_RESPONSE.md`, `tasks/lessons.md` (ders 21-25)
+
+### Emülatörün bulduğu, Workflow sonrası düzeltmeler
+- [x] P.1 `MainActivity.sanitizeShareIntent` — Dosyalar uygulamasından paylaşımda native çökme (mevcut hata) + veri URI kaynaklı "Page Not Found"
+- [x] P.2 Oynat düğmesi altyazının altında kalıyordu → cue varken alt satıra iner
+- [x] P.3 Durum hapı dürüstlüğü — elle seçimde "Elle Seçildi", 20 MB üstünde "Analiz Yok" (3 test, kırmızı görüldü)
+- [x] P.4 Ayet Bul ekran açıkken gelen görsel paylaşımını dinler — yönlendirme kuralının gerilemesi (2 test, kırmızı görüldü)
+
+### Review (2026-10-03 — Meal Düzenle)
+**Yürütme.** 34 Sonnet 5.5 ajanlı tek Workflow: 3 dalga (14 görev) → her dalga sonunda kapı (188 → 219 → 236 test, kapılarda düzeltme gerekmedi) → 6 boyutlu inceleme (12 tekil bulgu; 9 doğrulanıp düzeltildi, 3 düşük öncelikli) → son kapı (253 test ×4, debug APK).
+
+**Emülatörün bulduğu (ders 21).** Yeşil testler ve inceleme şunları göremedi; dördü de `Medium_Phone` (API 36) üzerinde çıktı: P.1 native çökme, P.1 "Page Not Found", P.2 örtüşen oynat düğmesi, P.4 düşen görsel paylaşımı. P.1 bu dalın getirdiği bir hata değil; 1.0.0/1.0.1'de de var.
+
+**Kırmızı-önce kanıtı (ders 10).** Workflow görevleri derleme düzeyinde kırmızı gördü; inceleme düzeltmeleri ve P.3/P.4 mutasyonla doğrulandı (düzeltme geri alınınca kırmızı). P.3'te ilk kırmızı YANLIŞ nedenleydi (aynı testte çift `_pump`, ders 24) — test üçe bölünüp yeniden kanıtlandı.
+
+**Doğrulama.** `dart analyze` 0 · `flutter test` 258/258 art arda 4 koşum · debug APK · dokunulmaz dosyalarda (`supabase/functions`, `pubspec.*`, `AndroidManifest.xml`, `bottom_bar_height_test.dart`, mevcut migration'lar) diff boş · bağlantı kodu grep'i boş. Migration üretimde; SQL sondaları demo hesapla: bozuk cue 23514, cue güncellemesi 42501, geçerli ekleme `pending`.
+
+**Emülatör senaryoları (hepsi geçti).** S1 soğuk başlatma + gerçek paylaş menüsü → analiz → doğru ayet (Yâsîn 58-61), altyazı zamanla değişiyor · S2 yayınlamadan geri → video + küçük resim silindi · S3 ekran açıkken ikinci video → önceki silindi, yığılma yok · S4 bağlantı → yönlendirme kartı, indirme yok · S5 28,6 MB → "Analiz Yok", yayın gerekçesiyle kapalı · S6 tilavetsiz → "bulunamadı" → elle Fâtiha 1-7 → yaklaşık altyazı · S7 telif onayı → Reels'e yayın (`pending`, 4 cue; Reels'te altyazı zamanla değişti), video kaldı · S8 force-stop → sonraki açılışta yetim silindi · S9 galeriden seç + geri → `cache/<uuid>/` klasörü de silindi · S10 görsel → Ayet Bul (P.4 sonrası).
+
+**Plandan sapmalar.** Plan "sıfır native" diyordu; P.1 `MainActivity.kt`'ye ~50 satır ekledi (manifest ve eklenti sürümü değişmedi). Ayrıntı `meal-duzenle-implementation.md` sonunda.
+
+**Kalan.** Commit ve sürüm (istenmedi) · gerçek cihazda tekrar · iOS hiç çalıştırılmadı · isabet yalnız tek temiz kayıtla ölçüldü; gürültülü gerçek videolarla ölçülmeli · `post-media`'da 0,8 MB test videosu yetim (istemci silemez; test gönderisi silindi).
+
+**Değişmeyen sınırlar.** `feed_posts_moderation_guard` · `feed_select_visible` / `feed_select_admin` · `is_own_post_media` · `revoke update on profiles` · `BottomBar` `heightFactor: 1` · `receive_sharing_intent` 1.8.1 · `bottom_bar_height_test.dart` · `launchMode="singleTop"` · `supabase/functions/**`.
+
+
+### Kapsam dışı (gerekçeli)
+- [~] **Gömülü mp4 dışa aktarım + galeriye kayıt.** K1 geçerli; ayrı plan (Media3 / AVFoundation).
+- [~] **iOS Share Extension.** Xcode gerekir; iOS'ta ekran "Video Seç" ile çalışır.
+- [~] **Bağlantıdan indirme.** App Store 5.2.3; bağlantıda yönlendirme kartı gösterilir.
+- [~] **Tarteel barındırma / kelime düzeyi zaman damgası.** Önce Groq isabeti ölçülür.
+- [~] **Sunucudaki `postUrl` dalının silinmesi.** Eski 1.0.0/1.0.1 istemcileri hâlâ çağırıyor.
+
+---
+
 ## FAZ A — Build 4 (2026-08-03)
 Plan: `g-rev-bir-implantation-glimmering-dream.md` · Skill/ajan eşlemesi: `SKILL.md`
 Kapsam: **yalnız** madde 9 + 8 + 3 + 7-kısmi. Sıfır migration / sıfır native / sıfır yeni paket.

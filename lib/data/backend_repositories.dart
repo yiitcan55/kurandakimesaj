@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../domain/meal_cues.dart';
 import '../domain/models.dart';
 
 /// Supabase istemcisi — başlatılmamışsa null (uygulama backend'siz de çalışır).
@@ -81,6 +82,8 @@ class FeedPost {
     this.status = 'approved',
     this.caption = '',
     this.audioUrl,
+    this.mealCues = const [],
+    this.mealCueStyle = MealCueStyle.standard,
   });
 
   final String id;
@@ -125,6 +128,11 @@ class FeedPost {
   /// Kolon/göç yoksa null — istemci göçten bağımsız çalışır.
   final String? audioUrl;
 
+  /// Zaman kodlu meal altyazısı (`meal_cues`) ve çizim stili. Kolon yoksa ya da
+  /// bozuksa boş liste / standard — bozuk satır akışı düşürmez.
+  final List<MealCue> mealCues;
+  final MealCueStyle mealCueStyle;
+
   /// Oynatılabilir mp4 mü? Değilse 'still' — stüdyo görseli olarak render edilir.
   bool get isVideo => kind == 'video';
 
@@ -157,6 +165,10 @@ class FeedPost {
       caption: m['caption'] as String? ?? '',
       // `feed_audio_tracks(url, title)` embed'i; göç uygulanmamışsa yok.
       audioUrl: (m['feed_audio_tracks'] as Map?)?['url'] as String?,
+      mealCues: MealCue.listFromJson(m['meal_cues']),
+      mealCueStyle: MealCueStyle.fromDb(
+        m['meal_cue_style'] is String ? m['meal_cue_style'] as String : null,
+      ),
     );
   }
 }
@@ -384,6 +396,8 @@ abstract interface class ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   });
   Future<void> toggleLike(String postId, bool currentlyLiked);
   Future<void> follow(String userId);
@@ -439,6 +453,46 @@ List<FeedPost> filterBlockedFeedPosts(
 ) => posts
     .where((post) => !blockedUserIds.contains(post.authorId))
     .toList(growable: false);
+
+/// `feed_posts` insert gövdesi. `kind` kolonu init göçünde garanti var;
+/// video_url/thumbnail_url/template_id/audio_track_id/meal_cues kolonları ek
+/// göçle gelir: göç uygulanmamışsa insert'e EKLEME (yoksa "column does not
+/// exist" ile patlar) — yalnız dolu olduklarında ekle.
+@visibleForTesting
+Map<String, dynamic> buildFeedPostPayload({
+  required String uid,
+  required String kind,
+  required String reference,
+  required String arabic,
+  required String meal,
+  String topic = '',
+  String caption = '',
+  String? mediaUrl,
+  String? videoUrl,
+  String? templateId,
+  String? audioTrackId,
+  List<MealCue>? mealCues,
+  MealCueStyle? mealCueStyle,
+}) {
+  final payload = <String, dynamic>{
+    'author_id': uid,
+    'kind': kind,
+    'reference': reference,
+    'arabic': arabic,
+    'meal': meal,
+    'topic': topic,
+    'caption': caption,
+  };
+  if (mediaUrl != null) payload['media_url'] = mediaUrl;
+  if (videoUrl != null) payload['video_url'] = videoUrl;
+  if (templateId != null) payload['template_id'] = templateId;
+  if (audioTrackId != null) payload['audio_track_id'] = audioTrackId;
+  if (mealCues != null && mealCues.isNotEmpty) {
+    payload['meal_cues'] = [for (final c in mealCues) c.toJson()];
+    payload['meal_cue_style'] = (mealCueStyle ?? MealCueStyle.standard).db;
+  }
+  return payload;
+}
 
 class SocialRepository implements ISocialRepository {
   SocialRepository(this._client);
@@ -512,6 +566,8 @@ class SocialRepository implements ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   }) async {
     // Sunucudaki feed_posts_kind_check'in istemci karşılığı. Sessizce
     // düzeltmiyoruz: geçersiz değer çağıranın hatasıdır, 23514'ü beklemeden
@@ -522,24 +578,21 @@ class SocialRepository implements ISocialRepository {
     final c = _client;
     final uid = c?.auth.currentUser?.id;
     if (c == null || uid == null) return;
-    // `kind` kolonu init göçünde garanti var. video_url/thumbnail_url/template_id
-    // kolonları ek göçle gelir; göç uygulanmamışsa insert'e EKLEME (yoksa hata
-    // verir) — yalnız dolu olduklarında ekle. Böylece kod göçten bağımsız çalışır.
-    final payload = <String, dynamic>{
-      'author_id': uid,
-      'kind': kind,
-      'reference': reference,
-      'arabic': arabic,
-      'meal': meal,
-      'topic': topic,
-      'caption': caption,
-    };
-    if (mediaUrl != null) payload['media_url'] = mediaUrl;
-    if (videoUrl != null) payload['video_url'] = videoUrl;
-    if (templateId != null) payload['template_id'] = templateId;
-    // Mevcut opsiyonel-kolon kalıbı: göç uygulanmamışsa insert'e HİÇ ekleme
-    // (yoksa "column does not exist" ile patlar).
-    if (audioTrackId != null) payload['audio_track_id'] = audioTrackId;
+    final payload = buildFeedPostPayload(
+      uid: uid,
+      kind: kind,
+      reference: reference,
+      arabic: arabic,
+      meal: meal,
+      topic: topic,
+      caption: caption,
+      mediaUrl: mediaUrl,
+      videoUrl: videoUrl,
+      templateId: templateId,
+      audioTrackId: audioTrackId,
+      mealCues: mealCues,
+      mealCueStyle: mealCueStyle,
+    );
     await c.from('feed_posts').insert(payload);
   }
 
@@ -1028,10 +1081,9 @@ class KhatmRepository {
 
 // ── Ayet Bulucu (Edge Function) ──────────────────────────────────────────────
 
-/// Görsel/bağlantı/videodan ayet tanıma sözleşmesi — test seam'i (fake enjekte edilir).
+/// Görsel/videodan ayet tanıma sözleşmesi — test seam'i (fake enjekte edilir).
 abstract interface class IAyahFinderRepository {
   Future<AyahFinderResult> findFromImage(Uint8List bytes, {String mime});
-  Future<AyahFinderResult> findFromUrl(String url);
 
   /// Cihazdaki bir Kur'an videosundan okunan ayetleri bulur (ses hattı).
   ///
@@ -1120,11 +1172,6 @@ class AyahFinderRepository implements IAyahFinderRepository {
   }
 
   @override
-  Future<AyahFinderResult> findFromUrl(String url) {
-    return _invoke('ayah-finder', {'postUrl': url.trim()});
-  }
-
-  @override
   Future<AyahFinderResult> findFromVideo(String filePath) async {
     final c = _client;
     final uid = c?.auth.currentUser?.id;
@@ -1165,7 +1212,14 @@ class AyahFinderRepository implements IAyahFinderRepository {
     }
 
     // Edge Function işi bitince objeyi kendisi siler (gizlilik).
-    return _invoke('ayah-finder-audio', {'path': objectPath});
+    final res = await _invoke('ayah-finder-audio', {'path': objectPath});
+    if (res.errorCode == 'network') {
+      // Çağrı sunucuya ulaşmadıysa nesne yetim kalır; en-iyi-çaba temizlik.
+      try {
+        await c.storage.from(_bucket).remove([objectPath]);
+      } catch (_) {}
+    }
+    return res;
   }
 
   String _extOf(String path) {

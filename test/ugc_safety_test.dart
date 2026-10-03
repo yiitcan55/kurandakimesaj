@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kurandakimesaj/data/backend_repositories.dart';
+import 'package:kurandakimesaj/domain/meal_cues.dart';
 import 'package:kurandakimesaj/data/repositories.dart' show prefsProvider;
 import 'package:kurandakimesaj/features/community/community_screens.dart';
 import 'package:kurandakimesaj/features/home/home_screens.dart'
@@ -76,6 +77,8 @@ class _FakeSocialRepository implements ISocialRepository {
     String? videoUrl,
     String? templateId,
     String? audioTrackId,
+    List<MealCue>? mealCues,
+    MealCueStyle? mealCueStyle,
   }) async {}
 
   @override
@@ -186,6 +189,47 @@ void main() {
         expect(fake.reportedPosts, ['reel-1']);
       },
     );
+
+    for (final withCues in [true, false]) {
+      testWidgets(
+        'reel açıklaması: cue ${withCues ? 'varken' : 'yokken'} sabit meal '
+        '${withCues ? 'ikinci kez basılmaz' : 'basılır'}',
+        (tester) async {
+          final gateway = _FakeGateway()..signedIn = true;
+          final fake = _FakeSocialRepository(
+            feedPosts: [
+              FeedPost(
+                id: 'reel-m',
+                authorId: 'author-x',
+                authorName: 'Başka Yazar',
+                reference: '',
+                arabic: '',
+                meal: 'MEAL_X',
+                topic: '',
+                likeCount: 0,
+                likedByMe: false,
+                mealCues: withCues
+                    ? const [MealCue(startSec: 0, endSec: 3, surah: 1, ayah: 1)]
+                    : const [],
+              ),
+            ],
+          );
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                supabaseGatewayProvider.overrideWithValue(gateway),
+                socialRepositoryProvider.overrideWithValue(fake),
+              ],
+              child: const MaterialApp(home: FeedScreen()),
+            ),
+          );
+          await tester.pumpAndSettle();
+          // Video hazır değilken kompozisyon meali zaten bir kez çizer (1); açıklama
+          // satırı yalnız cue yokken ikinci kez basar (2).
+          expect(find.text('MEAL_X'), findsNWidgets(withCues ? 1 : 2));
+        },
+      );
+    }
 
     testWidgets(
       'reel aksiyon rayında "Engelle" ulaşılabilir ve onaylanınca '

@@ -99,7 +99,7 @@ GÜNLÜK İBADET
 • Oruç ve imsakiye, hicri takvim ve dini günleri takip edin.
 
 AYET BUL VE PAYLAŞ
-• Cihazınızdaki bir görselden, desteklenen bir gönderi bağlantısından veya kısa tilavet videosundan okunan ayeti bulun.
+• Cihazınızdaki bir görselden veya kısa tilavet videosundan okunan ayeti bulun; videoda meali zaman kodlu altyazı olarak izleyin (Meal Düzenle).
 • Arapça metin model tarafından çıkarılır; sure, ayet numarası ve meal doğrulanmış Kur'an veri setinden eşleştirilir.
 • Ayetinizi şablon ve arka planla düzenleyip PNG ayet kartı olarak paylaşın.
 

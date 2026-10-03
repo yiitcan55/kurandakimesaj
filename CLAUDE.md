@@ -14,6 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Moderasyon (Apple Guideline 1.2 yanıtı):** Her içerik `status='pending'` başlar ve yayına girmeden önce yönetici onayından geçer. Kapı UI'da değil **veritabanında** zorlanır: RLS + `feed_posts_moderation_guard` trigger'ı. Bu mekanizmayı zayıflatan hiçbir değişiklik yapılmamalıdır — App Store onayı buna bağlıdır. Ayrıntı: `docs/APP_REVIEW_RESPONSE.md`.
 
+**Meal Düzenle (2026-10-03):** Tilavet videosu paylaş menüsünden ya da galeriden gelir; `ayah-finder-audio` zaman çizelgesinden cue üretilir ve meal oynatıcının ÜSTÜNE çizilir (gerçek render yok — K1 geçerli). Reels'e `feed_posts.meal_cues` (yalnız künye + saniye, serbest metin yok) ile yayınlanır; cue'lar yayın sonrası kilitlidir (`feed_posts_meal_cues_lock` trigger'ı, moderasyon guard'ına dokunulmadı). **Uygulama hiçbir bağlantıdan video indirmez** (App Store 5.2.3) — bağlantı paylaşımında yalnız yönlendirme kartı gösterilir. Yayınlanmayan video çıkışta önbellekten silinir (`MealVideoStore`; yalnız uygulamanın kendi önbelleğindeki dosyayı siler). Paylaşım niyeti eklentilere ulaşmadan `MainActivity.sanitizeShareIntent` içinde düzeltilir (bkz. `PROJECT_MEMORY.md` Karar Günlüğü). Plan: `meal-duzenle-implementation.md`.
+
 `PROJECT_MEMORY.md` projenin canlı "beyni"dir — mimari karar verirken veya görev tamamlarken oku ve güncelle.
 
 ## Komutlar
@@ -66,13 +68,13 @@ Kullanılan paketler (`pubspec.yaml`): `flutter_riverpod`, `go_router`, `freezed
 
 ## Modüller
 
-**26 özellik**, 4 modül — tek kaynak `lib/app/feature_catalog.dart`, sayı ihtilafında **kod kazanır**:
+**27 özellik**, 4 modül — tek kaynak `lib/app/feature_catalog.dart`, sayı ihtilafında **kod kazanır**:
 **İbadet & Günlük (8)** namaz vakti, zikirmatik, tesbihat, dua, Esmaü'l-Hüsna, oruç/imsakiye, dini günler, kıble ·
 **Kur'an & Öğrenme (10)** okuma, günlük ayet, konuya göre ayet, mucizeler, sure ezberi, cüz/hizb takip, kıssalar, tecvid, sure quiz, istatistikler ·
-**İçerik & Topluluk (4)** ayet kartı stüdyosu, hatim halkaları, koleksiyonlar, Ayet Bul (AI) ·
+**İçerik & Topluluk (5)** ayet kartı stüdyosu, hatim halkaları, koleksiyonlar, Ayet Bul (AI, yalnız görsel), Meal Düzenle (videodan zaman kodlu meal altyazısı) ·
 **Araçlar (4)** zekât hesaplama, cami bul, bağış, rüya tabiri.
 
-> Reels akışı ve Mesajlar katalog kaydı değil, alt-sekmedir — bu yüzden 26'ya dahil değiller.
+> Reels akışı ve Mesajlar katalog kaydı değil, alt-sekmedir — bu yüzden 27'ye dahil değiller.
 
 Önerilen lansman sırası: Faz 1 Temel (onboarding, okuma, namaz vakti, zikir, günün ayeti) → Faz 2 Stüdyo (video edit, AI, akış) → Faz 3 Öğrenme & Topluluk → Faz 4 Araçlar & Gelir.
 

@@ -203,7 +203,7 @@ Future<void> showCreateSheet(BuildContext context) {
             ctx,
             Icons.image_search_rounded,
             'Ayet Bul',
-            'Görselden/bağlantıdan ayeti bul',
+            'Görselden ayeti bul',
             '/ayah-finder',
           ),
           _createItem(
@@ -212,6 +212,13 @@ Future<void> showCreateSheet(BuildContext context) {
             'Video Edit',
             'Şablon + tilavet + meal',
             '/studio',
+          ),
+          _createItem(
+            ctx,
+            Icons.subtitles_rounded,
+            'Meal Düzenle',
+            'Videodaki tilavete meal altyazısı ekle',
+            '/meal-edit',
           ),
           _createItem(
             ctx,
@@ -407,7 +414,7 @@ class HomeScreen extends ConsumerWidget {
                 _HomeRow(
                   icon: Icons.grid_view_rounded,
                   title: 'Tüm Özellikler',
-                  subtitle: '26 özelliğin tamamı, modüllere ayrılmış.',
+                  subtitle: '${kFeatures.length} özelliğin tamamı, modüllere ayrılmış.',
                   onTap: () => context.push('/features'),
                 ),
               ],
