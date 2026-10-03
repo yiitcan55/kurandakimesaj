@@ -2,15 +2,16 @@
 
 ## İçerik + Düzeltmeler sürümü (2026-10-03)
 Plan: `implementation-icerik-duzeltmeler.md` · Dal: `feat/icerik-ve-duzeltmeler` · Meal Düzenle dahil
-- [x] 0 Dal açıldı, analiz 0, belgeler yazıldı
-- [ ] M1 Reels sesi sekme değişince susmalı (investigate → kırmızı test → düzeltme)
-- [ ] M9 Esmaül Hüsna / modül ekranları alt padding (önce cihazda yeniden üret)
-- [ ] M2 Tefsir — Kapı 0: Elmalılı kaynak/lisans; sonra veri + UI
-- [ ] M3 Dua ~40 · [ ] M4 Konuya göre ayet 4–6/konu · [ ] M5 Mucizeler ~45
-- [ ] M6 Kıssalar 2–3/peygamber + 5 eksik · [ ] M7 Tecvid ~20 · [ ] M8 Rüya ~150
-- [ ] `test/content_contract_test.dart` (imla + sure:ayet doğrulaması)
-- [ ] Kapı: dart analyze 0, flutter test ×4, incelemeler, emülatör
-- [ ] Yayın: AAB + Codemagic iOS + konsollar (gönderim öncesi onay; sürüm no mağazaya bakılarak)
+- [x] 0 Dal açıldı, analiz 0, belgeler yazıldı (commit 818991b)
+- [x] M1 Reels sesi sekme değişince durur (`TickerMode`+lifecycle, `test/reels_tab_audio_test.dart`, kırmızı→yeşil kanıtlı)
+- [x] M9 Esma kök neden = ALT SAYFA gezinme çubuğunun altında; `sheetBottomPadding` 9 alt sayfada (`test/sheet_safe_area_test.dart`, kırmızı→yeşil)
+- [x] Seed modüllere bölündü; `test/content_contract_test.dart` (sure:ayet, Arapça, meal, imla, tekrar, hacim)
+- [x] M4 Konuya göre ayet 52 kayıt/12 konu · [x] M5 Mucize 45 · [x] M8 Rüya 171
+- [~] M2 Tefsir: Kapı 0 SONUCU = lisanslı Elmalılı kaynağı YOK → geri dönüş: 52 küratörlü ayete "Kısa açıklama" (`ayah_notes_seed.dart` yazıldı, `lib/ui/core/ayah_note.dart` + okuyucu/konu/günün ayeti bağlandı). YAPILMADI: widget testi, `dart analyze`, dini içerik gözden geçirme
+- [ ] M3 Dua (~40) · [ ] M6 Kıssa (25 peygamber ×2-3) · [ ] M7 Tecvid (~20): ajanlar BAŞLATILDI ama bitmedi/doğrulanmadı — `dua_seed.dart`, `story_seed.dart`, `tajweed_seed.dart` yarım olabilir; `flutter test test/content_contract_test.dart` ile durumu gör
+- [ ] Kapı: dart analyze 0, flutter test ×4, incelemeler, emülatör (Esma sheet, reels ses, açıklama bloğu)
+- [ ] Yayın: sürüm numarası "1.0.4" YANLIŞTI (1.0.3 Deyiver'e ait); mağaza durumuna bakıp belirle (beklenen 1.0.2). AAB + Codemagic + konsollar, gönderim öncesi onay
+- [ ] Uyarı: docs/legal/terms.html:22 ve PRIVACY_POLICY.md:125 "tefsir … Diyanet, Elmalılı, TDV" diyor → artık doğru değil, düzeltilmeli
 
 ## Meal Düzenle — videodan zaman kodlu meal altyazısı (2026-10-03)
 Plan: `meal-duzenle-implementation.md` · Dal: `feat/meal-duzenle` · Skill/ajan eşlemesi: plan içinde (kaynak `SKILL.md` kısa listesi)

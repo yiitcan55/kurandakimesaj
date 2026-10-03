@@ -40,7 +40,7 @@ const List<FeatureDef> kFeatures = [
   FeatureDef(route: '/qibla', title: 'Pusula (Kıble)', description: 'Sensörle Kâbe yönünü gösteren pusula.', icon: Icons.explore_rounded, category: FeatureCategory.ibadet),
 
   // ── Kur'an & Öğrenme (10) ──
-  FeatureDef(route: '/quran', title: 'Kur\'an Okuma', description: 'Arapça hero tipografi, meal & tefsir, sesli okuma, sepya mod.', icon: Icons.menu_book_rounded, category: FeatureCategory.kuran),
+  FeatureDef(route: '/quran', title: 'Kur\'an Okuma', description: 'Arapça hero tipografi, meal & kısa açıklamalar, sesli okuma, sepya mod.', icon: Icons.menu_book_rounded, category: FeatureCategory.kuran),
   FeatureDef(route: '/daily-ayah', title: 'Günlük Ayet & Hadis', description: 'Her gün yeni ayet ve hadis, paylaşıma hazır.', icon: Icons.wb_sunny_rounded, category: FeatureCategory.kuran),
   FeatureDef(route: '/topical', title: 'Konuya Göre Ayet', description: 'Ruh haline göre (Sabır, Huzur, Umut…) ayet önerisi.', icon: Icons.psychology_rounded, category: FeatureCategory.kuran),
   FeatureDef(route: '/miracles', title: 'Kuran Mucizeleri', description: 'Bilimsel, astronomi, embriyoloji, tarihi, sayısal kategoriler.', icon: Icons.science_rounded, category: FeatureCategory.kuran),

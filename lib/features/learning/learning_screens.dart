@@ -224,7 +224,7 @@ class TajweedScreen extends ConsumerWidget {
     if (lessons.length < 4) return;
     showDialog<void>(
       context: context,
-      builder: (_) => _TajweedQuizDialog(lessons: lessons),
+      builder: (_) => TajweedQuizDialog(lessons: lessons),
     );
   }
 }
@@ -250,29 +250,49 @@ void _showText(BuildContext context, String title, String body) {
   );
 }
 
-class _TajweedQuizDialog extends StatefulWidget {
-  const _TajweedQuizDialog({required this.lessons});
+/// Tecvid sınavı: tüm derslerden rastgele (tekrarsız) en çok 6 soru; yanlış
+/// şıklar diğer derslerden rastgele seçilir. Soru, başlığı ele vermemek için
+/// kural metni yerine Arapça örnekten sorulur.
+@visibleForTesting
+class TajweedQuizDialog extends StatefulWidget {
+  const TajweedQuizDialog({super.key, required this.lessons, this.random});
   final List<TajweedLesson> lessons;
+  final Random? random;
   @override
-  State<_TajweedQuizDialog> createState() => _TajweedQuizDialogState();
+  State<TajweedQuizDialog> createState() => _TajweedQuizDialogState();
 }
 
-class _TajweedQuizDialogState extends State<_TajweedQuizDialog> {
+class _TajweedQuizDialogState extends State<TajweedQuizDialog> {
   int _i = 0;
   int _score = 0;
   bool _answered = false;
+  late final List<({TajweedLesson lesson, List<String> options})> _questions;
+
+  @override
+  void initState() {
+    super.initState();
+    final rnd = widget.random ?? Random();
+    final lessons = widget.lessons;
+    final picked = ([...lessons]..shuffle(rnd)).take(6);
+    _questions = [
+      for (final l in picked)
+        (
+          lesson: l,
+          options: ([
+            l.title,
+            ...([...lessons.where((x) => x.title != l.title)]..shuffle(rnd))
+                .take(3)
+                .map((x) => x.title),
+          ]..shuffle(rnd)),
+        ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final lessons = widget.lessons;
-    final count = lessons.length < 5 ? lessons.length : 5;
-    final lesson = lessons[_i % lessons.length];
-    final options = <String>{lesson.title};
-    for (final l in lessons) {
-      if (options.length >= 4) break;
-      options.add(l.title);
-    }
-    final shuffled = options.toList()..sort((a, b) => a.length.compareTo(b.length));
+    final count = _questions.length;
+    final lesson = _questions[_i].lesson;
+    final shuffled = _questions[_i].options;
 
     return AlertDialog(
       backgroundColor: AppColors.emerald850,
@@ -281,10 +301,12 @@ class _TajweedQuizDialogState extends State<_TajweedQuizDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bu kural hangi tecvid konusudur?',
+          Text('Bu örnek hangi tecvid kuralına girer?',
               style: AppTypography.body(size: 14, color: AppColors.muted)),
           const SizedBox(height: 10),
-          Text(lesson.rule, style: AppTypography.body(size: 15, color: AppColors.cream)),
+          Text(lesson.example,
+              textDirection: TextDirection.rtl,
+              style: AppTypography.body(size: 22, color: AppColors.cream)),
           const SizedBox(height: 14),
           for (final o in shuffled)
             Padding(

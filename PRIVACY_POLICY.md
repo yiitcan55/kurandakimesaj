@@ -122,7 +122,7 @@ Kişisel verilerinizle ilgili şu haklara sahipsiniz:
 
 - Toplulukta paylaşılan içerikler kullanıcılar tarafından oluşturulur.
 - Uygunsuz içeriği **bildirme** ve kullanıcıları **engelleme** imkânı sunulur.
-- Dini içerikler (meal, tefsir, hadis) güvenilir kaynaklara dayanır. Rüya Tabiri ve Zekât gibi bölümler bilgilendirme amaçlıdır ve **kesin dini hüküm niteliği taşımaz**.
+- Dini içerikler (meal, kısa ayet açıklamaları, hadis) güvenilir kaynaklara dayanır; açıklamalar tefsir yerine geçmez. Rüya Tabiri ve Zekât gibi bölümler bilgilendirme amaçlıdır ve **kesin dini hüküm niteliği taşımaz**.
 
 ---
 

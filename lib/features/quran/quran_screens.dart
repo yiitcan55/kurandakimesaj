@@ -9,6 +9,7 @@ import '../../data/local/app_database.dart';
 import '../../data/repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
+import '../../ui/core/ayah_note.dart';
 import '../../ui/core/widgets.dart';
 
 /// Sepya okuma modu kendi SABİT paletini kurar ve global temadan bağımsızdır.
@@ -792,6 +793,7 @@ class _AyahTile extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(ayah.meal, style: AppTypography.body(size: 16, color: fg)),
+          AyahNote(surah: surah.number, ayah: ayah.numberInSurah, fg: fg, ink: ink),
           const SizedBox(height: 12),
           Divider(color: line),
         ],

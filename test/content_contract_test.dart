@@ -38,7 +38,7 @@ class _Quran {
   final byKey = <(int, int), (String, String)>{};
 }
 
-late _Quran quran;
+late _Quran _quran;
 final surahNo = <String, int>{};
 final ayahCount = <int, int>{};
 
@@ -58,7 +58,7 @@ final ayahCount = <int, int>{};
   final ar = <String>[];
   final meal = <String>[];
   for (var a = r.$2; a <= r.$3; a++) {
-    final t = quran.byKey[(r.$1, a)];
+    final t = _quran.byKey[(r.$1, a)];
     if (t == null) return null;
     ar.add(t.$1);
     meal.add(t.$2);
@@ -89,7 +89,7 @@ void _checkText(String where, String text, List<String> errors) {
 void main() {
   setUpAll(() {
     final raw = jsonDecode(File('assets/quran/quran_full.json').readAsStringSync());
-    quran = _Quran(raw as List<dynamic>);
+    _quran = _Quran(raw as List<dynamic>);
     for (final s in kSurahSeed) {
       surahNo[_fold(s.$2)] = s.$1;
       ayahCount[s.$1] = s.$5;
@@ -97,10 +97,10 @@ void main() {
   });
 
   test('Kur\'an verisi ve sure tablosu tutarlı (6236 ayet, 114 sure)', () {
-    expect(quran.byKey.length, 6236);
+    expect(_quran.byKey.length, 6236);
     expect(kSurahSeed.length, 114);
     for (final e in ayahCount.entries) {
-      expect(quran.byKey.containsKey((e.key, e.value)), isTrue, reason: 'sure ${e.key}');
+      expect(_quran.byKey.containsKey((e.key, e.value)), isTrue, reason: 'sure ${e.key}');
     }
   });
 

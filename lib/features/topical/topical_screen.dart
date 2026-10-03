@@ -6,6 +6,7 @@ import '../../data/local/app_database.dart';
 import '../../data/repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
+import '../../ui/core/ayah_note.dart';
 import '../../ui/core/widgets.dart';
 
 final topicsProvider = FutureProvider<List<String>>(
@@ -114,6 +115,8 @@ class _TopicAyahs extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(a.meal, style: AppTypography.body(size: 15.5, color: AppColors.cream)),
+                    AyahNote.fromReference(a.reference,
+                        fg: AppColors.cream, ink: AppColors.goldInk),
                     const SizedBox(height: 10),
                     Row(
                       children: [

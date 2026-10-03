@@ -6,6 +6,7 @@ import '../../data/local/app_database.dart';
 import '../../data/repositories.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
+import '../../ui/core/ayah_note.dart';
 import '../../ui/core/widgets.dart';
 
 /// Günün ayeti + onun suresi (deterministik — her gün aynı).
@@ -70,6 +71,8 @@ class DailyAyahScreen extends ConsumerWidget {
                             const SizedBox(height: 16),
                             Text(ayah.meal,
                                 style: AppTypography.body(size: 16, color: AppColors.cream)),
+                            AyahNote.fromReference(ref0,
+                                fg: AppColors.cream, ink: AppColors.goldInk),
                             const SizedBox(height: 8),
                             Consumer(
                               builder: (context, ref, _) {
@@ -166,10 +169,10 @@ class DailyAyahScreen extends ConsumerWidget {
 
   /// "Anla" — tefsir varsa alttan sheet'te gösterir, yoksa kısa bilgi verir.
   void _showTafsir(BuildContext context, Ayah ayah, String ref0) {
-    final t = ayah.tafsir;
+    final t = ayah.tafsir ?? AyahNote.noteForReference(ref0);
     if (t == null || t.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu ayet için tefsir yakında eklenecek.')),
+        const SnackBar(content: Text('Bu ayet için henüz açıklama eklenmedi.')),
       );
       return;
     }
@@ -187,7 +190,7 @@ class DailyAyahScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('ANLA · TEFSİR', style: AppTypography.eyebrow()),
+              Text('ANLA · AÇIKLAMA', style: AppTypography.eyebrow()),
               const SizedBox(height: 8),
               Text(ref0, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
               const SizedBox(height: 12),
