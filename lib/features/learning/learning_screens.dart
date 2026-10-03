@@ -203,9 +203,9 @@ class TajweedScreen extends ConsumerWidget {
         expand: false,
         initialChildSize: 0.6,
         maxChildSize: 0.9,
-        builder: (_, scroll) => ListView(
+        builder: (ctx, scroll) => ListView(
           controller: scroll,
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: EdgeInsets.fromLTRB(24, 8, 24, sheetBottomPadding(ctx, 32)),
           children: [
             Text(l.title, style: AppTypography.display(size: 24)),
             const SizedBox(height: 6),
@@ -237,9 +237,9 @@ void _showText(BuildContext context, String title, String body) {
       expand: false,
       initialChildSize: 0.6,
       maxChildSize: 0.92,
-      builder: (_, scroll) => ListView(
+      builder: (ctx, scroll) => ListView(
         controller: scroll,
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        padding: EdgeInsets.fromLTRB(24, 8, 24, sheetBottomPadding(ctx, 32)),
         children: [
           Text(title, style: AppTypography.display(size: 24)),
           const SizedBox(height: 14),

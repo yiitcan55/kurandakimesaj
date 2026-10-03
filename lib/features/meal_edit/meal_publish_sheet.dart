@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
+import '../../ui/core/widgets.dart';
 
 /// Meal Düzenle → Reels yayın sayfası. "Aptal" widget: provider'a bağlanmaz,
 /// yalnız [onPublish] geri çağrısını kullanır. Başarıda sayfa kapanır ve
@@ -95,7 +96,7 @@ class _MealPublishSheetState extends State<_MealPublishSheet> {
           20,
           20,
           20,
-          20 + MediaQuery.of(context).viewInsets.bottom,
+          sheetBottomPadding(context),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

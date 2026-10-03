@@ -240,9 +240,9 @@ class _DuaScreenState extends ConsumerState<DuaScreen> {
         expand: false,
         initialChildSize: 0.6,
         maxChildSize: 0.9,
-        builder: (_, scroll) => ListView(
+        builder: (ctx, scroll) => ListView(
           controller: scroll,
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: EdgeInsets.fromLTRB(24, 8, 24, sheetBottomPadding(ctx, 32)),
           children: [
             Text(d.title, style: AppTypography.display(size: 24)),
             Text(d.category, style: AppTypography.body(size: 13, color: AppColors.goldInk)),

@@ -84,8 +84,8 @@ class EsmaScreen extends ConsumerWidget {
   void _showDetail(BuildContext context, EsmaName e) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 8, 24, sheetBottomPadding(ctx, 32)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

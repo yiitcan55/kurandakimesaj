@@ -180,8 +180,8 @@ class DailyAyahScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, sheetBottomPadding(ctx)),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -1,5 +1,17 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## İçerik + Düzeltmeler sürümü (2026-10-03)
+Plan: `implementation-icerik-duzeltmeler.md` · Dal: `feat/icerik-ve-duzeltmeler` · Meal Düzenle dahil
+- [x] 0 Dal açıldı, analiz 0, belgeler yazıldı
+- [ ] M1 Reels sesi sekme değişince susmalı (investigate → kırmızı test → düzeltme)
+- [ ] M9 Esmaül Hüsna / modül ekranları alt padding (önce cihazda yeniden üret)
+- [ ] M2 Tefsir — Kapı 0: Elmalılı kaynak/lisans; sonra veri + UI
+- [ ] M3 Dua ~40 · [ ] M4 Konuya göre ayet 4–6/konu · [ ] M5 Mucizeler ~45
+- [ ] M6 Kıssalar 2–3/peygamber + 5 eksik · [ ] M7 Tecvid ~20 · [ ] M8 Rüya ~150
+- [ ] `test/content_contract_test.dart` (imla + sure:ayet doğrulaması)
+- [ ] Kapı: dart analyze 0, flutter test ×4, incelemeler, emülatör
+- [ ] Yayın: AAB + Codemagic iOS + konsollar (gönderim öncesi onay; sürüm no mağazaya bakılarak)
+
 ## Meal Düzenle — videodan zaman kodlu meal altyazısı (2026-10-03)
 Plan: `meal-duzenle-implementation.md` · Dal: `feat/meal-duzenle` · Skill/ajan eşlemesi: plan içinde (kaynak `SKILL.md` kısa listesi)
 Kapsam: yeni Meal Düzenle ekranı + paylaşım yönlendirme + Reels'te zaman kodlu altyazı. **Tek migration / sıfır native / sıfır yeni paket / Edge Function diff'i yok.**

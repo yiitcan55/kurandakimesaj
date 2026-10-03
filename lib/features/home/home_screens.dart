@@ -187,7 +187,7 @@ Future<void> showCreateSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     builder: (ctx) => Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, sheetBottomPadding(ctx, 32)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

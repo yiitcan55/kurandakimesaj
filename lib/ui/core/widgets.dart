@@ -361,6 +361,18 @@ class _AyetAction extends StatelessWidget {
 /// "Düşün" adımı — ayet üzerine kısa not aldıran alttan sheet. Notu (boş da
 /// olabilir) [onSave]'e geçer; kalıcılık çağırana bırakılır (genellikle
 /// koleksiyona `note` ile kaydedilir). Çekirdek döngünün eksik ayağını doldurur.
+/// Alt sayfa içeriğinin altına bırakılacak boşluk: [base] + sistem gezinme
+/// çubuğu (edge-to-edge) ya da klavye — hangisi büyükse. `showModalBottomSheet`
+/// alt güvenli alanı KENDİSİ uygulamaz; içerik 3 tuşlu gezinmede çubuğun
+/// altında kalıyordu.
+double sheetBottomPadding(BuildContext context, [double base = 20]) {
+  final mq = MediaQuery.of(context);
+  final inset = mq.viewInsets.bottom > mq.viewPadding.bottom
+      ? mq.viewInsets.bottom
+      : mq.viewPadding.bottom;
+  return base + inset;
+}
+
 Future<void> showReflectionSheet(
   BuildContext context, {
   required String reference,
@@ -418,13 +430,12 @@ class _ReflectionSheetState extends State<_ReflectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
-        bottom: 20 + bottomInset,
+        bottom: sheetBottomPadding(context),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

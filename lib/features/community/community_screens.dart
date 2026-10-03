@@ -534,18 +534,38 @@ class _ReelsPager extends StatefulWidget {
   State<_ReelsPager> createState() => _ReelsPagerState();
 }
 
-class _ReelsPagerState extends State<_ReelsPager> {
+class _ReelsPagerState extends State<_ReelsPager> with WidgetsBindingObserver {
   final _controller = PageController();
   int _current = 0;
+  bool _foreground = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }
 
+  // Uygulama arka plana geçince video + müzik durur (JustAudioBackground
+  // aksi halde kilit ekranında çalmayı sürdürürdü).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final fg = state == AppLifecycleState.resumed;
+    if (fg != _foreground) setState(() => _foreground = fg);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // StatefulShellRoute dalı sekme değişince dispose OLMAZ, yalnız Offstage +
+    // TickerMode(enabled: false) olur; üstüne rota açılınca da aynısı olur.
+    // `isActive` yalnız PageView konumundan gelirse sekme dışında ses sürer.
+    final visible = TickerMode.valuesOf(context).enabled && _foreground;
     return PageView.builder(
       controller: _controller,
       scrollDirection: Axis.vertical,
@@ -557,7 +577,7 @@ class _ReelsPagerState extends State<_ReelsPager> {
           // Anahtar: sayfa kimliği → controller'lar sayfaya bağlı yeniden kurulmaz.
           key: ValueKey(reel.id),
           reel: reel,
-          isActive: i == _current,
+          isActive: visible && i == _current,
           onLike: widget.onLike == null ? null : () => widget.onLike!(reel),
           onComment: widget.onComment == null
               ? null
@@ -1540,7 +1560,6 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final myId = ref
         .watch(supabaseGatewayProvider)
         .client
@@ -1548,7 +1567,7 @@ class _CommentsSheetState extends ConsumerState<CommentsSheet> {
         .currentUser
         ?.id;
     return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
+      padding: EdgeInsets.only(bottom: sheetBottomPadding(context, 0)),
       child: DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.6,
@@ -1881,9 +1900,8 @@ class _CreatePostSheetState extends ConsumerState<CreatePostSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPadding),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, sheetBottomPadding(context)),
       child: _published ? _reviewNotice() : _form(),
     );
   }

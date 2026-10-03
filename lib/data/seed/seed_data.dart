@@ -3,6 +3,13 @@
 // Diyanet İşleri Başkanlığı meali esas alınarak. Bu içerik kullanıcı
 // tarafından değiştirilmez (dini bütünlük tasarım gereği korunur).
 
+export 'dua_seed.dart';
+export 'topical_seed.dart';
+export 'story_seed.dart';
+export 'miracle_seed.dart';
+export 'tajweed_seed.dart';
+export 'dream_seed.dart';
+
 /// (sıra, isim, arapça, anlam) — Esmaü'l-Hüsna, 99 isim.
 const List<(int, String, String, String)> kEsmaSeed = [
   (1, 'Er-Rahmân', 'الرَّحْمٰن', 'Dünyada bütün mahlukata merhamet eden'),
@@ -104,40 +111,6 @@ const List<(int, String, String, String)> kEsmaSeed = [
   (97, 'El-Vâris', 'الْوَارِث', 'Her şeyin asıl sahibi olarak kalan'),
   (98, 'Er-Reşîd', 'الرَّشِيد', 'Doğru yolu gösteren'),
   (99, 'Es-Sabûr', 'الصَّبُور', 'Çok sabırlı olan'),
-];
-
-/// (başlık, kategori, arapça, latin, meal/açıklama, kaynak) — dualar.
-const List<(String, String, String, String, String, String)> kDuaSeed = [
-  ('Şifa Duası', 'Şifa', 'اللَّهُمَّ رَبَّ النَّاسِ أَذْهِبِ الْبَأْسَ اشْفِ أَنْتَ الشَّافِي',
-      'Allâhümme Rabbe\'n-nâsi ezhibi\'l-be\'se, işfi ente\'ş-Şâfî',
-      'Ey insanların Rabbi! Hastalığı gider, şifa ver. Şifa veren ancak sensin.', 'Buhârî, Tıb'),
-  ('Rızık Duası', 'Rızık', 'اللَّهُمَّ اكْفِنِي بِحَلَالِكَ عَنْ حَرَامِكَ وَأَغْنِنِي بِفَضْلِكَ عَمَّنْ سِوَاكَ',
-      'Allâhümme\'kfinî bi-helâlike an harâmik, ve ağninî bi-fadlike ammen sivâk',
-      'Allah\'ım! Helâlinle yetinip haramından uzak durmamı sağla; lütfunla beni senden başkasına muhtaç etme.', 'Tirmizî, Deavât'),
-  ('Yolculuk Duası', 'Yolculuk', 'سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَٰذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ',
-      'Sübhâne\'llezî sehhara lenâ hâzâ ve mâ künnâ lehû mukrinîn',
-      'Bunu bizim hizmetimize veren Allah\'ı tenzih ederim; yoksa biz buna güç yetiremezdik.', 'Zuhruf, 13'),
-  ('Sıkıntı Anında', 'Koruma', 'لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ',
-      'Lâ ilâhe illâ ente sübhâneke innî küntü mine\'z-zâlimîn',
-      'Senden başka ilah yoktur. Seni tenzih ederim. Gerçekten ben zalimlerden oldum.', 'Enbiyâ, 87'),
-  ('Sınav / İlim Duası', 'Sınav', 'رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي',
-      'Rabbi\'şrah lî sadrî ve yessir lî emrî',
-      'Rabbim! Gönlümü genişlet, işimi kolaylaştır.', 'Tâhâ, 25-26'),
-  ('Koruma Duası', 'Koruma', 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
-      'Eûzü bi-kelimâti\'llâhi\'t-tâmmâti min şerri mâ halak',
-      'Allah\'ın eksiksiz kelimelerine, yarattıklarının şerrinden sığınırım.', 'Müslim, Zikir'),
-  ('Anne-Baba İçin', 'Aile', 'رَبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا',
-      'Rabbi\'rhamhümâ kemâ rabbeyânî sağîrâ',
-      'Rabbim! Onlar beni küçükken nasıl yetiştirdilerse sen de onlara merhamet et.', 'İsrâ, 24'),
-  ('Hayırlı Akıbet', 'Genel', 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',
-      'Rabbenâ âtinâ fi\'d-dünyâ haseneten ve fi\'l-âhirati haseneten ve kınâ azâbe\'n-nâr',
-      'Rabbimiz! Bize dünyada da iyilik ver, ahirette de iyilik ver ve bizi ateş azabından koru.', 'Bakara, 201'),
-  ('Tevekkül Duası', 'Genel', 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
-      'Hasbüna\'llâhu ve ni\'me\'l-vekîl',
-      'Allah bize yeter; O ne güzel vekildir.', 'Âl-i İmrân, 173'),
-  ('Sabır Duası', 'Genel', 'رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَثَبِّتْ أَقْدَامَنَا',
-      'Rabbenâ efriğ aleynâ sabran ve sebbit akdâmenâ',
-      'Rabbimiz! Üzerimize sabır yağdır ve ayaklarımızı sabit kıl.', 'Bakara, 250'),
 ];
 
 /// (numara, türkçe ad, arapça ad, anlam, ayet sayısı, iniş) — 114 sure.
@@ -256,192 +229,6 @@ const List<(int, String, String, String, int, String)> kSurahSeed = [
   (112, 'İhlâs', 'الإخلاص', 'Samimiyet', 4, 'Mekki'),
   (113, 'Felak', 'الفلق', 'Şafak / Tan', 5, 'Mekki'),
   (114, 'Nâs', 'الناس', 'İnsanlar', 6, 'Mekki'),
-];
-
-/// (konu, referans, arapça, meal) — ruh haline göre ayet önerileri.
-const List<(String, String, String, String)> kTopicalSeed = [
-  ('Sabır', 'Bakara, 153', 'يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ',
-      'Ey iman edenler! Sabrederek ve namaz kılarak Allah\'tan yardım dileyin. Şüphe yok ki Allah sabredenlerle beraberdir.'),
-  ('Sabır', 'Bakara, 286', 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا',
-      'Allah bir kimseyi ancak gücünün yettiği şeyle yükümlü kılar.'),
-  ('Huzur', 'Ra\'d, 28', 'أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ',
-      'Bilesiniz ki kalpler ancak Allah\'ı anmakla huzur bulur.'),
-  ('Umut', 'Zümer, 53', 'لَا تَقْنَطُوا مِنْ رَحْمَةِ اللَّهِ',
-      'Allah\'ın rahmetinden ümit kesmeyin. Şüphesiz Allah bütün günahları affeder.'),
-  ('Şükür', 'İbrahim, 7', 'لَئِنْ شَكَرْتُمْ لَأَزِيدَنَّكُمْ',
-      'Andolsun, eğer şükrederseniz elbette size (nimetimi) artırırım.'),
-  ('Tevekkül', 'Talâk, 3', 'وَمَنْ يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ',
-      'Kim Allah\'a tevekkül ederse O, ona yeter.'),
-  ('Dua', 'Bakara, 186', 'وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌ',
-      'Kullarım sana beni sorduğunda (bilsinler ki) gerçekten ben (onlara) çok yakınım. Bana dua edince dua edenin duasına cevap veririm.'),
-  ('Korku & Kaygı', 'Âl-i İmrân, 173', 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
-      'Allah bize yeter, O ne güzel vekildir.'),
-];
-
-/// (sıra, başlık, kategori, dakika, özet, gövde) — peygamber kıssaları.
-const List<(int, String, String, int, String, String)> kStorySeed = [
-  (1, 'Hz. Âdem (a.s.)', 'Peygamberler', 5, 'İlk insan ve ilk peygamber; yaratılış ve tövbe.',
-      'Allah Hz. Âdem\'i topraktan yaratıp ona ruhundan üfledi ve meleklere onun için secde etmelerini emretti. Cennette eşi Havva ile yaşadı; yasak ağaca yaklaşınca cennetten yeryüzüne indirildiler. Pişmanlık duyup tövbe ettiler ve Allah tövbelerini kabul etti. Onun kıssası, hata sonrası tövbe ve Allah\'a yönelmenin en güzel örneğidir.'),
-  (2, 'Hz. Nûh (a.s.)', 'Peygamberler', 6, 'Tufan ve sabırlı tebliğ.',
-      'Hz. Nûh kavmini uzun yıllar tek olan Allah\'a imana çağırdı; pek azı iman etti. Allah\'ın emriyle bir gemi yaptı. Tufan geldiğinde iman edenler ve her canlıdan birer çift gemiye bindi. İnkârda direnenler ise suda boğuldu. Kıssası, hakkı tebliğde sabrın ve Allah\'a güvenmenin önemini anlatır.'),
-  (3, 'Hz. İbrâhîm (a.s.)', 'Peygamberler', 7, 'Tevhid mücadelesi ve teslimiyet.',
-      'Hz. İbrâhîm putlara karşı tevhidi savundu, ateşe atıldığında Allah ateşi serin ve selamet kıldı. Oğlu İsmail ile Kâbe\'yi inşa etti; rüyasında oğlunu kurban etmekle emrolundu, ikisi de teslim oldu ve Allah bir kurbanlıkla onu fidye verdi. "Halîlullah" (Allah\'ın dostu) olarak anılır.'),
-  (4, 'Hz. Yûsuf (a.s.)', 'Peygamberler', 8, 'Sabır, iffet ve affetmenin zaferi.',
-      'Kardeşleri tarafından kuyuya atılan Hz. Yûsuf, Mısır\'da köle olarak satıldı; iftiraya uğrayıp zindana atıldı. Rüya yorumundaki ilmiyle Mısır\'a hazine bakanı oldu. Kıtlık yıllarında kardeşlerini affetti ve ailesiyle kavuştu. Kur\'an onun kıssasını "kıssaların en güzeli" olarak anar.'),
-  (5, 'Hz. Mûsâ (a.s.)', 'Peygamberler', 8, 'Firavun\'a karşı hakkın direnişi.',
-      'Hz. Mûsâ, Firavun\'un zulmü altındaki İsrailoğullarını kurtarmakla görevlendirildi. Asası mucizelerle desteklendi; Firavun\'un sihirbazları iman etti. Kızıldeniz yarıldı, kavmi kurtuldu, Firavun boğuldu. Tûr\'da Allah ile konuştu ve Tevrat\'ı aldı. Kıssası, zalime karşı durmanın ve Allah\'a güvenmenin sembolüdür.'),
-  (6, 'Hz. Îsâ (a.s.)', 'Peygamberler', 6, 'Mucizevî doğum ve tebliğ.',
-      'Hz. Îsâ, babasız olarak Hz. Meryem\'den dünyaya geldi; beşikte konuşması bir mucizeydi. Allah\'ın izniyle hastaları iyileştirdi, İncil ile tebliğde bulundu. Kur\'an onu Allah\'ın kulu ve elçisi olarak anar; öldürülmediğini, Allah katına yükseltildiğini bildirir.'),
-  (7, 'Hz. Muhammed (s.a.v.)', 'Peygamberler', 9, 'Son peygamber ve âlemlere rahmet.',
-      'Mekke\'de doğan Hz. Muhammed, kırk yaşında ilk vahyi Hira\'da aldı. Yirmi üç yılda Kur\'an indi; tevhidi, adaleti ve güzel ahlakı tebliğ etti. Mekke\'den Medine\'ye hicret etti, İslam toplumunu kurdu. "Âlemlere rahmet" olarak gönderilen son peygamberdir; getirdiği mesaj kıyamete kadar geçerlidir.'),
-  (8, 'Hz. Eyyûb (a.s.)', 'Peygamberler', 5, 'Hastalıkta sabrın timsali.',
-      'Hz. Eyyûb büyük servet ve sağlık sahibiyken ağır hastalık ve kayıplarla imtihan edildi. Yıllarca şikâyet etmeden sabretti, Allah\'a olan bağlılığını sürdürdü. Sonunda "Rabbim! Bana bir dert dokundu, sen merhametlilerin en merhametlisisin" diye dua etti; Allah ona şifa ve nimet verdi. Sabrın en güzel örneklerindendir.'),
-  // --- B2 eki: 12 yeni peygamber kıssası ---
-  (9, 'Hz. Süleyman (a.s.)', 'Peygamberler', 8, 'Allah\'ın kendisine hükümdarlık, hikmet ve dili anlamak gibi büyük nimetler verdiği peygamber.',
-      'Hz. Süleyman (a.s.) İsrailoğullarına gönderilmiş ve babası Hz. Davud\'un ardından hem peygamberlik hem hükümdarlık makamını üstlenen büyük bir şahsiyettir. Allah ona cinleri, insanları ve hayvanları buyruk altına alma gücü vermiş; rüzgarı emrinde kılmıştır. Kur\'an-ı Kerim\'de Neml, Sebe ve Enbiyâ surelerinde kıssası anlatılır. Sabah ve akşam hızla giden rüzgara hükmedebilmiş, cinler onun emriyle büyük yapılar inşa etmiştir. Hz. Süleyman bir gün ordusuyla yürürken bir karıncayı duymuş ve onun diline vakıf olduğu için şükür secdesine kapanmıştır. Sebe melikesi Belkıs ile yaşanan kıssa, hikmet ve davet anlayışının en güzel örneklerinden biridir. Belkıs\'ın tahtı, Hz. Süleyman\'ın emriyle göz açıp kapayıncaya dek sarayına getirilmiştir. Hz. Süleyman\'ın duası şöyledir: "Rabbim, beni bağışla ve bana benden sonra kimseye nasip olmayacak bir hükümdarlık ver." (Sâd 35) Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (10, 'Hz. Davud (a.s.)', 'Peygamberler', 7, 'Zebur\'un kendisine verildiği, demir işleme sanatını öğrenen ve sesi ile Allah\'ı tesbih eden peygamber.',
-      'Hz. Davud (a.s.) İsrailoğullarına gönderilmiş; Allah\'ın kendisine Zebur\'u vahyettiği bir peygamber-hükümdardır. Kur\'an\'da Bakara, Nisâ, Mâide, Enbiyâ, Neml, Sebe ve Sâd surelerinde adı geçer. Hz. Davud çok güzel sesli biri olarak bilinirdi; Zebur\'u okurken dağlar ve kuşlar onunla birlikte Allah\'ı tesbih ederdi. Allah ona demir işleme sanatını da öğretmiş, böylece savaşlarda kullanılan zırhlar yapılmıştır. Hz. Davud aynı zamanda hükmedici bir kraldı; ama hata işlediğinde Allah\'a yönelip pişmanlığını dile getirmiş ve tövbesi kabul edilmiştir. "Ey Davud! Biz seni yeryüzünde halife yaptık; insanlar arasında adaletle hükmet." (Sâd 26) buyurulmuştur. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (11, 'Hz. Yûnus (a.s.)', 'Peygamberler', 6, 'Büyük balık karnında dua eden ve kavminin tövbesiyle kurtuluşa erişen peygamber.',
-      'Hz. Yûnus (a.s.) Ninova (Musul yakını) halkına gönderilmiş bir peygamberdir. Kavmi iman etmediğinde öfkeli bir şekilde oradan ayrıldı; bindiği gemide kura çekilerek denize atıldı ve büyük bir balık tarafından yutuldu. Balığın karnında karanlıklar içinde şöyle niyaz etti: "Senden başka ilah yoktur, seni tenzih ederim. Ben zalimlerden oldum." (Enbiyâ 87) Bu dua "dua-i Yûnus" olarak bilinir ve sıkıntılarda okunur. Allah bu duayı kabul etti ve Hz. Yûnus balığın karnından çıkarıldı. Kavmi ise peygamberinin dönüşüyle tövbe etti; tarihte iman eden ve azaptan kurtulan tek topluluk olarak zikredilir. Kur\'an\'da adına ithafen "Yûnus Suresi" ve "Zünnûn (balık sahibi)" lakabıyla anılır. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (12, 'Hz. Lût (a.s.)', 'Peygamberler', 6, 'Sodom halkını doğru yola davet eden ve büyük azaptan kurtulan peygamber.',
-      'Hz. Lût (a.s.) Hz. İbrâhîm\'in yeğeni olup Filistin bölgesindeki Sodom şehrine peygamber olarak gönderilmiştir. Kavmi ahlaki sapkınlıklarıyla ünlüydü ve Hz. Lût\'un uzun yıllar boyunca yaptığı uyarılara kulak asmadılar. Allah nihayetinde melekler vasıtasıyla azap hükmünü bildirdi. Hz. Lût\'a ailesiyle birlikte gece şehri terk etmesi emredildi. Şehir ve sakinleri üzerine taş yağdırıldı, yeryüzü alt üst edildi. Hz. Lût\'un inanmayan karısı ise geride kalanlar arasında helak oldu. Bu kıssa Hûd, Hicr, Enbiyâ, Şuarâ ve Neml surelerinde anlatılır. Allah\'ın uyarılara kulak vermeyenleri nasıl helak ettiğinin en çarpıcı örneklerinden biridir. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (13, 'Hz. İdrîs (a.s.)', 'Peygamberler', 5, 'Yüksek bir makama yükseltilen, ilk yazı ve elbise dikmeyi öğreten peygamber.',
-      'Hz. İdrîs (a.s.) Kur\'an\'da sadece iki surede (Meryem 56-57 ve Enbiyâ 85) adı geçen bir peygamberdir. "O, çok doğru bir insandı, bir peygamberdi. Onu yüce bir makama yükselttik." (Meryem 56-57) ayetleri onun hakkındadır. İslam geleneğine göre Hz. İdrîs ilk yazıyı kullanan, elbise dikmeyi öğreten ve çeşitli ilimlerin öncüsü olan bir şahsiyettir. Bazı rivayetlerde Yunanca\'da "Hermes" ya da İbrani geleneğindeki "Enoch" ile özdeşleştirilir. Uzun ömürlü olduğu ve cennete diri olarak alındığına dair rivayetler de vardır. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (14, 'Hz. Hûd (a.s.)', 'Peygamberler', 6, 'Ad kavmine gönderilen ve onların helakından sonra kurtulanlarla birlikte olan peygamber.',
-      'Hz. Hûd (a.s.) Arap yarımadasında yaşayan Ad kavmine gönderilmiştir. Ad kavmi, döneminin en güçlü ve zorba topluluklarından biri olup iri yapılıyla ünlüydü. Hz. Hûd onları Allah\'a ibadet etmeye ve şirkten vazgeçmeye çağırdı; ancak büyük çoğunluğu kibir ve inatla reddetti. Allah üzerlerine fırtına göndererek onları helak etti. Kur\'an\'da A\'râf, Hûd, Şuarâ ve Fussilet surelerinde kıssası anlatılır. Adına "Hûd Suresi" de bulunmaktadır. Hz. Hûd ve iman edenler bu azaptan kurtulmuştur. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (15, 'Hz. Sâlih (a.s.)', 'Peygamberler', 6, 'Semud kavmine gönderilen ve mucize deve ile imtihanın yaşandığı peygamber.',
-      'Hz. Sâlih (a.s.) Kuzey Arabistan\'da yaşayan Semud kavmine gönderilmiştir. Semud kavmi kaya oyarak muhteşem yapılar inşa etmesiyle tanınan bir topluluktu. Hz. Sâlih onlara Allah\'ın birliğini tebliğ etti; kavmi ise mucize istediler. Allah\'ın emriyle kayadan bir dişi deve çıktı. Hz. Sâlih bu deveye dokunulmamasını emretti; su içme hakkını paylaşacaklardı. Ancak onlar deveyi kestiler ve üç gün sonra azap geldi. Yıldırım ve sarsıntıyla helak oldular. Kur\'an\'da A\'râf, Hûd, Neml ve Şems surelerinde anlatılır. Mada\'in Sâlih (Hicr/Hegra) olarak bilinen bölge, bugün UNESCO Dünya Mirası listesindedir. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (16, 'Hz. Şuayb (a.s.)', 'Peygamberler', 6, 'Medyen halkına gönderilen, ticari ahlak ve adil ölçü konusunda uyaran peygamber.',
-      'Hz. Şuayb (a.s.) Medyen ve Eyke halkına gönderilmiştir. Kur\'an\'da A\'râf, Hûd ve Şuarâ surelerinde kıssası yer alır. Kavmi ticaret yaparken eksik ölçüp tartıyor, insanların hakkını çalıyordu. Hz. Şuayb onları doğru ölçmeye, adil davranmaya ve Allah\'a şirk koşmaktan kaçınmaya davet etti. "Ölçüyü ve tartıyı tam yapın." (Hûd 85) mesajı ticaret ahlakının Kur\'anî temelini oluşturur. Kavmi onu alaya aldı; nihayetinde şiddetli bir gürültü ve azapla helak oldular. Hz. Şuayb "peygamberlerin hatiplerinden" biri olarak bilinir. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (17, 'Hz. Zekeriyâ (a.s.)', 'Peygamberler', 5, 'İleri yaşında oğul isteyen ve Hz. Yahya\'nın müjdesini alan peygamber.',
-      'Hz. Zekeriyâ (a.s.) Kudüs\'te Beytülmakdis\'te Allah\'a hizmet eden, Hz. Meryem\'in bakıcılığını üstlenen bir peygamberdir. İleri yaşına ve kısır karısına rağmen Allah\'a dua etti: "Rabbim, benim kemiklerim zayıfladı, başım ağardı ama ben sana yaptığım dualarla hiç bedbaht olmadım." (Meryem 4) Allah bu yaşlı kulunun duasını kabul etti ve bir oğlu olacağını müjdeledi. Adı Hz. Yahya olacak bu çocuk, tarihte ilk defa bu ad verilen biri olacaktı. Hz. Zekeriyâ bu habere şaşkınlığını dile getirdi; Allah ise ona üç gün konuşmamasını işaret olarak bildirdi. Kur\'an\'da Âl-i İmrân, Meryem ve Enbiyâ surelerinde anlatılır. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (18, 'Hz. Yahyâ (a.s.)', 'Peygamberler', 5, 'Küçük yaşta kitabı kuvvetle tutmasını emredilen ve haksız yere şehit olan peygamber.',
-      'Hz. Yahyâ (a.s.) Hz. Zekeriyâ\'nın oğlu ve Hz. İsâ\'nın teyzezadesidir. Kur\'an\'da "Yahyâ" adı dört surede geçer. "Ey Yahyâ! Kitabı kuvvetle tut." (Meryem 12) emriyle küçük yaştan itibaren dini ilimle yoğruldu. Allah ona peygamberliği küçük yaşta vermiş, onu kalp yumuşaklığı ve saflıkla donatmıştır. Hz. Yahyâ zalim yöneticilere karşı cesurca hakkı söylemiş; bu yüzden haksız yere idam edilmiştir. İslam geleneğinde şehit bir peygamber olarak anılır. "Doğduğu gün de, öleceği gün de, diri olarak kaldırılacağı gün de ona selam olsun." (Meryem 15) Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (19, 'Hz. İlyâs (a.s.)', 'Peygamberler', 5, 'Baal putuna tapan kavmi uyaran ve göğe yükseltilen peygamber.',
-      'Hz. İlyâs (a.s.) İsrailoğullarına gönderilmiş ve onları Baal putuna tapınmaktan men etmeye çalışmıştır. Kur\'an\'da Sâffât suresi 123-132. ayetlerde kıssası özlüce anlatılır: "İlyâs da peygamberlerdendi. Kavmine şöyle demişti: \'Siz en güzel yaratıcıyı bırakıp Baal\'e mi tapıyorsunuz?\'" (Sâffât 125-126) Kavmi onu reddetti. Hz. İlyâs\'ın sonu hakkında İslam geleneğinde farklı görüşler vardır; bir kısmı onun göğe yükseltildiğini söyler. "İlyâs\'ın hatırası gelecek nesiller arasında bırakıldı." (Sâffât 129) İbrani geleneğinde Elijah olarak bilinir. Kaynak: Diyanet İslam Ansiklopedisi.'),
-  (20, 'Hz. Zülkifl (a.s.)', 'Peygamberler', 4, 'Sabredenlerden biri olarak Kur\'an\'da zikredilen peygamber.',
-      'Hz. Zülkifl (a.s.) Kur\'an\'da Enbiyâ suresi 85-86 ve Sâd suresi 48. ayetlerde "sabredenlerden" olarak zikredilen bir peygamberdir. Adı "Kifl\'in sahibi" anlamına gelir. İslam geleneğinde kimliği hakkında farklı görüşler vardır: Bir kısım alimler onun Hz. Elyesâ (Elisha) ya da Hz. Hezekiel (Ezekiel) ile özdeş olduğunu söyler; diğerleri ise ayrı bir peygamber olduğunu belirtir. Adının "kefalet veren" anlamına geldiği ve yüz kişiye dini liderlik yapacağına dair söz verdiği rivayet edilmektedir. "İsmail, İdrîs ve Zülkifl\'i de zikret, hepsi sabredenlerdendir." (Enbiyâ 85) Kaynak: Diyanet İslam Ansiklopedisi.'),
-];
-
-/// (kategori, başlık, gövde) — Kur'an mucizeleri.
-const List<(String, String, String)> kMiracleSeed = [
-  ('Bilimsel', 'Embriyolojik Gelişim', 'Mü\'minûn suresi 12-14. ayetlerde insanın yaratılış aşamaları — nutfe, alaka (asılıp tutunan), mudga (bir çiğnem et) — sırasıyla anlatılır. Bu aşamalı tarif, modern embriyolojinin keşiflerinden asırlar önce bildirilmiştir.'),
-  ('Astronomi', 'Evrenin Genişlemesi', 'Zâriyât suresi 47. ayette "Göğü kudretimizle biz kurduk ve şüphesiz biz onu genişletmekteyiz" buyrulur. Evrenin genişlediği 20. yüzyılda gözlemlerle ortaya konmuştur.'),
-  ('Astronomi', 'Yörüngeler', 'Enbiyâ suresi 33. ayette Güneş ve Ay\'ın birer yörüngede yüzdüğü bildirilir. Gök cisimlerinin belirli yörüngelerde hareket ettiği bilimsel bir gerçektir.'),
-  ('Jeoloji', 'Dağların İşlevi', 'Nebe suresi 6-7. ayetlerde dağların "kazıklar" olarak nitelendirilmesi, dağların yer kabuğunu dengeleyen derin köklere sahip olduğu bilgisiyle örtüşür.'),
-  ('Denizbilim', 'İki Denizin Buluşması', 'Rahmân suresi 19-20. ayetlerde birbirine kavuşan iki denizin arasında bir engel bulunduğu bildirilir. Farklı yoğunluk ve tuzluluktaki su kütlelerinin kolayca karışmadığı gözlemlenmiştir.'),
-  ('Sayısal', 'Kelimelerin Dengesi', 'Kur\'an\'da "dünya" ve "ahiret" kelimelerinin geçiş sayıları arasındaki denge gibi sayısal uyumlar dikkat çekici bulunmuştur. (Bu tür yorumlar tefsir literatüründe değerlendirilmelidir.)'),
-  ('Tarihî', 'Firavun\'un Cesedinin Korunması', 'Yûnus suresi 92. ayette boğulan Firavun\'un bedeninin sonraki nesillere ibret olması için korunacağı bildirilir. Mumyalanmış firavun cesetlerinin günümüze ulaşması bu beyanla ilişkilendirilir.'),
-  ('Fizik', 'Demirin İndirilmesi', 'Hadîd suresi 25. ayette demirin "indirildiği" ifade edilir. Demir elementinin yıldızların çekirdeğinde oluşup uzaydan dünyaya ulaştığı bilimsel bir tespittir.'),
-  ('Biyoloji', 'Parmak İzi', 'Kıyâme suresi 3-4. ayetlerde Allah\'ın insanın parmak uçlarını bile düzenlemeye kadir olduğu vurgulanır. Her insanın parmak izinin benzersizliği sonradan keşfedilmiştir.'),
-  ('Astronomi', 'Göğün Korunmuş Tavanı', 'Enbiyâ suresi 32. ayette göğün "korunmuş bir tavan" kılındığı bildirilir. Atmosferin zararlı ışınlara ve göktaşlarına karşı koruyucu işlevi bilinmektedir.'),
-  // --- B1 eki: 20 yeni mucize ---
-  ('Tıp', 'Parmak İzinin Eşsizliği', 'Kıyâme suresi 4. ayette "Evet, biz onun parmak uçlarını bile yeniden düzenlemeye gücümüz yeter" buyrulur. Her insanın parmak izinin kendine özgü ve eşsiz olduğu gerçeği modern adli bilim tarafından 19. yüzyılda keşfedilmiştir; oysa Kur\'an bu ince ayrıntıya çok önceden dikkat çekmiştir.'),
-  ('Tıp', 'Embriyolojik Aşamalar', 'Mü\'minûn suresi 12-14 ve Zümer suresi 6. ayetlerde ceninin nutfe, alaka (asılıp tutunan), mudga (bir çiğnem et) şeklindeki aşamalı gelişimi anlatılır. Modern embriyoloji bu ayrımı 20. yüzyılda mikroskopla teyit etmiştir.'),
-  ('Tıp', 'Uyku ve Ruhun Kısmi Alınması', '"Allah, ölüm anında ruhları alır; ölmeyenlerin de uykuda…" (Zümer 42). Nörobilim, uyku sırasında beyin aktivitesinin ve bilinç halinin belirgin biçimde değiştiğini araştırmaktadır. Kur\'an uyku ile ölüm arasındaki bu benzersiz ilişkiye yüzyıllar önce işaret etmiştir.'),
-  ('Astronomi', 'Kara Delikler ve Yıldız Ölümü', '"Yıldızların yerleri hakkına yemin ederim, bu büyük bir yemindir." (Vâkıa 75-76). Modern astronomi, yıldız ölümü sonucunda oluşan nötron yıldızları ve kara deliklerin devasa çekim güçlerini keşfetmiştir. Ayette bu konuma dikkat çekilmesi dikkat çekicidir.'),
-  ('Astronomi', 'Güneşin Kendi Yörüngesi', '"Güneş de kendi yönünde akmaktadır." (Yâsîn 38). Modern astronomi, Güneş\'in galaktik merkez etrafında yaklaşık 225 milyon yılda bir döndüğünü teyit etmiştir. Bu hareket 7. yüzyılda bilinemeyecek bir bilimsel gerçektir.'),
-  ('Coğrafya', 'İki Denizin Sınırı', '"İki denizi salıverdi, birbirleriyle buluşuyorlar; aralarında bir engel var, birbirlerini geçemiyorlar." (Rahmân 19-20). Okyanografya, farklı tuzluluk ve yoğunluktaki iki su kütlesinin arasında halokline adı verilen belirgin bir yüzey oluşturduğunu ve bu iki kitlenin kolayca karışmadığını kanıtlamıştır.'),
-  ('Coğrafya', 'Dağların Kazık Kökleri', '"Dağları da kazık yaptık." (Nebe 7). Jeoloji bilimi, dağların yeryüzünde görünen kısmından çok daha derin köklere sahip olduğunu (izostazi) ve yeryüzünü dengeleyen bir kazık gibi işlev gördüğünü keşfetmiştir. Bu bilgi modern jeoloji ile örtüşmektedir.'),
-  ('Coğrafya', 'Tatlı ve Tuzlu Su Sınırı', 'Furkân suresi 53. ayette tatlı su ile tuzlu suyun birbirinden ayrıldığı ve aralarında geçilmez bir engel bulunduğu bildirilir. Nehirlerin denize kavuştuğu yerlerde iki farklı su kütlesinin halokline ile birbirinden ayrıldığı gözlemsel olarak doğrulanmıştır.'),
-  ('Tarihî', 'Firavun\'un Cesedinin Korunması', '"Seni bugün bedeninle kurtaracağız ki, senden sonrakilere ibret olasın." (Yûnus 92). Boğulan Firavun\'un cesedinin günümüze ulaşacağı bildirilen bu beyan, Firavun Merneptah\'ın mumyasının Kahire Müzesi\'nde sergilenmesiyle somut bir karşılık bulmuştur.'),
-  ('Tarihî', 'Rum-Fars Savaşı Kehaneti', '"Rumlar yenilgiye uğradı… Birkaç yıl içinde… galip gelecekler." (Rûm 2-4). Rum 2-4. ayetlerdeki bu tahmin yaklaşık 10 yıl içinde gerçekleşti; yenilginin ardından Bizans, Sasani İmparatorluğu\'nu mağlup etti. Bu tarihsel doğruluğun kaynaklar tarafından teyit edilmesi dikkat çekicidir.'),
-  ('Sayısal', 'Er-Rahmân ve Er-Rahîm Dengesi', 'Kur\'an\'da "er-Rahmân" ismi 57 kez, "er-Rahîm" ismi ise 114 kez geçmektedir. er-Rahîm\'in geçiş sayısı er-Rahmân\'ın tam iki katıdır. 114 aynı zamanda Kur\'an\'daki toplam sure sayısına eşittir. Bu sayısal uyum tefsir literatüründe değerlendirilmektedir.'),
-  ('Sayısal', 'Dünya ve Ahiret Dengesi', 'Kur\'an\'da "dünya" kelimesi ile "ahiret" kelimesinin geçiş sayısının birbirine eşit olduğu tespit edilmiştir. Her ikisi de 115 kez geçmektedir. Bu sayısal denge, iki kavramın İslam inancındaki eşit önemini yansıtır ve dikkat çekici bir uyum oluşturur.'),
-  ('Arkeoloji', 'İrem Şehrinin Keşfi', '"Sütunlarıyla meşhur İrem şehri…" (Fecr 7-8). 1992 yılında NASA uydu görüntüleriyle Umman çölünde Ubar/İrem şehrine ait kalıntılar keşfedilmiştir. Kur\'an\'ın Fecr suresinde zikrettiği bu şehrin arkeolojik kanıtları gün yüzüne çıkmıştır.'),
-  ('Arkeoloji', 'Semud\'un Kaya Evleri', '"Sizi vadilerden evler yontuyordunuz." (Hicr 82). Kuzey Arabistan\'daki Mada\'in Salih (antik adıyla Hicr veya Hegra) bölgesinde kayaya oyulmuş Semud yerleşim bölgeleri keşfedilmiştir. Bu alan günümüzde UNESCO Dünya Mirası listesindedir.'),
-  ('Biyoloji', 'Arıların İletişim Dili', '"Rabbin arıya vahyetti…" (Nahl 68-69). Arıların birbirlerine besin kaynaklarının yerini "waggle dance" (salınım dansı) adı verilen özel bir dans diliyle aktardığı 20. yüzyılda keşfedildi; bu keşif Karl von Frisch\'e 1973\'te Nobel Ödülü kazandırdı. Kur\'an arıya özel bir iletişim yeteneği verildiğini bildirmiştir.'),
-  ('Biyoloji', 'Demirin Uzaydan Gelmesi', '"Demiri indirdik, onda büyük bir güç ve insanlara fayda vardır." (Hadîd 25). Modern astrofizik, Dünya\'nın iç çekirdeğindeki ve yüzeyindeki demirin büyük ölçüde asteroid ve göktaşı çarpmalarıyla uzaydan geldiğini ortaya koymuştur. Ayette demirin "indirilmesi" ifadesi bu bağlamda değerlendirilmektedir.'),
-  ('Biyoloji', 'Suyun Hayatın Temeli Olması', '"Her canlıyı sudan yarattık." (Enbiyâ 30). Modern biyoloji, tüm bilinen yaşam formlarının temelinde suyun bulunduğunu; hücre yapısı, protein kıvrımı ve biyokimyasal reaksiyonlar için suyun vazgeçilmez olduğunu kanıtlamıştır.'),
-  ('Biyoloji', 'Karıncanın Sosyal İletişimi', '"Ey karıncalar, yuvalarınıza girin!" (Neml 18). Modern araştırmalar, karıncaların feromon salgıları ve titreşim sinyalleriyle son derece karmaşık sosyal iletişim kurduğunu göstermiştir. Kur\'an\'ın karıncaların sözünü aktarması, bu canlıların iletişim kapasitesine dikkat çekicidir.'),
-  ('Tıp', 'Biyometri ve Parmak İzi Teknolojisi', '"Biz onu parmak uçlarını bile yeniden düzenlemeye kadiriz." (Kıyâme 4). Kıyâme suresindeki bu vurgu, her insanın parmak izinin benzersizliğini öne çıkarır. Günümüz biyometri teknolojisinin temeli olan parmak izi kimlik doğrulama yöntemi, bu benzersizlik üzerine kurulmuştur.'),
-  ('Astronomi', 'Evrenin Sonu ve Dürülmesi', '"O gün göğü, yazılı kâğıtları dürüp büker gibi düreceğiz." (Enbiyâ 104). Modern kozmoloji, evrenin sonuna ilişkin "Big Crunch" senaryosunu tartışmaktadır. Kur\'an\'ın göğün dürülmesi metaforu bu kozmolojik olasılıkla kıyaslanmaktadır.'),
-];
-
-/// (sıra, başlık, kural, örnek, gövde) — tecvid dersleri.
-const List<(int, String, String, String, String)> kTajweedSeed = [
-  (1, 'Med (Uzatma)', 'Med harfleri (ا و ي) bir harekeyi uzatır.', 'قَالَ — نُوحِيهَا',
-      'Med, bir sesin belirli ölçüde uzatılmasıdır. Tabii med bir elif miktarı (iki hareke) uzatılır. Med sebebi (hemze veya sükûn) geldiğinde uzatma daha da artar.'),
-  (2, 'İhfâ', 'Tenvin veya sâkin nûn, ihfâ harflerinden birine geldiğinde gizlenir.', 'مِنْ قَبْلِ — أَنْدَادًا',
-      'İhfâ, izhar ile idgam arasında, genizden (gunne ile) gizli bir okuyuştur. 15 ihfâ harfinden biri sâkin nûn veya tenvinden sonra gelirse uygulanır.'),
-  (3, 'İdgâm', 'Sâkin nûn/tenvin, idgam harflerine (ي ر م ل و ن) kaynaştırılır.', 'مَنْ يَقُولُ — مِنْ رَبِّهِمْ',
-      'İdgam, bir harfin kendinden sonraki harfe katılmasıdır. "Yermelûn" harflerinde gunneli veya gunnesiz idgam yapılır.'),
-  (4, 'İklâb', 'Sâkin nûn/tenvin, "ب" harfine geldiğinde "م" sesine döner.', 'مِنْ بَعْدِ — سَمِيعٌ بَصِيرٌ',
-      'İklâb, çevirme demektir. Sâkin nûn veya tenvinden sonra "ب" gelirse, nûn sesi gunne ile "mim" sesine çevrilerek okunur.'),
-  (5, 'İzhâr', 'Sâkin nûn/tenvin, boğaz harflerine geldiğinde açıkça okunur.', 'مِنْ هَادٍ — عَلِيمٌ حَكِيمٌ',
-      'İzhâr, açığa çıkarma demektir. Boğaz harfleri (ء ه ع ح غ خ) sâkin nûn veya tenvinden sonra gelirse, nûn sesi gizlenmeden net okunur.'),
-  (6, 'Kalkale', 'Kalkale harfleri (ق ط ب ج د) sâkin olunca yankılanır.', 'قُلْ — أَحَدْ',
-      'Kalkale, sâkin olan kalkale harfinin bir titreşim/yankı ile okunmasıdır. Özellikle durakta (vakıf) bu yankı daha belirgin olur.'),
-  (7, 'Gunne', 'Nûn ve mîm şeddeli olduğunda genizden ses verilir.', 'إِنَّ — ثُمَّ',
-      'Gunne, sesin geniz boşluğundan getirilmesidir. Şeddeli nûn (نّ) ve şeddeli mîm (مّ) iki hareke miktarı gunne ile okunur.'),
-  (8, 'Vakıf (Durak)', 'Ayet sonlarında ve durak işaretlerinde nefes alınır.', 'الرَّحِيمِ ۚ — مَالِكِ',
-      'Vakıf, okuyuşa ara vermektir. Mushaftaki durak işaretleri (ۖ ۗ ۚ ۛ) nerede durmanın uygun, gerekli veya yasak olduğunu gösterir. Doğru vakıf anlamı korur.'),
-];
-
-/// (terim, kategori, anlam, kaynak) — rüya tabiri sözlüğü.
-/// UYARI: Rüya yorumu kesin hüküm değildir; manevi bir rehberlik niteliğindedir.
-const List<(String, String, String, String)> kDreamSeed = [
-  ('Su', 'Tabiat', 'Berrak su; hayır, bereket, ilim ve temizliğe işaret eder. Bulanık su sıkıntıya yorulabilir.', 'Klasik kaynaklar'),
-  ('Yağmur', 'Tabiat', 'Rahmet, bereket ve sıkıntıların gitmesi olarak yorumlanır.', 'Klasik kaynaklar'),
-  ('Yılan', 'Hayvan', 'Düşman veya gizli bir tehlikeye işaret edebilir; bazen mal olarak da yorumlanmıştır.', 'Klasik kaynaklar'),
-  ('Beyaz At', 'Hayvan', 'İzzet, makam ve hayırlı bir yolculuğa delalet eder.', 'Klasik kaynaklar'),
-  ('Altın', 'Eşya', 'Erkek için sıkıntı, kadın için süs olarak yorumlanabilir; kaynaklar farklı görüştedir.', 'Klasik kaynaklar'),
-  ('Diş', 'Vücut', 'Dişin düşmesi akrabalardan biriyle ilgili bir habere yorulabilir.', 'Klasik kaynaklar'),
-  ('Uçmak', 'Eylem', 'Yüksek hedefler, seyahat veya makamın artması olarak yorumlanır.', 'Klasik kaynaklar'),
-  ('Ölmek', 'Eylem', 'Çoğunlukla uzun ömür veya bir halin değişmesi olarak yorumlanır; korkutucu değildir.', 'Klasik kaynaklar'),
-  ('Ev', 'Mekan', 'Kişinin durumu, ailesi ve dünyasıdır. Geniş ev rızık genişliğine işaret eder.', 'Klasik kaynaklar'),
-  ('Ağaç', 'Tabiat', 'Meyveli ağaç hayırlı insan ve bereket; kuru ağaç verimsizliğe yorulur.', 'Klasik kaynaklar'),
-  ('Bebek', 'İnsan', 'Sevinç, yeni bir başlangıç veya sorumluluk olarak yorumlanır.', 'Klasik kaynaklar'),
-  ('Ateş', 'Tabiat', 'Kontrollü ateş fayda; yakıcı ateş fitne veya çekişmeye işaret edebilir.', 'Klasik kaynaklar'),
-  ('Deniz', 'Tabiat', 'Sakin deniz huzur; dalgalı deniz sıkıntı veya büyük bir işe yorulur.', 'Klasik kaynaklar'),
-  ('Kuş', 'Hayvan', 'Müjde, haber veya yolculuk olarak yorumlanır.', 'Klasik kaynaklar'),
-  ('Para', 'Eşya', 'Az miktarda para hayır; çok para bazen sorumluluk ve sıkıntıya yorulur.', 'Klasik kaynaklar'),
-  ('Kitap', 'Eşya', 'İlim, hidayet ve hayırlı bir habere delalet eder.', 'Klasik kaynaklar'),
-  ('Gülmek', 'Eylem', 'Aşırı gülme bazen üzüntüye, tebessüm ise sevince yorulur.', 'Klasik kaynaklar'),
-  ('Ağlamak', 'Eylem', 'Huşû ile ağlamak ferahlık ve sevince; feryat ise sıkıntıya yorulur.', 'Klasik kaynaklar'),
-  ('Köprü', 'Mekan', 'Bir durumdan diğerine geçiş, zorlukların aşılması olarak yorumlanır.', 'Klasik kaynaklar'),
-  ('Güneş', 'Tabiat', 'Devlet büyüğü, baba veya nüfuz sahibi bir kişiye işaret edebilir.', 'Klasik kaynaklar'),
-  // --- B3 eki: 30+ yeni rüya sembolü ---
-  // Hayvanlar
-  ('Kedi', 'Hayvan', 'İlim ve bilgelik simgesi; rüyada zararsız kedi sezgi ve gizli bilgeliği temsil eder. Ehlileşmiş kedi sükunet ve içgüdüsel kavrayışa işaret eder.', 'İbn Sîrîn'),
-  ('Köpek', 'Hayvan', 'Siyasi bir düşman veya kötü huylu arkadaş; köpeğin ısırması iftiraya ve kötü söze işaret eder. Avcı köpek ise bazen yararlı bir yardımcıya yorulur.', 'İbn Sîrîn'),
-  ('Aslan', 'Hayvan', 'Güçlü bir hükümdar veya otorite figürü; aslanı yenmek ya da ondan kaçmak zorluklara galip gelmek anlamına gelir. Aslan kükremesi tehlikeye işaret edebilir.', 'İbn Sîrîn'),
-  ('Kartal', 'Hayvan', 'Zafer ve üstünlük; kartal gibi uçmak yüksek makam ve şöhrete, kartalın yükseklere süzülmesi büyük başarıya yorulur.', 'İbn Sîrîn'),
-  ('At', 'Hayvan', 'İktidar, asalet ve seyahat; beyaz at hayırlı sonuç ve izzete, siyah at bilinmezliğe, kır at ise ihtişama delalet eder.', 'İbn Sîrîn'),
-  ('Balık', 'Hayvan', 'Bereket ve rızık; büyük balık bol nimet, balık tutmak kazanç kapısı, ölü balık ise hayal kırıklığına işaret edebilir.', 'İbn Sîrîn'),
-  ('Güvercin', 'Hayvan', 'Selamet ve müjde; güvercin getirmek iyi haber, güvercinin uçup gitmesi ayrılık ya da kaçan bir fırsata yorulur.', 'İbn Sîrîn'),
-  ('Yılan (detaylı)', 'Hayvan', 'Siyah yılan güçlü düşman, sarı yılan hastalık, yeşil yılan bazı kaynaklarda dinin temsilcisi olarak yorumlanır. Yılanı öldürmek düşmanı mağlup etmektir.', 'İbn Sîrîn'),
-  ('Koyun', 'Hayvan', 'Dürüst ve iyi huylu bir insan; koyun sürüsü bolluk ve berekete, koyun kesmek rızka yorulur.', 'İbn Sîrîn'),
-  // Tabiat
-  ('Dağ', 'Tabiat', 'Engel veya zorluk; dağı aşmak zorluğu yenmek, dağın tepesinde durmak üstünlük ve hakimiyeti simgeler.', 'İbn Sîrîn'),
-  ('Kar', 'Tabiat', 'Temizlik ve arınma; kar altında kalmak geçici sıkıntı, kar yağışını seyretmek ise dinginlik ve tazelenmeye işaret edebilir.', 'İbn Sîrîn'),
-  ('Yıldız', 'Tabiat', 'Değerli ve güvenilir arkadaşlar; parlak yıldız başarı ve şöhret, yıldızın düşmesi önemli bir kişinin vefatına yorulur.', 'İbn Sîrîn'),
-  ('Ay', 'Tabiat', 'Güzel ve etkili bir lider veya ilim sahibi; dolunay talih ve refah, hilal yeni bir başlangıca delalet eder.', 'İbn Sîrîn'),
-  ('Bulut', 'Tabiat', 'Rahmet ve bereket; beyaz bulut ferahlık, karanlık bulut sıkıntı habercisi, yağmurlu bulut ise bolluğa işaret edebilir.', 'İbn Sîrîn'),
-  ('Yağmur (detaylı)', 'Tabiat', 'Rahmet ve ilahi lütuf; bol yağmur bolluk ve bereket, dolu yağmuru ise bazı kaynaklarda sıkıntı ve kayıpa yorulur.', 'İbn Sîrîn'),
-  ('Irmak', 'Tabiat', 'İman ve bereket akışı; sakin ve berrak ırmak huzur, seller taşkınlık ve fitne, ırmaktan içmek rızkı simgeler.', 'İbn Sîrîn'),
-  // Renkler
-  ('Beyaz Giysi', 'Renk', 'Selamet, iman ve temiz niyet; beyaz elbise giymek dini ve ahlaki saflığı, beraat ve itibarın korunmasını simgeler.', 'İbn Sîrîn'),
-  ('Yeşil Giysi', 'Renk', 'Dini yaşantı, huzur ve cennetle ilişkilendirilir; yeşil renk Kur\'an\'da cennet ehliyle özdeşleştirildiğinden hayırlı işaretlerden sayılır.', 'İbn Sîrîn'),
-  ('Siyah Giysi', 'Renk', 'Güç ve otorite; yas durumunda ise üzüntü ve kayıba işaret edebilir. Yorumu bağlama göre farklılık gösterir.', 'İbn Sîrîn'),
-  ('Kırmızı Giysi', 'Renk', 'Sevinç veya zarar; parlak kırmızı şenlik ve coşkuya, koyu kırmızı bazı kaynaklarda tehlike veya haksızlığa yorulur. Bağlam belirleyicidir.', 'İbn Sîrîn'),
-  ('Sarı Giysi', 'Renk', 'Hastalık veya endişe; sarı renk bazı kaynaklarda zayıflık ve sıkıntıya işaret eder, ancak parlak altın sarısı bazen refaha yorulur.', 'İbn Sîrîn'),
-  // Eylemler
-  ('Namaz Kılmak', 'Eylem', 'Hayırlı işler yapma ve dini yükümlülüğü yerine getirme; cemaatle namaz toplumsal birliğe, namazı terk etmek ise dini görevden uzaklaşmaya yorulur.', 'İbn Sîrîn'),
-  ('Kâbe\'yi Tavaf', 'Eylem', 'Hac veya salih amel; Kâbe\'yi tavaf etmek büyük bir ibadet sevabına ve bereketli bir yolculuğa, Kâbe\'yi görmek ise içsel huzura işaret eder.', 'İbn Sîrîn'),
-  ('Denizde Yüzmek', 'Eylem', 'İşlerin arasında mücadele vermek; kolayca yüzmek başarıya, boğulma korkusu ise ağır bir sorunla yüzleşmeye işaret edebilir.', 'İbn Sîrîn'),
-  ('Mektup Almak', 'Eylem', 'Uzak bir yerden haber gelecek; hayırlı içerikli mektup müjde, kapalı ve okunamayan mektup gizli ya da belirsiz bir habere yorulur.', 'İbn Sîrîn'),
-  ('Ağlamak (detaylı)', 'Eylem', 'Huşu ile sessizce ağlamak ferahlama ve yakın rahmete işaret eder; sevinç gözyaşı dini neşeye, feryat ve bağırmak ise sıkıntıya yorulur.', 'İbn Sîrîn'),
-  ('Uçmak (detaylı)', 'Eylem', 'Özgürlük ve üst makama yükseliş; yüksek ve kontrollü uçmak büyük başarıya, düşme korkusuyla uçmak ise hedeflere ulaşmadaki zorluklara işaret eder.', 'İbn Sîrîn'),
-  // Nesneler
-  ('Anahtar', 'Eşya', 'Kapıların açılması, fırsatlar ve yeni rızık kapıları; anahtarı kaybetmek fırsatı kaçırmak, bulmak ise hayırlı bir çözüm ya da imkânı simgeler.', 'İbn Sîrîn'),
-  ('Halı', 'Eşya', 'Nimet, servet ve refah; güzel bir halı üzerinde oturmak bolluk ve kıymete, yırtık halı ise geçimde darlığa yorulur.', 'İbn Sîrîn'),
-  ('Saat', 'Eşya', 'Ömür ve zaman bilinci; çalışan saat hayatın düzenine, bozuk saat fırsatları kaçırmak ve ihmalciliğe, durmuş saat ise önemli bir değişime işaret edebilir.', 'İbn Sîrîn'),
-  ('Ekmek', 'Eşya', 'Rızık ve geçim; taze ekmek bereket ve kolaylık, bayat veya sert ekmek darlık ve zorluğa, ekmek paylaşmak ise cömertliğe yorulur.', 'İbn Sîrîn'),
-  ('Mum', 'Eşya', 'İlim ve rehberlik; yanan mum aydınlanma ve doğru yola iletişi, sönen mum hayal kırıklığı ya da bir rehberin kaybını simgeler.', 'İbn Sîrîn'),
-  ('Ayna', 'Eşya', 'Nefse bakış ve öz değerlendirme; parlak ayna hakikati görmek, kırık ayna aile ayrılığı ya da kimlik bunalımına işaret edebilir.', 'İbn Sîrîn'),
-  ('Kitap (detaylı)', 'Eşya', 'İlim ve iyilik; Kur\'an okumak büyük müjde ve sevap, kapalı kitap elde edilmemiş bilgiye, eski ve yıpranmış kitap ise köklü bir mirasa yorulur.', 'İbn Sîrîn'),
-  ('Altın (detaylı)', 'Eşya', 'Servet ve değer; altın takmak kıymetli bilgi veya sosyal statüye, altın bulmak beklenmedik kazanca, altını kaybetmek ise itibar ya da mala yorulur.', 'İbn Sîrîn'),
 ];
 
 /// İslami özel günler 2026 — ⚠️ Tahmini tarihler; yayın öncesi Diyanet takvimi ile doğrulanmalı.
