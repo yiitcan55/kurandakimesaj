@@ -18,6 +18,19 @@ workflows:
       xcode: 26.4
       cocoapods: default
     scripts:
+      # sqlite3 3.x derleme kancası hazır kitaplığı GitHub sürümlerinden indirir;
+      # GitHub kesintisinde (2026-11-08, "timeouts for some unauthenticated users")
+      # hata sayfasını indirip "Hash of downloaded file ... expected ..." ile
+      # derlemeyi düşürüyor. Apple platformlarında işletim sisteminin SQLite'ı
+      # var ve paket eski sürümleri sürüm kontrolüyle destekliyor; uygulama özel
+      # SQLite özelliği (FTS/JSON/RETURNING) kullanmıyor. Ayar YALNIZ bu Mac
+      # makinesinde (macOS test + iOS IPA) geçerli; Android derlemesine gitmez,
+      # çünkü user_defines tüm platformlara uygulanır ve Android'de sistem
+      # SQLite'ı uygulamalara açık değil.
+      - name: SQLite = Apple sistem kitaplığı (GitHub indirmesi yok)
+        script: |
+          printf '\nhooks:\n  user_defines:\n    sqlite3:\n      source: system\n' >> pubspec.yaml
+          tail -6 pubspec.yaml
       - name: Get Flutter packages
         script: flutter pub get
       - name: Analyze
