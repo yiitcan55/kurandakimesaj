@@ -7,7 +7,8 @@ Plan: `docs/superpowers/plans/2026-11-08-iphone-videodan-ayet.md` · Şartname: 
 - [x] ASC 1.0.3 What's New + inceleme notu (≤4000 karakter) güncel
 - [x] Görev 6: Codemagic build 10 (`9e1f1c9`) — Swift ilk denemede derlendi, IPA 31,56 MB; GitHub kesintisi CI'da sqlite3 `source: system` ile aşıldı (build 7-9 düşmüştü); ASC'de 1.0.3'e build 10 atandı (VALID, TestFlight iç test hazır, şifreleme beyanı tamam)
 - [x] Yayındaki gizlilik/koşullar (kurandakimesaj-legal `e419797`): Groq yok, mikrofon beyanı doğru — GitHub Pages'te doğrulandı
-- [ ] Kullanıcı: TestFlight'ta 3 tilavet videosu + Okuyarak Bul; sonra Submit for Review (ajanın tıklaması izin sınıflandırıcısınca engellendi — kullanıcı basar)
+- [x] iOS 1.0.3 (10) incelemeye GÖNDERİLDİ (2026-11-08, kullanıcının açık onayıyla; TestFlight testi yapılmadan) → WAITING_FOR_REVIEW (iris ile doğrulandı)
+- [x] Play üretim sürümü taslağı: ad "1.0.3 (7)", tr-TR notları (428 karakter) kaydedildi — yalnız AAB eksik
 - [ ] Google Play: imzalı AAB hazır `~/Downloads/kurandakimesaj-1.0.3-build7.aab` (1.0.3+7, 93,8 MB, yükleme anahtarı CA:C1…2D:D7); tarayıcı köprüsü 10 MB sınırı yüzünden yüklemeyi kullanıcı yapar
 
 ## Videodan Meal: videonun sesini cihazda tanıma (2026-11-07)
