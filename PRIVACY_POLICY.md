@@ -1,6 +1,6 @@
 # Gizlilik Politikası — Kur'an'da ki Mesaj
 
-**Son güncelleme:** 21 Temmuz 2026
+**Son güncelleme:** 8 Kasım 2026
 **Geçerli sürüm:** 1.0.0
 
 ---
@@ -35,8 +35,8 @@ Uygulama, yalnızca işlevlerini yerine getirmek için gerekli olan verileri iş
 ### 2.3 Ayet Bulucu Görsel ve Video İşleme
 - **Toplanan:** Yalnızca sizin seçtiğiniz görsel veya kısa tilavet videosu.
 - **Amaç:** Görseldeki ya da videodaki Arapça metni çıkarıp doğrulanmış Kur'an veri setinde ayet eşleştirmesi yapmak.
-- **İşleme:** Görseller Supabase Edge Function üzerinden Google Gemini'ye; videolar geçici, özel Supabase Storage alanı üzerinden Groq Whisper'a iletilir.
-- **Saklama:** Ayet bulma videosu işlem tamamlandığında depolama alanından silinmeye çalışılır. Uygulama mikrofon erişimi istemez ve arka planda ses kaydetmez.
+- **İşleme:** Görseller Supabase Edge Function üzerinden Google Gemini'ye iletilir. Videodan Meal'de videodaki ses, tanınmak üzere telefonunuzun ses tanıma servisine (iPhone'da Apple, Android'de Google) iletilebilir; uygulama videoyu ya da sesi kendi sunucusuna yüklemez.
+- **Saklama:** Videodan Meal'de video uygulamanın sunucusuna yüklenmez ve cihazınızda kalır. Mikrofon yalnız Okuyarak Bul'da siz dokunduğunuzda, okuduğunuz ayeti tanımak için açılır; uygulama sesi kaydetmez, saklamaz ve arka planda dinlemez. Android'de videodan ayet bulma da sistem gereği mikrofon iznini ister, ancak bu sırada mikrofon açılmaz.
 
 ### 2.4 Fotoğraf, Kamera ve Kullanıcı Tarafından Oluşturulan İçerik
 - **Toplanan:** İçerik stüdyosunda veya topluluk paylaşımlarında eklediğiniz fotoğraf/video/metin.
@@ -83,7 +83,6 @@ Uygulama, işlevlerini sağlamak için aşağıdaki altyapı hizmetlerini kullan
 |--------|------|---------------------|
 | **Supabase** | Kimlik doğrulama, veritabanı, içerik depolama | https://supabase.com/privacy |
 | **Google Gemini** | Kullanıcının seçtiği görselden Arapça metin çıkarma | https://policies.google.com/privacy |
-| **Groq** | Kullanıcının seçtiği kısa tilavet videosunu metne dönüştürme | https://groq.com/privacy-policy/ |
 | **Apple (App Store / iOS servisleri)** | Uygulama dağıtımı ve yerel bildirimler | https://www.apple.com/legal/privacy/ |
 
 Bu sağlayıcılar yalnızca hizmeti sunmak için gerekli verilere erişir ve kendi gizlilik politikalarına tabidir.
