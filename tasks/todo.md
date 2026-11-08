@@ -5,7 +5,7 @@ Plan: `docs/superpowers/plans/2026-11-08-iphone-videodan-ayet.md` · Şartname: 
 - [x] Görev 1 `wordsToSegments` (+testler) · [x] Görev 2 Groq'suz `findFromVideo`, iOS servis yolu, `device_unsupported` · [x] Görev 3 Swift `VideoSpeechChannel` (AppDelegate.swift) · [x] Görev 4 gizlilik/koşul metinleri (mikrofon cümlesi düzeltildi)
 - [x] Görev 5 sunucu: fonksiyon silindi, GROQ_API_KEY kaldırıldı, politikalar düşürüldü, boş kova silindi (üretimde doğrulandı)
 - [x] ASC 1.0.3 What's New + inceleme notu (≤4000 karakter) güncel
-- [ ] Görev 6: push + Codemagic (GitHub kesintisi bekleniyor) → Swift ilk derleme → build ASC'ye → 1.0.3'e ata
+- [x] Görev 6: Codemagic build 10 (`9e1f1c9`) — Swift ilk denemede derlendi, IPA 31,56 MB; GitHub kesintisi CI'da sqlite3 `source: system` ile aşıldı (build 7-9 düşmüştü); ASC'de 1.0.3'e build 10 atandı (VALID, TestFlight iç test hazır, şifreleme beyanı tamam)
 - [ ] Kullanıcı: TestFlight'ta 3 tilavet videosu + Okuyarak Bul; sonra Submit for Review
 - [ ] Sonra: Google Play sürümü (Android'de cihaz yolu + Groq'suz akış)
 
