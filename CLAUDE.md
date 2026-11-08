@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Moderasyon (Apple Guideline 1.2 yanıtı):** Her içerik `status='pending'` başlar ve yayına girmeden önce yönetici onayından geçer. Kapı UI'da değil **veritabanında** zorlanır: RLS + `feed_posts_moderation_guard` trigger'ı. Bu mekanizmayı zayıflatan hiçbir değişiklik yapılmamalıdır — App Store onayı buna bağlıdır. Ayrıntı: `docs/APP_REVIEW_RESPONSE.md`.
 
-**Meal Düzenle (2026-10-03):** Tilavet videosu paylaş menüsünden ya da galeriden gelir; `ayah-finder-audio` zaman çizelgesinden cue üretilir ve meal oynatıcının ÜSTÜNE çizilir (gerçek render yok — K1 geçerli). Reels'e `feed_posts.meal_cues` (yalnız künye + saniye, serbest metin yok) ile yayınlanır; cue'lar yayın sonrası kilitlidir (`feed_posts_meal_cues_lock` trigger'ı, moderasyon guard'ına dokunulmadı). **Uygulama hiçbir bağlantıdan video indirmez** (App Store 5.2.3) — bağlantı paylaşımında yalnız yönlendirme kartı gösterilir. Yayınlanmayan video çıkışta önbellekten silinir (`MealVideoStore`; yalnız uygulamanın kendi önbelleğindeki dosyayı siler). Paylaşım niyeti eklentilere ulaşmadan `MainActivity.sanitizeShareIntent` içinde düzeltilir (bkz. `PROJECT_MEMORY.md` Karar Günlüğü). Plan: `meal-duzenle-implementation.md`.
+**Meal Düzenle (2026-10-03):** Tilavet videosu paylaş menüsünden ya da galeriden gelir; Android 13+'ta ses CİHAZIN tanıyıcısıyla metne çevrilir (`VideoSpeechChannel.kt`: çöz → 16 kHz mono → pipe'a 4x → `EXTRA_AUDIO_SOURCE`) ve ayetler cihazdaki `QuranMatcher` + `analyzeRecitation` ile bulunur, video yüklenmez; iOS ve Android ≤12'de `ayah-finder-audio` (Groq) sürer (2026-11-07, şartname `docs/superpowers/specs/2026-11-07-videodan-meal-cihaz-tanima-design.md`). Zaman çizelgesinden cue üretilir ve meal oynatıcının ÜSTÜNE çizilir (gerçek render yok — K1 geçerli). Reels'e `feed_posts.meal_cues` (yalnız künye + saniye, serbest metin yok) ile yayınlanır; cue'lar yayın sonrası kilitlidir (`feed_posts_meal_cues_lock` trigger'ı, moderasyon guard'ına dokunulmadı). **Uygulama hiçbir bağlantıdan video indirmez** (App Store 5.2.3) — bağlantı paylaşımında yalnız yönlendirme kartı gösterilir. Yayınlanmayan video çıkışta önbellekten silinir (`MealVideoStore`; yalnız uygulamanın kendi önbelleğindeki dosyayı siler). Paylaşım niyeti eklentilere ulaşmadan `MainActivity.sanitizeShareIntent` içinde düzeltilir (bkz. `PROJECT_MEMORY.md` Karar Günlüğü). Plan: `meal-duzenle-implementation.md`.
 
 `PROJECT_MEMORY.md` projenin canlı "beyni"dir — mimari karar verirken veya görev tamamlarken oku ve güncelle.
 
@@ -62,7 +62,7 @@ lib/
 └── l10n/              # tr.arb (Türkçe metinler)
 ```
 
-Kullanılan paketler (`pubspec.yaml`): `flutter_riverpod`, `go_router`, `freezed`/`json_serializable`, `dio`, `drift`, `adhan` (namaz vakti), `geolocator`/`flutter_qiblah`/`flutter_compass` (kıble), `hijri`, `just_audio`, `flutter_local_notifications`, `video_player`, `share_plus`, `google_fonts`, `flutter_svg`, `flutter_animate`, `supabase_flutter`, `google_sign_in`, `sign_in_with_apple`, `image_picker`, `receive_sharing_intent`.
+Kullanılan paketler (`pubspec.yaml`): `flutter_riverpod`, `go_router`, `freezed`/`json_serializable`, `dio`, `drift`, `adhan` (namaz vakti), `geolocator`/`flutter_qiblah`/`flutter_compass` (kıble), `hijri`, `just_audio`, `flutter_local_notifications`, `video_player`, `share_plus`, `google_fonts`, `flutter_svg`, `flutter_animate`, `supabase_flutter`, `google_sign_in`, `sign_in_with_apple`, `image_picker`, `receive_sharing_intent`, `speech_to_text` (7.5.0 tam pin; Okuyarak Bul).
 
 `ffmpeg_kit_flutter` **kullanılmıyor** (paket emekli) — bu yüzden gerçek video render kapsam dışıdır (K1).
 
@@ -71,7 +71,7 @@ Kullanılan paketler (`pubspec.yaml`): `flutter_riverpod`, `go_router`, `freezed
 **27 özellik**, 4 modül — tek kaynak `lib/app/feature_catalog.dart`, sayı ihtilafında **kod kazanır**:
 **İbadet & Günlük (8)** namaz vakti, zikirmatik, tesbihat, dua, Esmaü'l-Hüsna, oruç/imsakiye, dini günler, kıble ·
 **Kur'an & Öğrenme (10)** okuma, günlük ayet, konuya göre ayet, mucizeler, sure ezberi, cüz/hizb takip, kıssalar, tecvid, sure quiz, istatistikler ·
-**İçerik & Topluluk (5)** ayet kartı stüdyosu, hatim halkaları, koleksiyonlar, Ayet Bul (AI, yalnız görsel), Meal Düzenle (videodan zaman kodlu meal altyazısı) ·
+**İçerik & Topluluk (5)** ayet kartı stüdyosu, hatim halkaları, koleksiyonlar, Ayet Bul (görselden AI OCR + "Okuyarak Bul": cihazın ses tanıyıcısı → yerel eşleştirme, sunucu/LLM yok), Meal Düzenle (videodan zaman kodlu meal altyazısı) ·
 **Araçlar (4)** zekât hesaplama, cami bul, bağış, rüya tabiri.
 
 > Reels akışı ve Mesajlar katalog kaydı değil, alt-sekmedir — bu yüzden 27'ye dahil değiller.

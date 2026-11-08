@@ -266,3 +266,8 @@ döndüğünü gör (ders 10).
   (ffmpeg, node) `/c/...` yerine `C:/...` vermek gerekir.
 - Geçiş animasyonu sırasında atılan dokunuş kaybolabilir; "iki kez geri"
   gibi bir gözlemi kusur saymadan önce temiz durumdan yeniden üret.
+
+## 2026-11-07 — Plan belgesi ile asıl hedef farklı olabilir (kullanıcı: "yanlış anladın")
+- **Ne oldu:** `sound to ted.md` canlı mikrofon (`speech_to_text`) anlatıyordu; onu Ayet Bul'a "Okuyarak Bul" olarak kurdum. Kullanıcının asıl hedefi VİDEODAKİ sesi metne çevirip Videodan Meal'i değiştirmekti. Belgenin kendi README'si bile "ses dosyasından çalışmaz" diyordu.
+- **Kural:** Planlanan özellik projede zaten var olan bir akışla örtüşüyorsa (burada: ses → ayet = Meal Düzenle) ve plan "hangi akışı değiştiriyoruz" demiyorsa, kodlamadan ÖNCE tek soru sor: "Bu yeni bir giriş mi, yoksa X akışının yerine mi geçiyor?" Goal/stop kancası "durma" dese de bu soru engelleyici karardır.
+- **Kural:** Bir kaynağın kendi sınırlarını (README "Bilinmesi gereken sınırlar") kullanıcının ürün hedefiyle karşılaştır; çelişki varsa hedefi değil, kaynağı sorgula.

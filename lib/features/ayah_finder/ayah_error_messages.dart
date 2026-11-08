@@ -75,6 +75,34 @@ import 'package:flutter/material.dart';
         Icons.rule_rounded,
         'Ayetler kesin belirlenemedi. Ayet aralığını elle seçebilirsin.'
       ),
+    // Cihazda tanıma (Android 13+, `VideoSpeechChannel.kt`).
+    'speech_permission' => (
+        Icons.mic_off_rounded,
+        'Videodaki sesi tanımak için Android ses tanıma izni gerekiyor '
+            "(mikrofon açılmaz). Ayarlar'dan izin verip tekrar deneyin."
+      ),
+    'speech_network' => (
+        Icons.wifi_off_rounded,
+        'Ses tanıma için internet bağlantısı gerekiyor. '
+            'Bağlantını kontrol edip tekrar dene.'
+      ),
+    'speech_language' => (
+        Icons.translate_rounded,
+        'Telefonun ses tanıyıcısı Arapçayı desteklemiyor. '
+            'Ayetleri elle seçebilirsin.'
+      ),
+    'speech_busy' => (
+        Icons.hourglass_bottom_rounded,
+        'Ses tanıyıcı meşgul. Birkaç saniye sonra tekrar dene.'
+      ),
+    'speech_no_audio' => (
+        Icons.volume_off_rounded,
+        'Videoda okunabilir bir ses bulunamadı.'
+      ),
+    'speech_unavailable' => (
+        Icons.hearing_disabled_rounded,
+        'Ses tanıma şu an kullanılamıyor. Tekrar dene ya da ayetleri elle seç.'
+      ),
     _ => null,
   };
 }

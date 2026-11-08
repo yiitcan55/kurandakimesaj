@@ -3,12 +3,17 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/meal_cues.dart';
 import '../domain/models.dart';
+import '../domain/recitation_timeline.dart';
+import '../features/ayah_finder/recite_controller.dart' show quranMatcherProvider;
+import '../features/quran/quran_screens.dart' show surahsProvider;
+import 'video_speech.dart';
 
 /// Supabase istemcisi — başlatılmamışsa null (uygulama backend'siz de çalışır).
 final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
@@ -1105,8 +1110,10 @@ const int kAyahVideoMaxBytes = 20 * 1024 * 1024;
 const int kAyahImageMaxBytes = 10 * 1024 * 1024;
 
 class AyahFinderRepository implements IAyahFinderRepository {
-  AyahFinderRepository(this._client);
+  /// [_ref] verilirse (sağlayıcı verir) Android 13+'ta video cihazda tanınır.
+  AyahFinderRepository(this._client, [this._ref]);
   final SupabaseClient? _client;
+  final Ref? _ref;
 
   static const _bucket = 'ayah-audio';
 
@@ -1173,29 +1180,20 @@ class AyahFinderRepository implements IAyahFinderRepository {
 
   @override
   Future<AyahFinderResult> findFromVideo(String filePath) async {
+    final ref = _ref;
+    if (ref != null && await ref.read(videoSpeechServiceProvider).isSupported()) {
+      return _findOnDevice(ref, filePath);
+    }
+
     final c = _client;
     final uid = c?.auth.currentUser?.id;
     if (c == null || uid == null) {
-      return const AyahFinderResult(
-        status: AyahFinderStatus.error,
-        errorCode: 'auth_required',
-      );
+      return _error('auth_required');
     }
 
     final file = File(filePath);
-    if (!await file.exists()) {
-      return const AyahFinderResult(
-        status: AyahFinderStatus.error,
-        errorCode: 'video_missing',
-      );
-    }
-    // Boyut ön kontrolü — sınırı aşan video YÜKLENMEZ (kota + veri israfı).
-    if (await file.length() > kAyahVideoMaxBytes) {
-      return const AyahFinderResult(
-        status: AyahFinderStatus.error,
-        errorCode: 'file_too_large',
-      );
-    }
+    final fileError = await _videoFileError(file);
+    if (fileError != null) return _error(fileError);
 
     // Yol '<uid>/...' olmalı: bucket RLS'i ve Edge Function'daki sahiplik
     // doğrulaması bunu şart koşar.
@@ -1220,6 +1218,54 @@ class AyahFinderRepository implements IAyahFinderRepository {
       } catch (_) {}
     }
     return res;
+  }
+
+  static AyahFinderResult _error(String code) =>
+      AyahFinderResult(status: AyahFinderStatus.error, errorCode: code);
+
+  /// Sunucu ve cihaz yolunun ortak ön kontrolü (sınırı aşan video işlenmez).
+  static Future<String?> _videoFileError(File file) async {
+    if (!await file.exists()) return 'video_missing';
+    if (await file.length() > kAyahVideoMaxBytes) return 'file_too_large';
+    return null;
+  }
+
+  static const _speechCodes = {
+    'speech_permission',
+    'speech_network',
+    'speech_language',
+    'speech_busy',
+    'speech_no_audio',
+    'speech_unavailable',
+  };
+
+  /// Android 13+: ses cihazın tanıyıcısıyla metne çevrilir, ayet cihazdaki
+  /// eşleştiriciyle bulunur. Oturum gerekmez, video yüklenmez.
+  Future<AyahFinderResult> _findOnDevice(Ref ref, String filePath) async {
+    final fileError = await _videoFileError(File(filePath));
+    if (fileError != null) return _error(fileError);
+    final speech = ref.read(videoSpeechServiceProvider);
+    try {
+      if (!await speech.requestPermission()) return _error('speech_permission');
+      ref.read(quranMatcherProvider); // tanıma sürerken indeks kurulsun
+      final segments = await speech.transcribe(filePath);
+      final matcher = await ref.read(quranMatcherProvider.future);
+      var names = const <int, String>{};
+      try {
+        names = {for (final s in await ref.read(surahsProvider.future)) s.number: s.nameTr};
+      } catch (e) {
+        debugPrint('Videodan Meal: sure adları okunamadı: $e'); // "Sure N" ile devam
+      }
+      // ponytail: eşleştirme ana iş parçacığında (bölüm başına ~5-15 ms); çok
+      // uzun videoda takılırsa Isolate'e taşı (eşleştirici kopyası pahalı).
+      return analyzeRecitation(segments, matcher, names);
+    } on PlatformException catch (e) {
+      debugPrint('Videodan Meal: ses tanıma hatası: ${e.code} ${e.message}');
+      return _error(_speechCodes.contains(e.code) ? e.code : 'speech_unavailable');
+    } catch (e) {
+      debugPrint('Videodan Meal: cihazda tanıma başarısız: $e');
+      return _error('speech_unavailable');
+    }
   }
 
   String _extOf(String path) {
@@ -1285,7 +1331,7 @@ final syncRepositoryProvider = Provider<SyncRepository>(
   (ref) => SyncRepository(ref.watch(supabaseClientProvider)),
 );
 final ayahFinderRepositoryProvider = Provider<IAyahFinderRepository>(
-  (ref) => AyahFinderRepository(ref.watch(supabaseClientProvider)),
+  (ref) => AyahFinderRepository(ref.watch(supabaseClientProvider), ref),
 );
 
 /// Bulut Reels akışı — topluluğun TEK akışı ('video' + 'still' birlikte).

@@ -72,6 +72,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Namaz vakitlerini, kıble yönünü ve yakındaki camileri konumunuza göre hesaplamak için kullanılır.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Okuduğunuz ayeti bulmak için konuşma tanıma kullanılır.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Okuduğunuz ayeti dinlemek için mikrofon gerekir.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ayet bulma, içerik stüdyosu ve topluluk paylaşımları için galerinizden görsel veya video seçmenizi sağlar.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

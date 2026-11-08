@@ -11,9 +11,11 @@ import '../quran/quran_screens.dart';
 import '../studio/studio_screens.dart';
 import 'ayah_error_messages.dart';
 import 'ayah_finder_controller.dart';
+import 'recite_screen.dart';
 
 /// Ayet Bulucu — bir gönderinin ekran görüntüsünden/görselinden hangi Kur'an
-/// ayetinin geçtiğini bulur (yalnız görsel OCR). Video yolu Meal Düzenle'dedir;
+/// ayetinin geçtiğini bulur (görsel OCR) ya da sesli okunan ayeti dinleyip bulur
+/// ("Okuyarak Bul", `ReciteScreen`). Video yolu Meal Düzenle'dedir;
 /// uygulama hiçbir platformdan içerik indirmez — bkz. Karar Günlüğü (App Store 5.2.3).
 class AyahFinderScreen extends ConsumerStatefulWidget {
   const AyahFinderScreen({super.key, this.initialImagePath});
@@ -71,11 +73,21 @@ class _AyahFinderScreenState extends ConsumerState<AyahFinderScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                 children: [
                   Text(
-                    'Bir gönderinin ekran görüntüsünü ya da görselini ver; '
-                    'içindeki ayeti ve mealini bulalım.',
+                    'Ayeti sesli oku ya da bir gönderinin ekran görüntüsünü '
+                    'veya görselini ver; hangi ayet olduğunu ve mealini bulalım.',
                     style: AppTypography.body(size: 14, color: AppColors.muted),
                   ),
                   const SizedBox(height: 18),
+                  _SourceButton(
+                    key: const Key('ayahReciteTile'),
+                    icon: Icons.mic_rounded,
+                    title: 'Okuyarak Bul',
+                    subtitle: 'Ayeti sesli oku, hangi ayet olduğunu bulalım',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const ReciteScreen()),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _SourceButton(
                     key: const Key('ayahVideoTile'),
                     icon: Icons.movie_filter_rounded,
@@ -191,7 +203,7 @@ class _ResultView extends StatelessWidget {
             message: 'Bir ayet tanındı ama içeriği getirilemedi. Tekrar dene.',
           );
         }
-        return _MatchCard(match: result.matches.first, primary: true);
+        return AyahMatchCard(match: result.matches.first, primary: true);
       case AyahFinderStatus.ambiguous:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,7 +212,7 @@ class _ResultView extends StatelessWidget {
                 style: AppTypography.body(size: 14, color: AppColors.cream2)),
             const SizedBox(height: 12),
             for (final m in result.matches) ...[
-              _MatchCard(match: m, primary: false),
+              AyahMatchCard(match: m, primary: false),
               const SizedBox(height: 12),
             ],
           ],
@@ -217,8 +229,10 @@ class _ResultView extends StatelessWidget {
   }
 }
 
-class _MatchCard extends ConsumerWidget {
-  const _MatchCard({required this.match, required this.primary});
+/// Ayet sonuç kartı (Kaydet / Paylaş / Okuyucuda Aç / Stüdyo). Hem görselden
+/// hem "Okuyarak Bul"dan gelen eşleşmeleri gösterir.
+class AyahMatchCard extends ConsumerWidget {
+  const AyahMatchCard({super.key, required this.match, required this.primary});
   final AyahMatch match;
   final bool primary;
 

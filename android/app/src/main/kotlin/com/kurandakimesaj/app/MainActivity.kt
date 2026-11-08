@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import android.webkit.MimeTypeMap
 import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.engine.FlutterEngine
 import java.io.File
 
 // AudioServiceActivity, FlutterActivity'den türer; arka plan ses servisinin
@@ -22,6 +23,11 @@ class MainActivity : AudioServiceActivity() {
     override fun onNewIntent(intent: Intent) {
         sanitizeShareIntent(intent)
         super.onNewIntent(intent)
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        VideoSpeechChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
 
     /**

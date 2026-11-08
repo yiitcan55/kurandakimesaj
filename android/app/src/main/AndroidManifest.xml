@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Okuyarak Bul: cihazın ses tanıyıcısı (speech_to_text) için mikrofon.
+         Ses uygulamada kaydedilmez; yalnız canlı tanıma kullanılır. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Tam alarm izinleri BİLEREK YOK. USE_EXACT_ALARM yalnız "çalar saat"/"takvim"
          temel işlevine sahip uygulamalara açıktır (Play beyanı başka seçenek sunmuyor);
          bu uygulama Kur'an/ibadet uygulaması olduğu için uygun değil. Bu yüzden tüm
@@ -132,6 +135,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Okuyarak Bul: Android 11+ paket görünürlüğü — cihazda ses tanıma
+             servisi (Google) var mı diye sorgulanır (speech_to_text). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>

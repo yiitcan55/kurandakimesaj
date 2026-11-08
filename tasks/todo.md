@@ -1,5 +1,46 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## Videodan Meal: videonun sesini cihazda tanıma (2026-11-07)
+Kullanıcı düzeltmesi: asıl hedef videodaki sesi metne çevirip ayeti bulmak. Kararlar: motor = cihazın tanıyıcısı, Okuyarak Bul kalır.
+Şartname: `docs/superpowers/specs/2026-11-07-videodan-meal-cihaz-tanima-design.md` (deneme bulguları dahil).
+- [x] Deneme: dosya → pipe → Google tanıyıcısı (ar-SA) çalışıyor; 4x hız; yalnız 16 kHz mono; RECORD_AUDIO şart; düz dosya FD'si ERROR_NETWORK
+- [x] A Kotlin `VideoSpeechChannel.kt` (çöz + mono + 16 kHz + 4x pipe + bölüm zamanları) — Opus işçi
+- [x] B `lib/data/video_speech.dart` · C `lib/domain/recitation_timeline.dart` (+7 test) · D repo yönlendirmesi (+5 test) · E hata metinleri
+- [x] E2E'de 3 zamanlama kusuru bulunup düzeltildi (pipe 4 KB, 0,6 sn kalibrasyon, çok aralıklı bölüm) — şartnamede ayrıntı
+- [x] Kapı: analyze 0, test 313/313, APK ✓
+- [x] Emülatör E2E: Fatiha 2-4, Kürsî 2:255, Yâsîn 58-61 doğru aralık + ±0,2 sn bölüm zamanı; ton videosu → "tilavet bulunamadı"; altyazı oynatmada doğru anda
+- [x] Belgeler
+- [ ] Açık: commit/PR (istenmedi) · gerçek cihaz + gerçek (gürültülü/müzikli) videolar · iOS Swift yolu (macOS) · data→features sağlayıcı borcu · Play Veri güvenliği / ASC notu (mikrofon izni artık Meal Düzenle için de isteniyor)
+
+## Okuyarak Bul — canlı tilavetten ayet (2026-11-07)
+Kaynak: `../sound to ted.md` + `../kuran_eslestirici/` · Dal `feat/okuyarak-bul` (`release/1.0.2`'den; stüdyo dalından bağımsız)
+
+**Gereksinim:** Ayet Bul'a "Okuyarak Bul": mikrofon → cihazın ses tanıyıcısı (`speech_to_text`, Arapça yerel ayar) → yerel eşleştirici → mevcut ayet kartları (Kaydet / Paylaş / Okuyucuda Aç / Stüdyo). Sunucu yok, LLM yok, ses kaydedilmez/yüklenmez.
+
+**Kaynak plandan bilinçli sapmalar:**
+- Tanzil indirme YOK → zaten paketli `assets/quran/quran_full.json` (6236 ayet, uthmani + Diyanet meali). Ek asset ve Tanzil atıf yükü yok.
+- Normalizer uthmani hat için genişler: tüm Kur'an işaretleri silinir (U+0610–061A, 064B–065F, 0670, 06D6–06ED, 0640) + `_shared/quran/matcher.ts`'teki `UTHMANI_VARIANTS` (صلوه→صلاه …).
+- `_wordSim` mesafe toleransını SORGU kelimesinin uzunluğundan alır (aday aşamasıyla tutarlı; yoksa `مالك`↔`ملك` LCS'te 0 sayılıyor).
+- Eşleştirici sonucu `QuranHit` (domain'de `AyahMatch` zaten var); controller `AyahMatch`'e çevirir: referans `"<nameTr>, a"` ya da aralıkta `"<nameTr>, a-b"`, meal/Arapça birleştirilir.
+- `setState`'li ekran yerine Notifier (CLAUDE.md: mantık notifier'da). BLUETOOTH izinleri YOK (YAGNI).
+
+**Dosyalar:**
+- [x] Dal açıldı
+- [x] CREATE `lib/domain/quran_matcher.dart` — normalizer + `QuranVerse` + `QuranHit` + `QuranMatcher` (saf Dart)
+- [x] CREATE `lib/features/ayah_finder/recite_controller.dart` — `quranMatcherProvider` (asset → `Isolate.run`), `ReciteController` (init/start/stop/onRecognized)
+- [x] CREATE `lib/features/ayah_finder/recite_screen.dart`
+- [x] UPDATE `ayah_finder_screen.dart` — "Okuyarak Bul" kartı; `_MatchCard` → public `AyahMatchCard`
+- [x] UPDATE `pubspec.yaml` (`speech_to_text: 7.5.0` tam pin), `AndroidManifest.xml` (RECORD_AUDIO + RecognitionService sorgusu), `Info.plist` (konuşma + mikrofon açıklaması)
+- [x] TEST `test/quran_matcher_test.dart` (17) + `test/recite_controller_test.dart` (12)
+- [x] Kapı: `dart analyze` 0, `flutter test` 301/301, `flutter build apk --debug` ✓
+- [x] Emülatör E2E: S1–S5 geçti (aşağıda)
+- [x] Belgeler: CLAUDE.md (Ayet Bul tanımı + paket), PROJECT_MEMORY.md (Active Context + 4 karar)
+- [ ] Commit / PR (istenmedi) · gerçek cihazda insan sesiyle deneme · iOS (macOS gerekir) · Play Veri güvenliği + ASC inceleme notuna mikrofon/konuşma tanıma
+
+**İnceleme (2026-11-07):** Kod Sonnet işçiye devredildi (analyze/test/APK yeşil döndü), kontroller yeniden koşuldu. Emülatör E2E, birim testlerin göremediği 3 kusuru buldu ve hepsi kırmızı→yeşil testle düzeltildi: (1) `locales()` Android 13+'ta yalnız cihaz üstü dilleri veriyor → özellik "Arapça yok" diye kilitleniyordu, artık `ar-SA` ile dener; (2) Google tanıyıcısı tilaveti bölümlere ayırıyor (`""` ara sonuç, son sonuç yalnız son bölüm) → okunanın çoğu kayboluyor ve "Duyulan" siliniyordu, artık birikiyor; (3) eşleştirici en çok 2 ayetlik aralık deniyordu → 3 ayetlik okuma "1:2-3 %65", artık "1:2-4 %91". Ayrıca ekran metni dürüstleştirildi: "sesi kaydetmez; tanımayı telefonun ses servisi (Google/Apple) yapar" (Android tanıyıcısı sesi Google sunucusuna gönderebilir). E2E sesi gRPC `injectAudio` ile verildi (Husarî Fatiha 2-4 → Fâtiha 2-4 %91, Âyetü'l-Kürsî → Bakara 255 %89, Alafasy 1:2 → Fâtiha 2 %93, Okuyucuda Aç, geri çıkınca mikrofon kapanır). Kanıt ekran görüntüleri oturum scratchpad'inde (`e2e_s1…s5_*.png`).
+
+**Riskler:** emülatörde Google tanıyıcısı/Arapça paketi olmayabilir · makamlı tilavette tanıyıcı kelime kaçırır · Android kısa sessizlikte dinlemeyi bitirir · iOS bu makinede çalıştırılamaz · Play Veri güvenliği (ses) ve ASC inceleme notu güncellenmeli · yerel derleme kırılması (compileSdk) riski → tam pin.
+
 ## İçerik + Düzeltmeler sürümü (2026-10-03)
 Plan: `implementation-icerik-duzeltmeler.md` · Dal: `feat/icerik-ve-duzeltmeler` · Meal Düzenle dahil
 - [x] 0 Dal açıldı, analiz 0, belgeler yazıldı (commit 818991b)
