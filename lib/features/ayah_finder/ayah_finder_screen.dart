@@ -367,8 +367,8 @@ class _ActionButton extends StatelessWidget {
 
 /// Hata kodunu eyleme dönük Türkçe mesaja çevirir.
 ///
-/// Kod listesi sözleşmenin bir parçası: `ayah-finder` + `ayah-finder-audio`
-/// Edge Function'ları ve `AyahFinderRepository` bu kodları üretir. Yeni kod
+/// Kod listesi sözleşmenin bir parçası: `ayah-finder` Edge Function'ı, cihaz
+/// tanıyıcısı (`analyzeRecitation`) ve `AyahFinderRepository` bu kodları üretir. Yeni kod
 /// eklenirse burası da güncellenmeli — ele alınmayan kod `debugPrint` ile
 /// loglanır ki hata bilgisi hiçbir yerde kaybolmasın.
 class _ErrorView extends StatelessWidget {

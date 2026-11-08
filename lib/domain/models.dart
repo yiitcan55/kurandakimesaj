@@ -154,7 +154,7 @@ class AyahMatch {
       );
 }
 
-/// Videodan tanınan ayet ARALIĞI (ör. Yasin 58-61) — `ayah-finder-audio`.
+/// Videodan tanınan ayet ARALIĞI (ör. Yasin 58-61) — cihaz tanıyıcısı (`analyzeRecitation`).
 /// Görsel/OCR yolunda gelmez (tek ayet); o yüzden `AyahFinderResult.range` null olabilir.
 @immutable
 class AyahRange {
@@ -180,7 +180,7 @@ class AyahRange {
       );
 }
 
-/// "Videonun kaçıncı saniyesinde hangi ayet okunuyor" — `ayah-finder-audio`.
+/// "Videonun kaçıncı saniyesinde hangi ayet okunuyor" — cihaz tanıyıcısı (`analyzeRecitation`).
 @immutable
 class AyahTimelineEntry {
   const AyahTimelineEntry({
@@ -217,7 +217,7 @@ class AyahTimelineEntry {
       );
 }
 
-/// `ayah-finder` (görsel/bağlantı) ve `ayah-finder-audio` (video) ortak sonucu.
+/// `ayah-finder` (görsel/bağlantı) ve cihaz tanıyıcısı (`analyzeRecitation`, video) ortak sonucu.
 ///
 /// `range` + `timeline` yalnızca ses hattında dolar. Görsel hattının yanıtında bu
 /// alanlar hiç bulunmaz → `fromJson` savunmacı okur, sözleşme iki yönde uyumludur

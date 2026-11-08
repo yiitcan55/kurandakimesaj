@@ -144,4 +144,49 @@ void main() {
     final r = analyzeRecitation(segs(fatiha), matcher, const {});
     expect(r.range?.reference, 'Sure 1, 2-4');
   });
+
+  group('wordsToSegments (iOS kelime → bölüm)', () {
+    SpeechSegment w(double s, double e, String t) => (start: s, end: e, text: t);
+
+    test('boş liste boş döner', () {
+      expect(wordsToSegments(const []), isEmpty);
+    });
+
+    test('duraklamasız kelimeler tek bölüm', () {
+      final r = wordsToSegments([w(0.7, 1.2, 'الحمد'), w(1.3, 1.8, 'لله'), w(1.9, 2.4, 'رب')]);
+      expect(r, hasLength(1));
+      expect(r.single.text, 'الحمد لله رب');
+      expect(r.single.start, 0.7);
+      expect(r.single.end, 2.4);
+    });
+
+    test('0,6 sn üstü boşluk yeni bölüm açar', () {
+      final r = wordsToSegments([
+        w(0.7, 5.5, 'العالمين'),
+        w(6.4, 7.0, 'الرحمن'),
+        w(7.1, 10.0, 'الرحيم'),
+      ]);
+      expect(r.map((s) => s.text), ['العالمين', 'الرحمن الرحيم']);
+      expect(r[1].start, 6.4);
+    });
+
+    test('iOS kelimeleri uçtan uca: Fatiha 2-4 → aralık 1:2-4', () {
+      final words = [
+        for (final (i, t) in 'الحمد لله رب العالمين'.split(' ').indexed) w(0.7 + i, 1.5 + i, t),
+        for (final (i, t) in 'الرحمن الرحيم'.split(' ').indexed) w(6.4 + i, 7.2 + i, t),
+        for (final (i, t) in 'مالك يوم الدين'.split(' ').indexed) w(10.9 + i, 11.7 + i, t),
+      ];
+      final r = analyzeRecitation(wordsToSegments(words), matcher, const {1: 'Fâtiha'});
+      expect(r.status, AyahFinderStatus.matched);
+      expect(r.range!.surah, 1);
+      expect(r.range!.fromAyah, 2);
+      expect(r.range!.toAyah, 4);
+      expect(r.timeline.first.startSec, closeTo(0.7, 0.01));
+    });
+
+    test('kelime yoksa notFound', () {
+      expect(analyzeRecitation(wordsToSegments(const []), matcher, const {}).status,
+          AyahFinderStatus.notFound);
+    });
+  });
 }

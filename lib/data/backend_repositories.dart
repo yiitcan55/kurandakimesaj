@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show PlatformException;
@@ -1090,17 +1089,18 @@ class KhatmRepository {
 abstract interface class IAyahFinderRepository {
   Future<AyahFinderResult> findFromImage(Uint8List bytes, {String mime});
 
-  /// Cihazdaki bir Kur'an videosundan okunan ayetleri bulur (ses hattı).
+  /// Cihazdaki bir Kur'an videosundan okunan ayetleri bulur: ses CİHAZIN
+  /// tanıyıcısıyla metne çevrilir (Android 13+ ve iPhone), ayetler cihazdaki
+  /// eşleştiriciyle bulunur; video yüklenmez. Desteklenmeyen cihazda
+  /// `device_unsupported` (sunucu yedeği yok — Groq 2026-11-08'de kaldırıldı).
   ///
   /// Video kullanıcının KENDİ cihazından gelir (galeri / paylaş menüsü);
   /// uygulama hiçbir platformdan video indirmez (App Store 5.2.3).
   Future<AyahFinderResult> findFromVideo(String filePath);
 }
 
-/// Ses hattı kapsamı: kısa video. Bundan büyüğü sunucuya HİÇ yüklenmez —
-/// Groq'un free tier dosya limiti (25 MB) altında güvenli pay bırakır ve
-/// mobil veriyle boşuna yükleme yapılmasını engeller. `ayah-audio` bucket'ında
-/// da aynı sınır zorlanır (savunma derinliği).
+/// Video kapsamı: kısa video. Meal Düzenle'de bundan büyüğü cihaz
+/// tanıyıcısına verilmez; Reels yüklemesinde de aynı sınır geçerlidir.
 const int kAyahVideoMaxBytes = 20 * 1024 * 1024;
 
 /// Görsel hattı kapsamı. `supabase/functions/ayah-finder/link_resolver.ts`
@@ -1110,12 +1110,11 @@ const int kAyahVideoMaxBytes = 20 * 1024 * 1024;
 const int kAyahImageMaxBytes = 10 * 1024 * 1024;
 
 class AyahFinderRepository implements IAyahFinderRepository {
-  /// [_ref] verilirse (sağlayıcı verir) Android 13+'ta video cihazda tanınır.
+  /// [_ref] verilirse (sağlayıcı verir) Android 13+ ve iPhone'da video
+  /// cihazda tanınır; verilmezse `findFromVideo` `device_unsupported` döner.
   AyahFinderRepository(this._client, [this._ref]);
   final SupabaseClient? _client;
   final Ref? _ref;
-
-  static const _bucket = 'ayah-audio';
 
   Future<AyahFinderResult> _invoke(
     String function,
@@ -1141,7 +1140,7 @@ class AyahFinderRepository implements IAyahFinderRepository {
       );
     } on FunctionException catch (e) {
       // Edge Function hata gövdesi de sözleşmeye uyar (errorCode taşır) →
-      // "rate_limited"/"asr_failed" gibi kodlar kullanıcıya doğru mesajla döner.
+      // "no_image"/"server_error" gibi kodlar kullanıcıya doğru mesajla döner.
       final details = e.details;
       if (details is Map) {
         return AyahFinderResult.fromJson(details.cast<String, dynamic>());
@@ -1181,49 +1180,16 @@ class AyahFinderRepository implements IAyahFinderRepository {
   @override
   Future<AyahFinderResult> findFromVideo(String filePath) async {
     final ref = _ref;
-    if (ref != null && await ref.read(videoSpeechServiceProvider).isSupported()) {
-      return _findOnDevice(ref, filePath);
+    if (ref == null || !await ref.read(videoSpeechServiceProvider).isSupported()) {
+      return _error('device_unsupported');
     }
-
-    final c = _client;
-    final uid = c?.auth.currentUser?.id;
-    if (c == null || uid == null) {
-      return _error('auth_required');
-    }
-
-    final file = File(filePath);
-    final fileError = await _videoFileError(file);
-    if (fileError != null) return _error(fileError);
-
-    // Yol '<uid>/...' olmalı: bucket RLS'i ve Edge Function'daki sahiplik
-    // doğrulaması bunu şart koşar.
-    final ext = _extOf(filePath);
-    final objectPath =
-        '$uid/${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}$ext';
-    try {
-      await c.storage.from(_bucket).upload(objectPath, file);
-    } catch (_) {
-      return const AyahFinderResult(
-        status: AyahFinderStatus.error,
-        errorCode: 'upload_failed',
-      );
-    }
-
-    // Edge Function işi bitince objeyi kendisi siler (gizlilik).
-    final res = await _invoke('ayah-finder-audio', {'path': objectPath});
-    if (res.errorCode == 'network') {
-      // Çağrı sunucuya ulaşmadıysa nesne yetim kalır; en-iyi-çaba temizlik.
-      try {
-        await c.storage.from(_bucket).remove([objectPath]);
-      } catch (_) {}
-    }
-    return res;
+    return _findOnDevice(ref, filePath);
   }
 
   static AyahFinderResult _error(String code) =>
       AyahFinderResult(status: AyahFinderStatus.error, errorCode: code);
 
-  /// Sunucu ve cihaz yolunun ortak ön kontrolü (sınırı aşan video işlenmez).
+  /// Cihaz yolunun ön kontrolü (sınırı aşan video işlenmez).
   static Future<String?> _videoFileError(File file) async {
     if (!await file.exists()) return 'video_missing';
     if (await file.length() > kAyahVideoMaxBytes) return 'file_too_large';
@@ -1239,8 +1205,8 @@ class AyahFinderRepository implements IAyahFinderRepository {
     'speech_unavailable',
   };
 
-  /// Android 13+: ses cihazın tanıyıcısıyla metne çevrilir, ayet cihazdaki
-  /// eşleştiriciyle bulunur. Oturum gerekmez, video yüklenmez.
+  /// Android 13+ ve iPhone: ses cihazın tanıyıcısıyla metne çevrilir, ayet
+  /// cihazdaki eşleştiriciyle bulunur. Oturum gerekmez, video yüklenmez.
   Future<AyahFinderResult> _findOnDevice(Ref ref, String filePath) async {
     final fileError = await _videoFileError(File(filePath));
     if (fileError != null) return _error(fileError);
@@ -1266,13 +1232,6 @@ class AyahFinderRepository implements IAyahFinderRepository {
       debugPrint('Videodan Meal: cihazda tanıma başarısız: $e');
       return _error('speech_unavailable');
     }
-  }
-
-  String _extOf(String path) {
-    final i = path.lastIndexOf('.');
-    if (i < 0 || i == path.length - 1) return '.mp4';
-    final ext = path.substring(i).toLowerCase();
-    return ext.length <= 5 ? ext : '.mp4';
   }
 }
 

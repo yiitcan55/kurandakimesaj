@@ -44,8 +44,35 @@ class _Part {
 
 typedef _Pick = ({SpeechSegment seg, QuranHit hit});
 
+/// iOS `SFSpeechRecognizer` kelime düzeyinde zaman verir; Android bölüm verir.
+/// Kelimeleri, aralarındaki boşluk [gap] saniyeyi aşınca yeni bölüme ayırır
+/// (tilavetteki vakıf duraklamaları ≈ Android tanıyıcısının bölümleri).
+List<SpeechSegment> wordsToSegments(List<SpeechSegment> words, {double gap = 0.6}) {
+  final out = <SpeechSegment>[];
+  final buf = StringBuffer();
+  var start = 0.0, end = 0.0;
+  for (final w in words) {
+    final t = w.text.trim();
+    if (t.isEmpty) continue;
+    if (buf.isNotEmpty && w.start - end > gap) {
+      out.add((start: start, end: end, text: buf.toString()));
+      buf.clear();
+    }
+    if (buf.isEmpty) {
+      start = w.start;
+    } else {
+      buf.write(' ');
+    }
+    buf.write(t);
+    end = w.end;
+  }
+  if (buf.isNotEmpty) out.add((start: start, end: end, text: buf.toString()));
+  return out;
+}
+
 /// Tanıyıcı bölümleri -> ayet aralığı + "hangi saniyede hangi ayet".
-/// Sunucudaki `ayah-finder-audio/segments.ts`'in fikri, cihaz eşleştiricisiyle.
+/// Eski sunucu `ayah-finder-audio/segments.ts`'in (Groq, 2026-11-08'de
+/// kaldırıldı) fikri, cihaz eşleştiricisiyle.
 /// Sure/ayet ve meal HER ZAMAN korpustan gelir; tanıyıcı yalnız metin verir.
 AyahFinderResult analyzeRecitation(
   List<SpeechSegment> segments,

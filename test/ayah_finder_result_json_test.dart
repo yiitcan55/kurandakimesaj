@@ -4,7 +4,7 @@ import 'package:kurandakimesaj/domain/models.dart';
 /// `AyahFinderResult.fromJson` sözleşmesi iki yönde uyumlu olmalı:
 /// - Eski `ayah-finder` (görsel/bağlantı) yanıtında range/timeline HİÇ YOK →
 ///   yeni model bunları null/boş kabul etmeli (geriye uyum).
-/// - Yeni `ayah-finder-audio` yanıtındaki range/timeline tam parse edilmeli.
+/// - range/timeline alanları (eskiden ayah-finder-audio, artık cihazdaki analyzeRecitation) tam parse edilmeli.
 void main() {
   test('range/timeline içermeyen eski yanıt sorunsuz parse olur', () {
     final r = AyahFinderResult.fromJson({

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 /// Hata kodunu eyleme dönük Türkçe mesaja çevirir; bilinmeyen kod için `null`
 /// (çağıran jenerik mesaj gösterir ve kodu loglar).
 ///
-/// Kod listesi sözleşmenin bir parçası: `ayah-finder` + `ayah-finder-audio`
-/// Edge Function'ları, `AyahFinderRepository` ve Meal Düzenle bu kodları
-/// üretir. Yeni kod eklenirse burası da güncellenmeli.
+/// Kod listesi sözleşmenin bir parçası: görsel `ayah-finder` Edge Function'ı,
+/// cihaz tanıyıcısı (`VideoSpeechChannel`, Android + iOS), `AyahFinderRepository`
+/// ve Meal Düzenle bu kodları üretir. Yeni kod eklenirse burası da güncellenmeli.
 (IconData, String)? ayahErrorMessage(String? code) {
   return switch (code) {
     'file_too_large' => (
@@ -16,32 +16,10 @@ import 'package:flutter/material.dart';
         Icons.videocam_off_rounded,
         'Video okunamadı. Dosyayı tekrar seçip dene.'
       ),
-    'no_video' => (
-        Icons.upload_file_rounded,
-        'Video isteği eksik gönderildi.\n'
-            'Videoyu yeniden seçip tekrar dene.'
-      ),
     'no_image' => (
         Icons.image_not_supported_rounded,
         'Bu içerikte okunabilecek bir görsel bulunamadı.\n'
             'Ayetin net göründüğü bir ekran görüntüsü seçip tekrar dene.'
-      ),
-    'upload_failed' => (
-        Icons.cloud_upload_outlined,
-        'Video yüklenemedi. İnternetini kontrol edip tekrar dene.'
-      ),
-    'asr_failed' => (
-        Icons.hearing_disabled_rounded,
-        'Videodaki ses çözümlenemedi.\n'
-            'Tilavetin net duyulduğu bir klip ile tekrar dene.'
-      ),
-    'rate_limited' => (
-        Icons.hourglass_bottom_rounded,
-        'Şu an çok fazla istek var. Birkaç dakika sonra tekrar dene.'
-      ),
-    'forbidden_path' => (
-        Icons.lock_outline_rounded,
-        'Bu videoya erişim yetkin yok. Videoyu tekrar seçip dene.'
       ),
     'auth_required' => (
         Icons.login_rounded,
@@ -75,10 +53,16 @@ import 'package:flutter/material.dart';
         Icons.rule_rounded,
         'Ayetler kesin belirlenemedi. Ayet aralığını elle seçebilirsin.'
       ),
-    // Cihazda tanıma (Android 13+, `VideoSpeechChannel.kt`).
+    // Cihazda tanıma (Android 13+ `VideoSpeechChannel.kt`, iPhone
+    // `AppDelegate.swift` `VideoSpeechChannel`).
+    'device_unsupported' => (
+        Icons.phonelink_erase_rounded,
+        'Bu telefonda videodan otomatik ayet bulma desteklenmiyor (Android 13 ve '
+            'üstü ya da iPhone gerekir). Ayetleri elle seçebilirsin.',
+      ),
     'speech_permission' => (
         Icons.mic_off_rounded,
-        'Videodaki sesi tanımak için Android ses tanıma izni gerekiyor '
+        'Videodaki sesi tanımak için ses tanıma izni gerekiyor '
             "(mikrofon açılmaz). Ayarlar'dan izin verip tekrar deneyin."
       ),
     'speech_network' => (

@@ -12,7 +12,8 @@ import 'package:kurandakimesaj/features/ayah_finder/recite_controller.dart';
 import 'package:kurandakimesaj/features/quran/quran_screens.dart';
 
 /// `AyahFinderRepository.findFromVideo` yönlendirmesi: cihaz tanıyıcısı varsa
-/// oturumsuz ve yüklemesiz cihaz yolu, yoksa bugünkü sunucu yolu.
+/// oturumsuz ve yüklemesiz cihaz yolu, yoksa `device_unsupported` (Groq yolu
+/// 2026-11-08'de kaldırıldı; sunucu yedeği yok).
 class _FakeSpeech implements VideoSpeechService {
   _FakeSpeech({this.supported = true, this.granted = true, this.error});
 
@@ -113,10 +114,11 @@ void main() {
     expect(speech.calls, isEmpty);
   });
 
-  test('tanıyıcı yoksa sunucu yolu aynen: oturumsuz -> auth_required', () async {
+  test('cihaz desteklemiyorsa device_unsupported; sunucuya/yüklemeye gidilmez, oturum şartı yok', () async {
     final speech = _FakeSpeech(supported: false);
     final r = await repoWith(speech).findFromVideo(video.path);
-    expect(r.errorCode, 'auth_required');
+    expect(r.status, AyahFinderStatus.error);
+    expect(r.errorCode, 'device_unsupported');
     expect(speech.calls, isEmpty);
   });
 }

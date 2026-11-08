@@ -52,12 +52,7 @@ void main() {
   final cases = <String, String>{
     'file_too_large': 'Görsel en fazla 10 MB, video en fazla 20 MB',
     'video_missing': 'Video okunamadı',
-    'no_video': 'Video isteği eksik gönderildi',
     'no_image': 'Bu içerikte okunabilecek bir görsel bulunamadı',
-    'upload_failed': 'Video yüklenemedi',
-    'asr_failed': 'Videodaki ses çözümlenemedi',
-    'rate_limited': 'Şu an çok fazla istek var',
-    'forbidden_path': 'Bu videoya erişim yetkin yok',
     'auth_required': 'Bu özellik için giriş yapman gerekir',
     'no_api_key': 'Ayet bulma servisi şu an yapılandırılmamış',
     'network': 'İnternete ulaşılamadı',
@@ -65,6 +60,7 @@ void main() {
     'bad_response': 'Sunucudan anlaşılmayan bir yanıt geldi',
     'not_found': "Bu videoda Kur'an tilaveti bulunamadı. Ayet aralığını elle seçebilirsin.",
     'ambiguous': 'Ayetler kesin belirlenemedi. Ayet aralığını elle seçebilirsin.',
+    'device_unsupported': 'Bu telefonda videodan otomatik ayet bulma desteklenmiyor',
   };
 
   for (final entry in cases.entries) {
@@ -74,7 +70,11 @@ void main() {
   }
 
   test('bağlantı kodları ve bilinmeyen kod null döner', () {
-    for (final c in ['link_unresolved', 'blocked_host', 'invalid_url', 'totally_unknown_code', null]) {
+    for (final c in [
+      'link_unresolved', 'blocked_host', 'invalid_url', 'totally_unknown_code', null,
+      // Groq yolu (2026-11-08) ile kaldırılan kodlar:
+      'no_video', 'upload_failed', 'asr_failed', 'rate_limited', 'forbidden_path',
+    ]) {
       expect(ayahErrorMessage(c), isNull, reason: '$c');
     }
   });
