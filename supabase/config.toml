@@ -46,8 +46,6 @@ verify_jwt = false   # pg_cron service_role ile çağırır
 verify_jwt = false   # RevenueCat imzalı webhook; içeride secret doğrulanır
 [functions.ayah-finder]
 verify_jwt = true    # anon key/JWT yeterli; misafir de çağırabilir (anon key geçerli JWT)
-[functions.ayah-finder-audio]
-verify_jwt = true    # oturum ŞART: yüklenen videonun sahibi JWT'den doğrulanır
 [functions.delete-account]
 verify_jwt = true    # yalnız oturum açmış kullanıcı; içeride service_role ile siler
 [functions.legal-pages]

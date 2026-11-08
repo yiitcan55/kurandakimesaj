@@ -13,7 +13,7 @@
 // menusu de imageBase64 yoluyla gelir (istemci dosyayi okuyup gonderir).
 import { encodeBase64 } from "jsr:@std/encoding/base64";
 import { corsHeaders, json } from "../_shared/cors.ts";
-// Otoriter eslestirici `_shared/quran/`te — `ayah-finder-audio` da ayni matcher
+// Otoriter eslestirici `_shared/quran/`te (video yolu artik cihazda; bkz. lib/domain/recitation_timeline.dart)
 // ve ayni Kur'an veri setini kullanir (tek dogru kaynak).
 import { match } from "../_shared/quran/matcher.ts";
 import { fetchImage, resolvePostImage } from "./link_resolver.ts";

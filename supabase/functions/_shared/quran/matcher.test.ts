@@ -43,7 +43,7 @@ Deno.test("alakasiz metin bos veya dusuk guven doner", () => {
 });
 
 // ── ASR dayanikliligi: Whisper MODERN imla uretir, korpus uthmani ────────────
-// Bu blok ses hattinin (ayah-finder-audio) temel varsayimini kilitler.
+// Bu blok modern imla ureten kaynaklarin (OCR; eski ses hatti) temel varsayimini kilitler.
 
 Deno.test("uthmani vav'li uzun elif modern imlaya normalize olur", () => {
   // Korpus: ٱلصَّلَوٰة → الصلوه · Modern (Whisper): الصلاة → الصلاه
