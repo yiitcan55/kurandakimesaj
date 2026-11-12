@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kurandakimesaj/data/tafsir.dart';
 import 'package:kurandakimesaj/data/seed/ayah_notes_seed.dart';
 import 'package:kurandakimesaj/data/seed/topical_seed.dart';
 import 'package:kurandakimesaj/ui/core/ayah_note.dart';
 
-Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
+// Tefsir varlığı bu dosyanın konusu değil: boş tefsirle sabitlenir.
+Widget _host(Widget child) => ProviderScope(
+  overrides: [
+    tafsirProvider.overrideWith(
+      (ref) async =>
+          const Tafsir(byAyah: {}, title: '', source: '', fetched: ''),
+    ),
+  ],
+  child: MaterialApp(home: Scaffold(body: child)),
+);
 
 void main() {
   testWidgets('notu olan ayette "Kısa açıklama" katlanır, açılınca metin görünür', (

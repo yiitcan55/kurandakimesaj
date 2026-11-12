@@ -121,7 +121,7 @@ Kişisel verilerinizle ilgili şu haklara sahipsiniz:
 
 - Toplulukta paylaşılan içerikler kullanıcılar tarafından oluşturulur.
 - Uygunsuz içeriği **bildirme** ve kullanıcıları **engelleme** imkânı sunulur.
-- Dini içerikler (meal, kısa ayet açıklamaları, hadis) güvenilir kaynaklara dayanır; açıklamalar tefsir yerine geçmez. Rüya Tabiri ve Zekât gibi bölümler bilgilendirme amaçlıdır ve **kesin dini hüküm niteliği taşımaz**.
+- Dini içerikler (meal, tefsir, kısa ayet açıklamaları, hadis) güvenilir kaynaklara dayanır. Tefsir, QuranEnc.com tarafından yayımlanan «Muhtasar Kur'an-ı Kerim Tefsiri Türkçe Tercümesi»dir; uygulamayla birlikte paketlenir, değiştirilmeden sunulur ve okunması için ağ bağlantısı ya da veri paylaşımı gerekmez. Kısa ayet açıklamaları tefsir yerine geçmez. Rüya Tabiri ve Zekât gibi bölümler bilgilendirme amaçlıdır ve **kesin dini hüküm niteliği taşımaz**.
 
 ---
 

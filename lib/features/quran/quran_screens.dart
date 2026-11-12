@@ -376,6 +376,7 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   final _targetKey = GlobalKey();
   bool _didScroll = false;
   bool _highlight = false;
+  final _scroll = ScrollController();
 
   // `dispose()` içinde `ref` KULLANILAMAZ: Riverpod, widget unmount edilirken
   // BuildContext'e dayanan `ref`i reddeder (StateError). Eskiden `dispose`
@@ -393,12 +394,30 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   }
 
   /// Veri yüklendikten sonra hedef ayete bir kez kaydır + kısa vurgu.
-  void _scrollToInitial() {
-    if (_didScroll || widget.initialAyah == null) return;
+  /// [index]: hedefin ayet listesindeki sırası, [total]: ayet sayısı.
+  void _scrollToInitial(int index, int total) {
+    if (_didScroll || widget.initialAyah == null || index < 0) return;
+    _didScroll = true; // tek seferlik: sonraki build'ler zinciri yeniden başlatmasın
+    _scrollToTarget(index / total, 0);
+  }
+
+  void _scrollToTarget(double fraction, int attempt) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final ctx = _targetKey.currentContext;
-      if (ctx == null || !mounted) return;
-      _didScroll = true;
+      if (ctx == null) {
+        // `ListView(children:)` tembel: ekran dışındaki hedef ayet henüz KURULMADI.
+        // Tahmini ofsete atla, sonraki karede (hedef kurulunca) tekrar dene.
+        // ponytail: 3 deneme tavanı; uzun/değişken yükseklikli surelerde tahmin
+        // sapabilir, o zaman ListView.builder + indeksli kaydırma gerekir.
+        if (attempt >= 3) return;
+        if (_scroll.hasClients) {
+          _scroll.jumpTo(fraction * _scroll.position.maxScrollExtent);
+        }
+        _scrollToTarget(fraction, attempt + 1);
+        WidgetsBinding.instance.scheduleFrame();
+        return;
+      }
       Scrollable.ensureVisible(ctx,
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeOutCubic,
@@ -412,6 +431,7 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     _stopwatch.stop();
     _stats.recordReading(
       surahId: widget.surah.number,
@@ -474,8 +494,12 @@ class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
                     );
                   }
                   final ayahNumbers = [for (final a in ayahs) a.numberInSurah];
-                  _scrollToInitial(); // veri hazır → hedef ayete kaydır
+                  _scrollToInitial(
+                    ayahs.indexWhere((a) => a.numberInSurah == widget.initialAyah),
+                    ayahs.length,
+                  ); // veri hazır → hedef ayete kaydır
                   return ListView(
+                    controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     children: [
                       if (s.number != 9)

@@ -1,5 +1,6 @@
 ﻿import 'dart:io';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -234,18 +235,24 @@ class FeedScreen extends ConsumerWidget {
         children: [
           const Positioned.fill(child: _ReelsView()),
           // Başlık şeridi yok (reels tam kanar); yalnız dürüst çevrimdışı işareti.
+          // Positioned ŞART: aksi halde Stack'in tek konumsuz çocuğu olur ve
+          // Stack 38×34'e büzülüp Reels'i görünmez kılar.
           if (!supabaseReady)
-            const SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(left: 18, top: 14),
-                child: Tooltip(
-                  message:
-                      'Canlı topluluk akışı için Supabase bağlantısı gerekli',
-                  child: Icon(
-                    Icons.cloud_off_rounded,
-                    color: Colors.white70,
-                    size: 20,
-                    semanticLabel: 'Çevrimdışı: canlı akış kullanılamıyor',
+            const Positioned(
+              left: 0,
+              top: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(left: 18, top: 14),
+                  child: Tooltip(
+                    message:
+                        'Canlı topluluk akışı için Supabase bağlantısı gerekli',
+                    child: Icon(
+                      Icons.cloud_off_rounded,
+                      color: Colors.white70,
+                      size: 20,
+                      semanticLabel: 'Çevrimdışı: canlı akış kullanılamıyor',
+                    ),
                   ),
                 ),
               ),
@@ -608,7 +615,8 @@ class _ReelsPagerState extends State<_ReelsPager> with WidgetsBindingObserver {
 }
 
 /// Tek bir reel sayfası. videoUrl varsa gerçek video, yoksa 'still' görseli
-/// (Ken Burns), o da yoksa şablon gradyanı + Arapça + meal (dürüst fallback).
+/// (kırpılmadan sığdırılır), o da yoksa şablon gradyanı + Arapça + meal
+/// (dürüst fallback).
 class _ReelPage extends ConsumerStatefulWidget {
   const _ReelPage({
     super.key,
@@ -758,11 +766,6 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     return (m.group(1)!, int.parse(m.group(2)!));
   }
 
-  /// Türkçe harf-duyarsız karşılaştırma (İ/I → i/ı; `toLowerCase` tek başına
-  /// 'İ' için birleşik nokta üretip eşleşmeyi bozar).
-  static String _fold(String s) =>
-      s.trim().replaceAll('İ', 'i').replaceAll('I', 'ı').toLowerCase();
-
   /// Ayet künyesine dokunma → sureyi otoriter listeden çöz, okuyucuyu o ayete
   /// kaydırarak aç (Ayet Bulucu'daki `_openInReader` kalıbının aynısı).
   Future<void> _openReference() async {
@@ -770,8 +773,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     if (parsed == null) return;
     final messenger = ScaffoldMessenger.of(context);
     final surahs = await ref.read(surahsProvider.future);
-    final name = _fold(parsed.$1);
-    final hits = surahs.where((s) => _fold(s.nameTr) == name);
+    final name = surahNameKey(parsed.$1);
+    final hits = surahs.where((s) => surahNameKey(s.nameTr) == name);
     if (!mounted) return;
     if (hits.isEmpty) {
       messenger.showSnackBar(
@@ -884,7 +887,7 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
             showPlayIcon: _hasVideo && _initialized && _userPaused,
             subtitle:
                 reel.mealCues.isNotEmpty && _hasVideo && _initialized && _video != null
-                ? MealSubtitleOverlay(
+                ? ReelSubtitle(
                     position: _video!,
                     cues: reel.mealCues,
                     style: reel.mealCueStyle,
@@ -912,11 +915,8 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
     final poster = _poster;
     if (poster != null) {
       // Video posteri (ilk kare gelene kadar) VEYA 'still' reel'in kendisi.
-      // Ken Burns yalnız 'still'de ve yalnız sayfa görünürken çalışır: video
-      // posteri saniyeler içinde kaybolacağı için animasyon boşa pil yakar.
       return _StillBackground(
         url: poster,
-        animate: !_hasVideo && widget.isActive,
         fallback: _ReelComposition(reel: widget.reel),
       );
     }
@@ -931,43 +931,28 @@ class _ReelPageState extends ConsumerState<_ReelPage> {
 
 /// Tam ekran görsel arka plan (stüdyo 'still' reel'i veya video posteri).
 ///
-/// Ken Burns: yavaş 1.0→1.08 ölçek, 12 sn, ileri-geri döngü. [animate] false
-/// olduğunda animasyon sarmalayıcısı hiç kurulmaz → controller da yok
-/// (görünmeyen sayfada sonsuz animasyon pil tüketmez). Görsel yüklenemezse
-/// dürüstçe [fallback] kompozisyona düşer — boş siyah ekran gösterilmez.
+/// Görsel KIRPILMAZ ([BoxFit.contain]): 9:16 stüdyo görseli uzun iPhone
+/// ekranında iki yandan kesilirdi. Boşluk, videonun letterbox'ıyla aynı zemin
+/// ([AppColors.mediaLetterbox]) ile dolar. Hareket/ölçek animasyonu yok —
+/// büyüyen görsel kırpmayı geri getirirdi. Görsel yüklenemezse dürüstçe
+/// [fallback] kompozisyona düşer — boş siyah ekran gösterilmez.
 class _StillBackground extends StatelessWidget {
-  const _StillBackground({
-    required this.url,
-    required this.animate,
-    required this.fallback,
-  });
+  const _StillBackground({required this.url, required this.fallback});
 
   final String url;
-  final bool animate;
   final Widget fallback;
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final image = Image.network(
-      url,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stack) => fallback,
-    );
-    if (!animate || reduceMotion) return image;
-    // ClipRect şart: Transform.scale kırpmaz, büyüyen görsel sayfa sınırlarının
-    // dışına taşıp üstteki overlay'in altına sızardı.
-    return ClipRect(
-      child: image
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .scale(
-            duration: const Duration(seconds: 12),
-            curve: Curves.easeInOut,
-            begin: const Offset(1, 1),
-            end: const Offset(1.08, 1.08),
-          ),
+    return ColoredBox(
+      color: AppColors.mediaLetterbox,
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stack) => fallback,
+      ),
     );
   }
 }
@@ -1187,6 +1172,69 @@ class _BottomScrim extends StatelessWidget {
   }
 }
 
+/// Reels video altyazısı: [MealSubtitleOverlay] içerik kadar yer kaplar (aktif
+/// cue yokken 0 yükseklik), sola hizalanır; sığmazsa kırpılmaz, ekran
+/// yüksekliğinin %30'u tavanına kadar ölçeklenip küçülür. Sabit 16/20/22 pt'lik
+/// uzun bir altyazı, tavan olmadan videoyu örter ve sol-alt sütunu ekranın
+/// dışına iterdi. ([FittedMealSubtitle] Meal Düzenle'ye özeldir: tavanı hep
+/// doldurur ve ortalar.)
+@visibleForTesting
+class ReelSubtitle extends StatelessWidget {
+  const ReelSubtitle({
+    super.key,
+    required this.position,
+    required this.cues,
+    required this.style,
+  });
+
+  final ValueListenable<VideoPlayerValue> position;
+  final List<MealCue> cues;
+  final MealCueStyle style;
+
+  /// Ekran yüksekliğinin en çok bu kesri.
+  static const double maxHeightFraction = 0.3;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (_, box) => ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * maxHeightFraction,
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.bottomLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: box.maxWidth),
+          child: MealSubtitleOverlay(position: position, cues: cues, style: style),
+        ),
+      ),
+    ),
+  );
+}
+
+const _surahKeyFold = {
+  'ı': 'i', 'â': 'a', 'î': 'i', 'û': 'u', //
+  'ç': 'c', 'ğ': 'g', 'ö': 'o', 'ş': 's', 'ü': 'u',
+};
+
+/// Sure adı eşleştirme anahtarı. Künye sunucuda ASCII ("Fatiha", "Tahrim",
+/// "Al-i Imran" — `matcher.ts` SURAH_NAMES), uygulama tohumunda şapkalı
+/// ("Fâtiha", "Tahrîm", "Âl-i İmrân") yazılır; yalnız İ/I katlamak 114 surenin
+/// 75'ini eşleştirmiyordu. Önce Türkçe küçültme (`toLowerCase` tek başına 'İ'
+/// için birleşik nokta üretir), sonra harf katlama, sonra [a-z0-9] dışı atılır.
+/// Tohumdaki parantezli takma ad ("Mü'min (Gâfir)", "Tebbet (Mesed)") atılır:
+/// künye yalnız ana adı taşır.
+@visibleForTesting
+String surahNameKey(String s) {
+  var k = s
+      .replaceAll(RegExp(r'\(.*?\)'), '')
+      .replaceAll('İ', 'i')
+      .replaceAll('I', 'ı')
+      .toLowerCase();
+  _surahKeyFold.forEach((from, to) => k = k.replaceAll(from, to));
+  return k.replaceAll(RegExp('[^a-z0-9]'), '');
+}
+
 /// Reel açıklama metni: boşsa meal'e düşer — ama cue'lu reel'de altyazı zaten
 /// meali gösterir, sabit meal ikinci kez basılmaz.
 @visibleForTesting
@@ -1231,8 +1279,27 @@ class _ReelOverlay extends StatelessWidget {
   /// Zaman kodlu altyazı; doluysa sol-alt sütunun ilk çocuğu.
   final Widget? subtitle;
 
+  /// Üst güvenli alan: ses tuşu ve "Onay bekliyor" rozeti durum çubuğunun /
+  /// pil göstergesinin altında kalmasın. `bottom: false` → alt yerleşim aynı.
+  /// Ortadaki duraklatma ikonu SafeArea DIŞINDA: çift-dokun kalbi gibi ekranın
+  /// gerçek ortasında dursun (içeride üst inset/2 kadar aşağı kayardı).
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      if (showPlayIcon)
+        const Center(
+          child: Icon(
+            Icons.play_arrow_rounded,
+            size: 72,
+            color: Colors.white70,
+          ),
+        ),
+      SafeArea(bottom: false, child: _stack(context)),
+    ],
+  );
+
+  Widget _stack(BuildContext context) {
     final captionText = reelCaptionText(
       caption: reel.caption,
       meal: reel.meal,
@@ -1240,15 +1307,6 @@ class _ReelOverlay extends StatelessWidget {
     );
     return Stack(
       children: [
-        // Duraklatıldı işareti (ortada).
-        if (showPlayIcon)
-          const Center(
-            child: Icon(
-              Icons.play_arrow_rounded,
-              size: 72,
-              color: Colors.white70,
-            ),
-          ),
         // Sol üst: moderasyon şeffaflığı — bekleyen içerik yalnız yazarına görünür.
         if (reel.isPending)
           const Positioned(

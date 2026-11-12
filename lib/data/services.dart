@@ -505,7 +505,8 @@ class TtsService {
 
   Future<void> init() async {
     await _tts.setLanguage('tr-TR');
-    await _tts.setSpeechRate(0.85);
+    // flutter_tts'te 0.5 = normal hız (iOS ve Android); meal okuması için biraz yavaş.
+    await _tts.setSpeechRate(0.45);
     await _tts.setVolume(1.0);
     _tts.setCompletionHandler(() => _speaking = false);
   }

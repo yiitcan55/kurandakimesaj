@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/local/app_database.dart';
 import '../../data/repositories.dart';
+import '../../data/tafsir.dart';
 import '../../ui/core/theme/app_colors.dart';
 import '../../ui/core/theme/app_theme.dart';
 import '../../ui/core/ayah_note.dart';
@@ -99,7 +100,7 @@ class DailyAyahScreen extends ConsumerWidget {
                             Text(ref0, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
                             const SizedBox(height: 12),
                             AyetActionBar(
-                              onUnderstand: () => _showTafsir(context, ayah, ref0),
+                              onUnderstand: () => _showTafsir(context, ref, ayah, ref0),
                               onReflect: () => showReflectionSheet(
                                 context,
                                 reference: ref0,
@@ -167,10 +168,20 @@ class DailyAyahScreen extends ConsumerWidget {
     );
   }
 
-  /// "Anla" — tefsir varsa alttan sheet'te gösterir, yoksa kısa bilgi verir.
-  void _showTafsir(BuildContext context, Ayah ayah, String ref0) {
+  /// "Anla" — kısa açıklama ve/veya Muhtasar tefsir varsa alttan sheet'te
+  /// gösterir, yoksa kısa bilgi verir.
+  Future<void> _showTafsir(BuildContext context, WidgetRef ref, Ayah ayah, String ref0) async {
+    Tafsir? muhtasar;
+    try {
+      muhtasar = await ref.read(tafsirProvider.future);
+    } catch (_) {
+      // Hata tafsirProvider'da loglandı; kısa açıklamayla devam edilir.
+    }
+    if (!context.mounted) return;
     final t = ayah.tafsir ?? AyahNote.noteForReference(ref0);
-    if (t == null || t.trim().isEmpty) {
+    final hasNote = t != null && t.trim().isNotEmpty;
+    final m = muhtasar?.of(ayah.surahNumber, ayah.numberInSurah);
+    if (!hasNote && m == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Bu ayet için henüz açıklama eklenmedi.')),
       );
@@ -194,7 +205,19 @@ class DailyAyahScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(ref0, style: AppTypography.body(size: 13, color: AppColors.goldInk)),
               const SizedBox(height: 12),
-              Text(t, style: AppTypography.body(size: 15, color: AppColors.cream)),
+              if (hasNote) Text(t, style: AppTypography.body(size: 15, color: AppColors.cream)),
+              if (m != null) ...[
+                if (hasNote) const SizedBox(height: 16),
+                Text('Tefsir',
+                    style: AppTypography.body(
+                        size: 14, weight: FontWeight.w700, color: AppColors.goldInk)),
+                const SizedBox(height: 6),
+                Text(m, style: AppTypography.body(size: 15, color: AppColors.cream)),
+                const SizedBox(height: 6),
+                Text(muhtasar!.sourceLine,
+                    style: AppTypography.body(
+                        size: 12, color: AppColors.cream.withValues(alpha: 0.75))),
+              ],
             ],
           ),
         ),

@@ -83,7 +83,7 @@ Zümrüt & altın paleti, sıcak krem metin, karanlık temalar. Fontlar: **Cormo
 
 ## Domain Kuralları (asla çiğneme)
 
-1. **Dini içerik doğruluğu kritiktir.** Meal/tefsir onaylı kaynaklardan (Diyanet, Elmalılı, TDV); hadiste sıhhat derecesi gösterilir. Rüya Tabiri ve Zekât ekranlarında "kesin hüküm değildir" uyarısı bulunmalı.
+1. **Dini içerik doğruluğu kritiktir.** Meal/tefsir onaylı kaynaklardan (Diyanet, Elmalılı, TDV); tefsir kaynağı Muhtasar Kur'an-ı Kerim Tefsiri Türkçe Tercümesi'dir (QuranEnc.com, açık lisans, metin değiştirilmez, kaynak satırı zorunlu; kullanıcı kararı 2026-11-09, şartname `docs/superpowers/specs/2026-11-09-muhtasar-tefsir-design.md`); hadiste sıhhat derecesi gösterilir. Rüya Tabiri ve Zekât ekranlarında "kesin hüküm değildir" uyarısı bulunmalı.
 2. **Arapça metin** her zaman doğru yönde (RTL, `Directionality`) ve Amiri Quran fontuyla render edilmeli.
 3. **Tüm kullanıcıya dönük metinler Türkçe ve tam ortografik doğrulukta** (ç, ğ, ı, ö, ş, ü). ASCII karşılıklarına asla düşürme.
 4. API key/gizli bilgi koda gömülmez — güvenli storage kullan.

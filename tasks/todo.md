@@ -1,5 +1,36 @@
 # Kur'an'da ki Mesaj — Görev Listesi
 
+## Hata listesi düzeltmeleri (2026-11-09) — `kurandaki mesaj hatalar.md`
+Dal: `fix/hatalar-1.0.4` (`feat/okuyarak-bul`'dan; 1.0.3 incelemede, ona dokunulmaz). Commit/push/sürüm kullanıcı isteyince.
+Rehber: `skills-guide.md`. Model yönlendirme: `rules/llm-router.md` (haiku → sonnet → opus → fable, basamak başına tek deneme).
+
+| # | Kök neden (kanıt) | Düzeltme | İşçi (model) | Skill / ajan | Kontrol |
+|---|---|---|---|---|---|
+| 1 | `services.dart:508` `setSpeechRate(0.85)`; flutter_tts'te normal = 0.5 (iki platform, Context7) → iOS'ta hızlı, Android'de ≈1,7x | 0.85 → 0.45 (ortak servis: okuyucudaki meal dinletme de düzelir) | W1 router-worker **haiku** | ecc:flutter-test | yeni `test/tts_rate_test.dart` |
+| 2+6 | `_ReelOverlay` üst öğeleri (`_MuteButton`, bekleyen rozeti) `top: 14`, `SafeArea` yok → iPhone durum çubuğu altında, ses tuşuna dokunulamıyor. Ek: Supabase yokken bulut ikonu `FeedScreen` Stack'inin tek konumsuz çocuğu → Reels 38×34'e büzülüyor | Overlay `SafeArea(bottom:false)`; ikon `Positioned` | W2 router-worker **sonnet** | flutter-fix-layout-issues | widget testi (padding.top=59 → tuş ≥59) |
+| 3a | `_StillBackground` `BoxFit.cover` + Ken Burns %8 → uzun ekranda görsel iki yandan kırpılıyor, yazı kenara dayanıyor | `BoxFit.contain` + letterbox; Ken Burns silinir | W2 | flutter-fix-layout-issues | widget testi (fit == contain) |
+| 3b | Reels video altyazısı `MealSubtitleOverlay` sabit 16/20/22 pt, yükseklik sınırı yok | Mevcut `FittedMealSubtitle` + ekran yüksekliğinin %30'u tavan | W2 | flutter-fix-layout-issues · flutter-add-widget-test | widget testi (uzun cue ≤ tavan) |
+| 4A | `_fold` yalnız İ/I katlıyor; sunucu `matcher.ts` ASCII adları ("Fatiha", "Tahrim") ↔ uygulama "Fâtiha"/"Tahrîm" → 114 surenin 75'i eşleşmiyor (emülatörde "Tahrim, 8" → snackbar) | Ad anahtarı: Türkçe küçült + â/î/û/ç/ğ/ı/ö/ş/ü → ASCII + harf dışını at; iki tarafa uygula | W2 | investigate (yapıldı) | `test/reel_reference_tap_test.dart` [BUG-A] + matcher.ts'teki 114 adın hepsi tek sureye çözülür |
+| 4B | `quran_screens.dart` `_scrollToInitial`: tembel `ListView` hedef ayeti kurmamış → `currentContext == null` → sessizce çıkıyor (Ayet Bul "Okuyucuda Aç" da etkileniyor) | Tahmini ofsete `jumpTo` + sonraki karede `ensureVisible`, ≤3 deneme | W3 router-worker **sonnet** | flutter-fix-layout-issues | [BUG-B] |
+| 5 | Diyanet'in açık tefsir API'si yok; kullanıcı kararı: açık lisanslı tefsir | QuranEnc `turkish_mokhtasar` (Muhtasar Kur'an-ı Kerim Tefsiri Türkçe Tercümesi): `tool/fetch_tafsir.dart` → `assets/quran/tafsir_muhtasar_tr.json` (DEĞİŞTİRİLMEDEN) → `AyahNote` (okuyucu/günün ayeti/konuya göre) "Tefsir" bölümü + kaynak satırı; Günün Ayeti "Anla" sayfası | W4 router-worker **sonnet** | ecc:orch-add-feature · flutter-add-widget-test | varlık 6236 ayet + örnek ayet API ile birebir + widget testi |
+| V | — | `dart analyze` 0, `flutter test` tam ×2, diff incelemesi, emülatör | ben + `ecc:flutter-reviewer` (sonnet) + `ecc:e2e-runner` (sonnet) | ecc:flutter-review · qa · superpowers:verification-before-completion | — |
+
+**QuranEnc koşulları (yeniden yayın):** içerik değiştirilmez; yayıncı + QuranEnc.com + sürüm anılır; güncel sürüme göre güncellenir; uygunsuz reklam yok. `turkish_mokhtasar` API'de sürüm vermiyor → indirme tarihi yazılır, sürüm QuranEnc'e sorulur (kullanıcı). Belgeler: `docs/legal/terms.html` + `PRIVACY_POLICY.md` tefsir kaynağı cümlesi, CLAUDE.md domain kuralı 1.
+
+**Dokunulmaz:** `feed_posts_moderation_guard` · `feed_select_visible/admin` · `is_own_post_media` · `revoke update on profiles` · `BottomBar heightFactor: 1` · `receive_sharing_intent` 1.8.1 · `test/bottom_bar_height_test.dart` · `launchMode="singleTop"` · `supabase/**`.
+
+- [x] W1 (haiku ✓) · [x] W2 (sonnet ✓) · [x] W3 (sonnet ✓) · [x] W4 (sonnet ✓; ürün koduna sızan "ProviderScope var mı" test kolaylığı tarafımdan kaldırıldı, `ayah_note_test` kapsama alındı)
+- [x] Kapı: `dart analyze` 0 · `flutter test` 334/334 ×2 (önce 314) · tefsir 73:7, 2:255, 114:6 canlı API ile birebir
+- [x] V: `ecc:flutter-reviewer` (sonnet) → 0 HIGH, 1 MEDIUM + 5 LOW; MEDIUM + 2 LOW W5 (sonnet), metin/test temizliği W6 (haiku) ile düzeltildi · emülatör E2E (`ecc:e2e-runner`, sonnet) S1–S5 PASS · son kapı `dart analyze` 0, `flutter test` **339/339 ×2**, W5 sonrası emülatörde Reels + Günün Ayeti tekrar bakıldı (I/flutter hata yok)
+- [x] Belgeler (PROJECT_MEMORY, lessons, todo review)
+
+### Review (2026-11-09 — hata listesi)
+**Yürütme (router):** keşif Explore (haiku) · kök neden `error-detective` (sonnet; emülatör + kırmızı test) · QuranEnc lisans `web-fetch` (haiku, iddialar curl ile doğrulandı) · W1 haiku ✓ · W2/W3/W4 sonnet ✓ · inceleme `ecc:flutter-reviewer` sonnet · W5 sonnet ✓ · W6 haiku ✓ · E2E `ecc:e2e-runner` sonnet. Her işçinin kontrol komutu tarafımdan yeniden koşuldu; hepsi ilk denemede geçti, eskalasyon gerekmedi. Ürün koduna sızmış bir test kolaylığı (`ProviderScope` var mı kontrolü) tarafımdan kaldırıldı.
+
+**Kök nedenler:** (1) flutter_tts ölçeğinde 0.5 normal, kod 0.85 · (2+6) `_ReelOverlay` güvenli alansız + Supabase yokken konumsuz bulut ikonu Reels'i 38×34'e büzüyordu · (3) `BoxFit.cover` + Ken Burns kırpması; altyazının yükseklik sınırı yoktu · (4) iki ayrı kusur: sunucu ASCII sure adları (75/114 eşleşmiyordu) + tembel listede kaydırma hedefi kurulmamıştı · (5) Diyanet'in açık tefsir API'si yok → kullanıcı kararıyla QuranEnc Muhtasar (6236 ayet, 1,9 MB, birebir; 3 ayet canlı API ile karşılaştırıldı).
+
+**Açık / kapsam dışı:** (a) Durağan reel resmindeki yazı hâlâ sağ aksiyon sütununun altına giriyor (resim artık kırpılmıyor ama yazı resmin içinde, tam genişlikte) — resmi sütun genişliği kadar içeri almak bir tasarım kararı, kullanıcıya soruldu. (b) Android emülatörde Günün Ayeti sayfası ~12 dp sola kaymış + sağda şerit: diff bu yerleşime dokunmuyor, aynı boyutta widget testi doğru (SÜNNET 20 dp), I/flutter hata yok → önceden var olan, büyük olasılıkla sayfa geçişi kaynaklı; ayrı iş. (c) `turkish_mokhtasar` sürüm numarası API'de yok → QuranEnc'e sorulmalı (koşul 3). (d) Yayındaki `terms`/gizlilik sayfası (kurandakimesaj-legal) tefsir kaynağına göre güncellenmeli. (e) iOS cihazda doğrulama (TestFlight). (f) Commit/PR/sürüm 1.0.4 — kullanıcı isteyince.
+
 ## iPhone'da videodan ayet + Groq kaldırma (2026-11-08)
 Plan: `docs/superpowers/plans/2026-11-08-iphone-videodan-ayet.md` · Şartname: `docs/superpowers/specs/2026-11-08-iphone-videodan-ayet-design.md`
 - [x] Görev 1 `wordsToSegments` (+testler) · [x] Görev 2 Groq'suz `findFromVideo`, iOS servis yolu, `device_unsupported` · [x] Görev 3 Swift `VideoSpeechChannel` (AppDelegate.swift) · [x] Görev 4 gizlilik/koşul metinleri (mikrofon cümlesi düzeltildi)

@@ -267,6 +267,23 @@ döndüğünü gör (ders 10).
 - Geçiş animasyonu sırasında atılan dokunuş kaybolabilir; "iki kez geri"
   gibi bir gözlemi kusur saymadan önce temiz durumdan yeniden üret.
 
+## 2026-11-09 — Hata listesi dersleri
+
+### 26. Paket ölçeğini belgeden doğrula, sayıya bakıp tahmin etme
+`setSpeechRate(0.85)` "biraz yavaş" gibi duruyordu; flutter_tts'te normal hız İKİ platformda 0.5 (Android 1.0 → 0.5 eşlenir). Kural: hız/ses/ölçek parametresi olan her paket çağrısında aralığı Context7'den oku.
+
+### 27. İki kaynak aynı varlığı adlandırıyorsa ada göre değil anahtara göre eşleştir
+Sunucu (`matcher.ts`) "Tahrim", uygulama tohumu "Tahrîm" → künye 114 surenin 75'inde ölüydü ve test yoktu. Kural: ad eşleştirmesinde iki tarafı aynı normalleştiriciden geçir ve iki listeyi birbirine karşı test et (`test/reels_layout_test.dart` `matcher.ts`'i dosyadan okur).
+
+### 28. Tembel liste + `ensureVisible` = sessiz başarısızlık
+`ListView(children:)` görünmeyen çocuğu KURMAZ; `GlobalKey.currentContext` null → kaydırma sessizce atlanır. Ayrıca sonradan yüklenen içerik (geç gelen provider) hedefin üstündeki satırları büyütür ve kaydırmayı bozar: yüklenirken de yer tutan iskelet çiz.
+
+### 29. Emülatörde Flutter hata taraması `E/flutter` ile yetmez
+Framework assert'leri (`FlutterError.dumpErrorToConsole`) logcat'e `I/flutter` olarak düşer. Tarama: `adb logcat -d | grep -E "I/flutter|E/flutter" | grep -iE "exception|assert|overflow|════"`.
+
+### 30. Ürün koduna "test ortamında mıyız" dalı koyma
+Bir işçi testi kırmamak için `AyahNote`'a "ProviderScope yoksa çizme" dalı ekledi. Doğru yer testtir (`ProviderScope` + override). Kural: işçi raporundaki "sapmalar" bölümünü oku; test kolaylığı ürüne sızdıysa geri al.
+
 ## 2026-11-07 — Plan belgesi ile asıl hedef farklı olabilir (kullanıcı: "yanlış anladın")
 - **Ne oldu:** `sound to ted.md` canlı mikrofon (`speech_to_text`) anlatıyordu; onu Ayet Bul'a "Okuyarak Bul" olarak kurdum. Kullanıcının asıl hedefi VİDEODAKİ sesi metne çevirip Videodan Meal'i değiştirmekti. Belgenin kendi README'si bile "ses dosyasından çalışmaz" diyordu.
 - **Kural:** Planlanan özellik projede zaten var olan bir akışla örtüşüyorsa (burada: ses → ayet = Meal Düzenle) ve plan "hangi akışı değiştiriyoruz" demiyorsa, kodlamadan ÖNCE tek soru sor: "Bu yeni bir giriş mi, yoksa X akışının yerine mi geçiyor?" Goal/stop kancası "durma" dese de bu soru engelleyici karardır.
